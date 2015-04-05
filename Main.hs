@@ -19,9 +19,11 @@ mainLoop bh nh ch mh ph = do
   ts <- getTime "%H:%M %d.%m.%y"
   (cp, cn) <- getCPUPercent ch
   (ct, cn) <- getCPUTemp cn
+  (cf, cn) <- getCPUMaxScalingFreq cn
   (mp, mn) <- getMemoryAvailable mh
   putStrLn (printf "%.1fW %3d%% %02d:%02d | MemFree: %dM | R/W: %dMbit/%dMbit | %s" pow p h m mp (r`div`1000`div`125) (w`div`1000`div`125) ts)
   putStrLn ((show cp) ++ (show ct))
+  printf "%.1f\n" cf
   threadDelay 1000000
   mainLoop bn nn cn mn ph
 

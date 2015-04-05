@@ -1,4 +1,4 @@
-module CPU (CPUHandle, getCPUHandle, getCPUPercent, getCPUTemp)
+module CPU (CPUHandle, getCPUHandle, getCPUPercent, getCPUTemp, getCPUMaxScalingFreq)
 where
 
 import Utility
@@ -12,6 +12,9 @@ pathStat = "/proc/stat"
 
 pathTemp :: String
 pathTemp = "/sys/class/thermal/thermal_zone0/temp"
+
+pathMaxScalingFreq :: String
+pathMaxScalingFreq = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq"
 
 getCPUPercent :: CPUHandle -> IO ([Int], CPUHandle)
 getCPUPercent (CPUH a w) = do
@@ -27,6 +30,11 @@ getCPUTemp :: CPUHandle -> IO (Int, CPUHandle)
 getCPUTemp cpuh = do
   temp <- readFile pathTemp
   return (div (read temp :: Int) 1000, cpuh)
+
+getCPUMaxScalingFreq :: CPUHandle -> IO (Float, CPUHandle)
+getCPUMaxScalingFreq cpuh = do
+  freq <- readFile pathMaxScalingFreq
+  return ((read freq :: Float) / 1000000, cpuh)
 
 getCPUHandle :: IO CPUHandle
 getCPUHandle = do
