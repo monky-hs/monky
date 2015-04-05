@@ -8,9 +8,11 @@ import Utility
 data NetworkHandle = NetH File File Int Int POSIXTime
 
 basePath :: String
-basePath = "/sys/class/net/"
+--basePath = "/sys/class/net/"
+basePath = "/sys/devices/pci0000:00/0000:00:1c.2/0000:03:00.0/net/"
 
 readPath :: String
+--readPath = "/statistics/rx_bytes"
 readPath = "/statistics/rx_bytes"
 
 writePath :: String
@@ -23,9 +25,9 @@ getReadWrite (NetH readf writef oread owrite otime) = do
   time <- getPOSIXTime
   let cread = oread - read
   let cwrite = owrite - write
-  let ctime = (otime - time)*1000
-  return (cread `div` (round ctime) * 1000,
-    cwrite `div` (round ctime) * 1000,
+  let ctime = (otime - time)
+  return ((cread*1000) `div` (round ctime),
+    (cwrite*1000) `div` (round ctime),
     (NetH readf writef read write time))
   
 
