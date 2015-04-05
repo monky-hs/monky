@@ -20,7 +20,7 @@ mainLoop bh nh ch mh ph = do
   (cp, cn) <- getCPUPercent ch 0
   (mp, mn) <- getMemoryAvailable mh
   putStrLn (printf "%.1fW %3d%% %02d:%02d | MemFree: %dM | R/W: %dMbit/%dMbit | %s" pow p h m mp (r`div`1000`div`125) (w`div`1000`div`125) ts)
-  putStrLn cp
+  putStrLn (show cp)
   threadDelay 1000000
   mainLoop bn nn cn mn ph
 

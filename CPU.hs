@@ -3,22 +3,20 @@ where
 
 import Utility
 import System.IO
-import Text.Printf
 import Data.List
 
-data CPUHandle = CPUH File [Int] [Int]
+data CPUHandle = CPUH [Int] [Int]
 
-getCPUPercent :: CPUHandle -> Int -> IO (String, CPUHandle)
-getCPUPercent (CPUH f a w) _ = do
+getCPUPercent :: CPUHandle -> Int -> IO ([Int], CPUHandle)
+getCPUPercent (CPUH a w) _ = do
   content <- readFile "/proc/stat"
   let d = map (map read) (map (drop 1) (map words (filter (\l -> isPrefixOf "cpu"l && ((>3) . length . head .words $ l)) (lines content)))) :: [[Int]]
   let all = map sum d
   let work = map sum (map (take 3) d)
   let cwork = zipWith (-) work w
   let call = zipWith (-) all a
-  return (show (zipWith div (map (* 100) cwork) call), (CPUH f all work))
+  return (zipWith div (map (* 100) cwork) call, (CPUH all work))
 
 getCPUHandle :: IO CPUHandle
 getCPUHandle = do
-  file <- fopen "/proc/stat"
-  return $CPUH file [0] [0]
+  return $CPUH [0] [0]
