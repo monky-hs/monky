@@ -1,4 +1,4 @@
-module Utility (readValue, readValues, fopen, File, readLine, readLineStartingWith, readIntInLineStartingWith, readLineN)
+module Utility (readValue, readValues, fopen, File, readLine, readLineStartingWith, readIntInLineStartingWith, readLineN, readContent)
 where
 
 import System.IO
@@ -33,12 +33,18 @@ readLineStartingWith h s = do
     readLineStartingWith h s
 
 readLineN :: File -> Int -> IO String
-readLineN h n = do
+readLineN h 0 = do
   line <- hGetLine h
-  if n == 0 then
-    return line
-  else
-    readLineN h (n-1)
+  hSeek h AbsoluteSeek 0
+  return line
+readLineN h n = do
+  readLineN h (n-1)
+
+readContent :: File -> IO String
+readContent h = do
+  hSeek h AbsoluteSeek 0
+  content <- hGetContents h
+  return content
 
 readIntInLineStartingWith :: File -> String -> IO Int
 readIntInLineStartingWith h s = do

@@ -1,43 +1,24 @@
-module CPU (CPUHandle, getCPUHandle, getCPUPercentTotal, getCPUPercent, getCPUDzenBars)
+module CPU (CPUHandle, getCPUHandle, getCPUPercent)
 where
 
 import Utility
 import System.IO
 import Text.Printf
+import Data.List
 
-data CPUHandle = CPUH File Int Int
+data CPUHandle = CPUH File [Int] [Int]
 
-getCPUPercentTotal :: CPUHandle -> IO (Int, CPUHandle)
-getCPUPercentTotal (CPUH f a w) = do
-  line <- readLine f
-  let vals = (map read $ tail $ words line) :: [Int]
-  let all = sum vals
-  let work = sum $take 3 vals
-  let cwork = work - w
-  let call = all - a
-  return (cwork*100 `div` call, CPUH f all work)
-
-getCPUPercent :: CPUHandle -> Int -> IO (Int, CPUHandle)
-getCPUPercent (CPUH f a w) n = do
-  line <- readLineN f (n+1)
-  --FIXME: seeking should be done by the helper
-  hSeek f AbsoluteSeek 0
-  let vals = (map read $ tail $ words line) :: [Int]
-  let all = sum vals
-  let work = sum $take 3 vals
-  let cwork = work - w
-  let call = all - a
-  return (cwork*100 `div` call, CPUH f all work)
-
-getCPUDzenBars :: CPUHandle -> Int -> IO (String, CPUHandle)
-getCPUDzenBars (CPUH f a w) count = do
---  usage <- map (getCPUPercent (CPUH f a w)) [0..(count-1)]
-  cpu0 <- getCPUPercent (CPUH f a w) 0 
-  cpu1 <- getCPUPercent (CPUH f a w) 1
-  let str = "^p(3)^pa(;0)^bg(#777777)^r(6x8)^p(-6)^fg(#222222)^r(6x" ++ show (16 - ((fst cpu0)*16) `div` 100) ++ ")^bg()^pa()^fg()"
-  return (str, CPUH f a w)
+getCPUPercent :: CPUHandle -> Int -> IO (String, CPUHandle)
+getCPUPercent (CPUH f a w) _ = do
+  content <- readFile "/proc/stat"
+  let d = map (map read) (map (drop 1) (map words (filter (\l -> isPrefixOf "cpu"l && ((>3) . length . head .words $ l)) (lines content)))) :: [[Int]]
+  let all = map sum d
+  let work = map sum (map (take 3) d)
+  let cwork = zipWith (-) work w
+  let call = zipWith (-) all a
+  return (show (zipWith div (map (* 100) cwork) call), (CPUH f all work))
 
 getCPUHandle :: IO CPUHandle
 getCPUHandle = do
   file <- fopen "/proc/stat"
-  return $CPUH file 0 0
+  return $CPUH file [0] [0]
