@@ -26,8 +26,8 @@ getReadWrite (NetH readf writef oread owrite otime) = do
   let cread = oread - read
   let cwrite = owrite - write
   let ctime = (otime - time)
-  return ((cread*1000) `div` (round ctime),
-    (cwrite*1000) `div` (round ctime),
+  return ((cread * 8) `div` (round ctime),
+    (cwrite * 8) `div` (round ctime),
     (NetH readf writef read write time))
   
 

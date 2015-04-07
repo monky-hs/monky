@@ -13,7 +13,7 @@ getMemoryAvailable (MemoryH f a w) = do
   cached <- readIntInLineStartingWith f "Cached:"
   total <- readIntInLineStartingWith f "MemTotal:"
   free <- readIntInLineStartingWith f "MemFree:"
-  let mem = (total-cached-free) `div` 1000
+  let mem = (total-cached-free)*1000
   return (mem, MemoryH f 0 0)
 
 getMemoryHandle :: IO MemoryHandle

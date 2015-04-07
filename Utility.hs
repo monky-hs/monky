@@ -1,9 +1,10 @@
-module Utility (readValue, readValues, fopen, File, readLine, readLineStartingWith, readIntInLineStartingWith, readLineN, readContent)
+module Utility (readValue, readValues, fopen, File, readLine, readLineStartingWith, readIntInLineStartingWith, readLineN, readContent, convertUnit)
 where
 
 import System.IO
 import Text.Regex.Posix ((=~))
 import Text.Regex (mkRegex, subRegex)
+import Text.Printf (printf)
 
 type File = Handle
 
@@ -45,6 +46,19 @@ readContent h = do
   hSeek h AbsoluteSeek 0
   content <- hGetContents h
   return content
+
+convertUnit :: Int -> String -> String -> String ->String -> String
+convertUnit rate u1 u2 u3 u4
+  | rate < 1000 = printf "%4d%s" rate u1
+  | rate < 10000 = printf "%4.2f%s" ((fromIntegral rate :: Float)/1000) u2
+  | rate < 100000 = printf "%4.1f%s" ((fromIntegral rate :: Float)/1000) u2
+  | rate < 1000000 = printf "%4d%s" (div rate 1000) u2
+  | rate < 10000000 = printf "%4.2f%s" ((fromIntegral rate :: Float)/1000000) u3
+  | rate < 100000000 = printf "%4.1f%s" ((fromIntegral rate :: Float)/1000000) u3
+  | rate < 1000000000 = printf "%4d%s" (div rate 1000000) u3
+  | rate < 10000000000 = printf "%4.2f%s" ((fromIntegral rate :: Float) / 1000000000) u4
+  | rate < 100000000000 = printf "%4.1f%s" ((fromIntegral rate :: Float)/1000000000) u4
+  | otherwise = printf "%4d%s" (div rate 1000000000) u4
 
 readIntInLineStartingWith :: File -> String -> IO Int
 readIntInLineStartingWith h s = do
