@@ -14,6 +14,21 @@ import Data.Array.Storable
 import Data.Array.Unsafe
 import qualified Data.Text
 
+batteryColor :: Int -> String
+batteryColor p
+  | p < 20 = "#ffaf00"
+  | p < 15 = "#ff8700"
+  | p < 10 = "#ff5f00"
+  | p <  5 = "#ff0000"
+  | otherwise = ""
+
+batterySymbol :: Int -> Int -> String
+batterySymbol s p
+  | s == 1 = "/home/moepi/.xmonad/xbm/ac_01.xbm"
+  | p < 50 = "/home/moepi/.xmonad/xbm/bat_low_01.xbm"
+  | p < 20 = "/home/moepi/.xmonad/xbm/bat_empty_01.xbm"
+  | otherwise = "/home/moepi/.xmonad/xbm/bat_full_01.xbm"
+
 mainLoop :: BatteryHandle -> NetworkHandle -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle -> IO()
 mainLoop bh nh ch mh ph dh = do
   (p, bc) <- getCurrentLevel bh
@@ -51,7 +66,7 @@ mainLoop bh nh ch mh ph dh = do
   printf " ^i(/home/moepi/.xmonad/xbm/mem.xbm) %s" (convertUnit mp "B" "K" "M" "G")
 -- format Battery section
   printf " |"
-  printf " ^i(/home/moepi/.xmonad/xbm/bat_full_01.xbm) %.1fW %3d%% %2d:%02d" pow p h m
+  printf " ^fg(%s)^i(%s) %.1fW %3d%% %2d:%02d^fg()" (batteryColor p) (batterySymbol 0 p) pow p h m
 -- format Time section
   printf " |"
   printf " ^i(/home/moepi/.xmonad/xbm/clock.xbm)  %s" ts
