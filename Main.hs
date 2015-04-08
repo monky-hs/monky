@@ -31,8 +31,9 @@ batterySymbol s p
 
 mainLoop :: BatteryHandle -> NetworkHandle -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle -> IO()
 mainLoop bh nh ch mh ph dh = do
-  (p, bc) <- getCurrentLevel bh
-  (s, bn) <- getTimeLeft bc
+  (p, bh) <- getCurrentLevel bh
+  (s, bh) <- getTimeLeft bh
+  (online, bh) <- getCurrentStatus bh
   (pow, ph) <- getPowerNow ph
   let h = s `div` 3600
   let m = (s - h * 3600) `div` 60
@@ -66,14 +67,14 @@ mainLoop bh nh ch mh ph dh = do
   printf " ^i(/home/moepi/.xmonad/xbm/mem.xbm) %s" (convertUnit mp "B" "K" "M" "G")
 -- format Battery section
   printf " |"
-  printf " ^fg(%s)^i(%s) %.1fW %3d%% %2d:%02d^fg()" (batteryColor p) (batterySymbol 0 p) pow p h m
+  printf " ^fg(%s)^i(%s) %.1fW %3d%% %2d:%02d^fg()" (batteryColor p) (batterySymbol online p) pow p h m
 -- format Time section
   printf " |"
   printf " ^i(/home/moepi/.xmonad/xbm/clock.xbm)  %s" ts
   printf "\n"
   hFlush stdout
   threadDelay 1000000
-  mainLoop bn nn cn mn ph dn
+  mainLoop bh nn cn mn ph dn
 
 main :: IO()
 main = do
