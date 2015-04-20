@@ -4,5 +4,10 @@ external_power :: String
 external_power = undefined
 
 network_device :: String
-network_device = unedifned
+network_device = unedefined
 
+disk_drive :: String
+disk_drive = undefined
+
+disk_part :: Int
+disk_part = 0

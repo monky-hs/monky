@@ -5,7 +5,7 @@ import Data.Time.Clock.POSIX
 import Utility
 
 
-data DiskHandle = DiskH String Int Int Int Int POSIXTime
+data DiskHandle = BTRFSH String Int Int Int Int POSIXTime | Empty
 
 path :: String
 path = "/proc/diskstats"
@@ -23,7 +23,8 @@ sectorSize :: Int
 sectorSize = 512
 
 getDiskReadWrite :: DiskHandle -> IO (Int, Int, DiskHandle)
-getDiskReadWrite (DiskH dev part size oread owrite otime) = do
+getDiskReadWrite Empty = do return (0, 0, Empty)
+getDiskReadWrite (BTRFSH dev part size oread owrite otime) = do
   content <- readFile path
   time <- getPOSIXTime
   let values = map read (drop 1 (filter (\l -> (head l) == "dm-0") (map (drop 2) (map words (lines content))) !! 0)) :: [Int]
@@ -32,19 +33,21 @@ getDiskReadWrite (DiskH dev part size oread owrite otime) = do
   let cread = read - oread
   let cwrite = write - owrite
   let ctime = time - otime
-  return (div cread (round ctime), div cwrite (round ctime), (DiskH dev part size read write time))
+  return (div cread (round ctime), div cwrite (round ctime), (BTRFSH dev part size read write time))
 
 getDiskFree :: DiskHandle -> IO (Int, DiskHandle)
-getDiskFree (DiskH dev part size oread owrite otime) = do
+getDiskFree Empty = do return (0, Empty)
+getDiskFree (BTRFSH dev part size oread owrite otime) = do
   dused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/data/bytes_used")
   mused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/metadata/bytes_used")
   sused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/system/bytes_used")
   let dfree = size - (read dused :: Int) - (read mused :: Int) - (read sused :: Int)
-  return (div dfree 1000000000, (DiskH dev part size oread owrite otime))
+  return (div dfree 1000000000, (BTRFSH dev part size oread owrite otime))
 
 getDiskHandle :: String -> Int -> IO DiskHandle
+getDiskHandle "" 0 = do return Empty
 getDiskHandle dev part = do
   t <- getPOSIXTime
   content <- readFile (basePath ++ dev ++ "/" ++ dev ++ (show part) ++ "/size")
   let size = (read content :: Int) * sectorSize
-  return $DiskH dev part size 0 0 0
+  return $BTRFSH dev part size 0 0 0
