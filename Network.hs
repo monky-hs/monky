@@ -9,7 +9,7 @@ data NetworkHandle = NetH File File Int Int POSIXTime
 
 basePath :: String
 --basePath = "/sys/class/net/"
-basePath = "/sys/devices/pci0000:00/0000:00:1c.2/0000:03:00.0/net/"
+basePath = "/sys/class/net/"
 
 readPath :: String
 --readPath = "/statistics/rx_bytes"

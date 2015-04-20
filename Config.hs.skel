@@ -1,0 +1,8 @@
+module Config where
+
+external_power :: String
+external_power = undefined
+
+network_device :: String
+network_device = unedifned
+

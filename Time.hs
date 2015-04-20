@@ -4,7 +4,7 @@ where
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
-import System.Locale
+--import System.Locale
 
 getTime :: String -> IO String
 getTime str = do

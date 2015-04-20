@@ -4,6 +4,7 @@ where
 import Control.Monad
 import System.Directory
 import Utility
+import Config
 
 -- FilesArray for the files, those have to be handled different so they
 -- get their own type for pattern matching
@@ -15,16 +16,24 @@ data BatteryHandle = BatH FilesArray Int
 data FilesArray = PowerNow File File File File |
   ChargeNow File File File File File File deriving(Show)
 
-
+pnow_path :: String
 pnow_path   = "/sys/class/power_supply/BAT0/power_now"
+enow_path :: String
 enow_path   = "/sys/class/power_supply/BAT0/energy_now"
+efull_path :: String
 efull_path  = "/sys/class/power_supply/BAT0/energy_full"
+vnow_path :: String
 vnow_path   = "/sys/class/power_supply/BAT0/voltage_now"
+cnow_path :: String
 cnow_path   = "/sys/class/power_supply/BAT0/current_now"
+cavg_path :: String
 cavg_path   = "/sys/class/power_supply/BAT0/current_avg"
+chnow_path :: String
 chnow_path  = "/sys/class/power_supply/BAT0/charge_now"
+chfull_path :: String
 chfull_path = "/sys/class/power_supply/BAT0/charge_full"
-adp_path    = "/sys/class/power_supply/ADP1/online"
+adp_path :: String
+adp_path    = "/sys/class/power_supply/"++ external_power ++"/online"
 
 
 getCurrentStatusInt :: File -> IO Int
@@ -60,23 +69,26 @@ getCurrentLevel (BatH (ChargeNow f1 f2 f3 now full adp) s) =
   $ getCurrentLevelInt now full
 
 
-getTimeLeftInt :: File -> File -> Int -> IO (Int, Int)
-getTimeLeftInt n c s = do
+getTimeLeftInt :: File -> File -> File -> Int -> File -> IO (Int, Int)
+getTimeLeftInt n c f s adp = do
+  online <- getCurrentStatusInt adp
   now <- readValue n
-  new <- readValue c
-  let avg = (new*20+s*80) `div` 100
-  return ( if avg >= 3600 then now `div` (avg `div` 3600) else 0, avg)
+  full <- readValue f
+  let gap = if online == 0 then now else full - now
+  change <- readValue c
+  let avg = (change*20+s*80) `div` 100
+  return ( if avg >= 3600 then gap `div` (avg `div` 3600) else 0, avg)
 
 
 
 getTimeLeft :: BatteryHandle -> IO (Int, BatteryHandle)
-getTimeLeft (BatH (PowerNow pnow enow f adp) s)= do
-  (t, n) <- getTimeLeftInt enow pnow s
-  return (t, BatH (PowerNow pnow enow f adp) n)
+getTimeLeft (BatH (PowerNow pnow enow efull adp) s)= do
+  (t, n) <- getTimeLeftInt enow pnow efull s adp
+  return (t, BatH (PowerNow pnow enow efull adp) n)
 
-getTimeLeft (BatH (ChargeNow f1 f2 cavg chnow f3 adp) s)= do
-  (t, n) <- getTimeLeftInt chnow cavg s
-  return (t, BatH (ChargeNow f1 f2 cavg chnow f3 adp) n)
+getTimeLeft (BatH (ChargeNow f1 f2 cavg chnow chfull adp) s)= do
+  (t, n) <- getTimeLeftInt chnow cavg chfull s adp
+  return (t, BatH (ChargeNow f1 f2 cavg chnow chfull adp) n)
 
 
 createPowerNowHandle :: IO BatteryHandle
