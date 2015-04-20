@@ -3,11 +3,11 @@ module Config where
 external_power :: String
 external_power = undefined
 
-network_device :: String
-network_device = unedefined
+network_devices :: [String]
+network_devices = unedefined
 
 disk_drive :: String
 disk_drive = undefined
 
 disk_part :: Int
-disk_part = 0
+disk_part = undefined

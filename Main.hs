@@ -32,7 +32,15 @@ batterySymbol s p user
   | p < 20 = "/home/" ++ user ++ "/.xmonad/xbm/bat_empty_01.xbm"
   | otherwise = "/home/" ++ user ++ "/.xmonad/xbm/bat_full_01.xbm"
 
-mainLoop :: String -> BatteryHandle -> NetworkHandle -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle ->  IO()
+printNetwork :: Maybe (Int, Int) -> IO()
+printNetwork Nothing = do
+  printf " |"
+  printf "         off"
+printNetwork (Just (r, w)) = do
+  printf " |"
+  printf " %s %s" (convertUnit r  "B" "k" "M" "G") (convertUnit w "B" "k" "M" "G")
+
+mainLoop :: String -> BatteryHandle -> NetworkHandles -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle ->  IO()
 mainLoop user bh nh ch mh ph dh = do
   p <- getCurrentLevel bh
   s <- getTimeLeft bh
@@ -40,7 +48,7 @@ mainLoop user bh nh ch mh ph dh = do
   pow <- getPowerNow ph
   let h = s `div` 3600
   let m = (s - h * 3600) `div` 60
-  (r, w) <- getReadWrite nh
+  nv <- getReadWriteMulti nh
   ts <- getTime "%a %m/%d %k:%M:%S"
   cp <- getCPUPercent ch
   ct <- getCPUTemp ch
@@ -59,8 +67,7 @@ mainLoop user bh nh ch mh ph dh = do
   mapM_ (printf "^p(3)^pa(;0)^bg(#777777)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()") (map (16-) $ map (`div`100) $ map (*16) cp)
   printf " %d°C" ct
 -- format Network section
-  printf " |"
-  printf " %s %s" (convertUnit r  "B" "k" "M" "G") (convertUnit w "B" "k" "M" "G")
+  printNetwork nv
 -- format Disk section
   printf " |"
   printf (" ^i(/home/" ++ user ++ "/.xmonad/xbm/diskette.xbm) %dG") df
@@ -82,7 +89,7 @@ mainLoop user bh nh ch mh ph dh = do
 main :: IO()
 main = do
   bh <- getBatteryHandle
-  nh <- getNetworkHandle network_device
+  nh <- getNetworkHandles network_devices
   ch <- getCPUHandle
   mh <- getMemoryHandle
   ph <- getPowerHandle
