@@ -1,13 +1,13 @@
 module Config where
 
 external_power :: String
-external_power = undefined
+external_power = "ADP1"
 
 network_devices :: [String]
-network_devices = unedefined
+network_devices = ["wlan0"]
 
 disk_drive :: String
-disk_drive = undefined
+disk_drive = "sda"
 
 disk_part :: Int
-disk_part = undefined
+disk_part = 3

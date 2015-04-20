@@ -52,8 +52,7 @@ printCPU user cp ct cf = do
   printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/cpu.xbm) %.1fG ^p(-3)") cf
   mapM_ printbars cp
   printf " %d°C" ct
-  where pcs = map (16-) $ map (`div`100) $ map (*16) cp
-        printbars pc = (printf "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()") (cpuColor pc) (16- (flip div 100  (16 * pc)))
+  where printbars pc = (printf "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()") (cpuColor pc) (16- (flip div 100  (16 * pc)))
 
 
 mainLoop :: String -> BatteryHandle -> NetworkHandles -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle ->  IO()
