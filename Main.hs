@@ -25,6 +25,13 @@ batteryColor s p
   | p <  5 = "#ff0000"
   | otherwise = ""
 
+cpuColor :: Int -> String
+cpuColor p
+  | p < 15 = "#009900"
+  | p < 50 = "#ffff66"
+  | p < 90 = "#ff6600"
+  | otherwise = "#ff0000"
+
 batterySymbol :: Int -> Int -> String -> String
 batterySymbol s p user
   | s == 1 = "/home/" ++ user ++ "/.xmonad/xbm/ac_01.xbm"
@@ -35,10 +42,19 @@ batterySymbol s p user
 printNetwork :: Maybe (Int, Int) -> IO()
 printNetwork Nothing = do
   printf " |"
-  printf "         off"
+  printf "Network: off"
 printNetwork (Just (r, w)) = do
   printf " |"
   printf " %s %s" (convertUnit r  "B" "k" "M" "G") (convertUnit w "B" "k" "M" "G")
+
+printCPU :: String -> [Int] -> Int -> Float -> IO ()
+printCPU user cp ct cf = do
+  printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/cpu.xbm) %.1fG ^p(-3)") cf
+  mapM_ printbars cp
+  printf " %d°C" ct
+  where pcs = map (16-) $ map (`div`100) $ map (*16) cp
+        printbars pc = (printf "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()") (cpuColor pc) (16- (flip div 100  (16 * pc)))
+
 
 mainLoop :: String -> BatteryHandle -> NetworkHandles -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle ->  IO()
 mainLoop user bh nh ch mh ph dh = do
@@ -63,9 +79,7 @@ mainLoop user bh nh ch mh ph dh = do
 --  printf "^C^i(/home/ongy/.xmonad/xbm/cpu.xbm) %.1fG\n" cf
 
 -- format CPU section
-  printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/cpu.xbm) %.1fG ^p(-3)") cf
-  mapM_ (printf "^p(3)^pa(;0)^bg(#777777)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()") (map (16-) $ map (`div`100) $ map (*16) cp)
-  printf " %d°C" ct
+  printCPU user cp ct cf
 -- format Network section
   printNetwork nv
 -- format Disk section
