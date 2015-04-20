@@ -1,15 +1,15 @@
 module Battery (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft)
 where
 
-import Control.Monad
 import System.Directory
 import Utility
 import Config
+import Data.IORef
 
 -- FilesArray for the files, those have to be handled different so they
 -- get their own type for pattern matching
 -- Everything needed as state will be carried in the battery handle
-data BatteryHandle = BatH FilesArray Int
+data BatteryHandle = BatH FilesArray (IORef Int)
 
 --PowerNow will use: power_now energy_now energy_full
 --ChargeNow will use: voltage_now current_now current_avg charge_now charge_full
@@ -35,21 +35,18 @@ chfull_path = "/sys/class/power_supply/BAT0/charge_full"
 adp_path :: String
 adp_path    = "/sys/class/power_supply/"++ external_power ++"/online"
 
-
 getCurrentStatusInt :: File -> IO Int
 getCurrentStatusInt f = do
   online <- readValue f
   return online
 
 
-getCurrentStatus :: BatteryHandle -> IO (Int, BatteryHandle)
-getCurrentStatus (BatH (PowerNow f1 now full adp) s) =
-  liftM (flip (,) (BatH (PowerNow f1 now full adp) s))
-  $ getCurrentStatusInt adp
+getCurrentStatus :: BatteryHandle -> IO Int
+getCurrentStatus (BatH (PowerNow _ _ _ adp) _) =
+  getCurrentStatusInt adp
 
-getCurrentStatus (BatH (ChargeNow f1 f2 f3 now full adp) s) =
-  liftM (flip (,) (BatH (ChargeNow f1 f2 f3 now full adp) s))
-  $ getCurrentStatusInt adp
+getCurrentStatus (BatH (ChargeNow _ _ _ _ _ adp) _) =
+  getCurrentStatusInt adp
 
 
 getCurrentLevelInt :: File -> File -> IO Int
@@ -59,14 +56,12 @@ getCurrentLevelInt n f = do
   return $ now * 100 `div` full
 
 
-getCurrentLevel :: BatteryHandle -> IO (Int, BatteryHandle)
-getCurrentLevel (BatH (PowerNow f1 now full adp) s) =
-  liftM (flip (,) (BatH (PowerNow f1 now full adp) s))
-  $ getCurrentLevelInt now full
+getCurrentLevel :: BatteryHandle -> IO (Int)
+getCurrentLevel (BatH (PowerNow _ now full _) _) =
+  getCurrentLevelInt now full
 
-getCurrentLevel (BatH (ChargeNow f1 f2 f3 now full adp) s) =
-  liftM (flip (,) (BatH (ChargeNow f1 f2 f3 now full adp) s))
-  $ getCurrentLevelInt now full
+getCurrentLevel (BatH (ChargeNow _ _ _ now full _) _) =
+  getCurrentLevelInt now full
 
 
 getTimeLeftInt :: File -> File -> File -> Int -> File -> IO (Int, Int)
@@ -81,14 +76,17 @@ getTimeLeftInt n c f s adp = do
 
 
 
-getTimeLeft :: BatteryHandle -> IO (Int, BatteryHandle)
+getTimeLeft :: BatteryHandle -> IO Int
 getTimeLeft (BatH (PowerNow pnow enow efull adp) s)= do
-  (t, n) <- getTimeLeftInt enow pnow efull s adp
-  return (t, BatH (PowerNow pnow enow efull adp) n)
+  c <- readIORef s
+  (t, n) <- getTimeLeftInt enow pnow efull c adp
+  writeIORef s n
+  return t
 
-getTimeLeft (BatH (ChargeNow f1 f2 cavg chnow chfull adp) s)= do
-  (t, n) <- getTimeLeftInt chnow cavg chfull s adp
-  return (t, BatH (ChargeNow f1 f2 cavg chnow chfull adp) n)
+getTimeLeft (BatH (ChargeNow _ _ cavg chnow chfull adp) s)= do
+  c <- readIORef s
+  (t, n) <- getTimeLeftInt chnow cavg chfull c adp
+  return t
 
 
 createPowerNowHandle :: IO BatteryHandle
@@ -97,7 +95,8 @@ createPowerNowHandle = do
   energy_now <- fopen enow_path
   energy_full <- fopen efull_path
   adp_online <- fopen adp_path
-  return $BatH (PowerNow power_now energy_now energy_full adp_online) 0
+  ref <- newIORef (0 :: Int)
+  return $BatH (PowerNow power_now energy_now energy_full adp_online) ref
 
 createChargeNowHandle :: IO BatteryHandle
 createChargeNowHandle = do
@@ -107,7 +106,8 @@ createChargeNowHandle = do
   charge_now <- fopen chnow_path
   charge_full <- fopen chfull_path
   adp_online <- fopen adp_path
-  return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) 0
+  ref <- newIORef (0 :: Int)
+  return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 
 getBatteryHandle :: IO BatteryHandle
 getBatteryHandle = do

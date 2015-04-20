@@ -8,13 +8,13 @@ data MemoryHandle = MemoryH File Int Int
 path :: String
 path = "/proc/meminfo"
 
-getMemoryAvailable :: MemoryHandle -> IO (Int, MemoryHandle)
+getMemoryAvailable :: MemoryHandle -> IO Int
 getMemoryAvailable (MemoryH f a w) = do
   cached <- readIntInLineStartingWith f "Cached:"
   total <- readIntInLineStartingWith f "MemTotal:"
   free <- readIntInLineStartingWith f "MemFree:"
   let mem = (total-cached-free)*1000
-  return (mem, MemoryH f 0 0)
+  return mem
 
 getMemoryHandle :: IO MemoryHandle
 getMemoryHandle = do

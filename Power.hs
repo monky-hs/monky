@@ -15,17 +15,17 @@ path_current = "/sys/class/power_supply/BAT0/current_now"
 path_power :: String
 path_power = "/sys/class/power_supply/BAT0/power_now"
 
-getPowerNow :: PowerHandle -> IO (Float, PowerHandle)
+getPowerNow :: PowerHandle -> IO Float
 getPowerNow (PowerH v c) = do
   voltage <- readLine v
   current <- readLine c
   let pow = ((read voltage :: Float) * (read current :: Float)) / 1000000000000
-  return (pow, PowerH v c)
+  return pow
 
 getPowerNow (PwH p) = do
   power <- readLine p
   let pow = ((read power :: Float) / 1000000)
-  return (pow, PwH p)
+  return pow
 
 getPowerHandle :: IO PowerHandle
 getPowerHandle = do

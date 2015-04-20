@@ -34,20 +34,20 @@ batterySymbol s p user
 
 mainLoop :: String -> BatteryHandle -> NetworkHandle -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle ->  IO()
 mainLoop user bh nh ch mh ph dh = do
-  (p, bh) <- getCurrentLevel bh
-  (s, bh) <- getTimeLeft bh
-  (online, bh) <- getCurrentStatus bh
-  (pow, ph) <- getPowerNow ph
+  p <- getCurrentLevel bh
+  s <- getTimeLeft bh
+  online <- getCurrentStatus bh
+  pow <- getPowerNow ph
   let h = s `div` 3600
   let m = (s - h * 3600) `div` 60
-  (r, w, nn) <- getReadWrite nh
+  (r, w) <- getReadWrite nh
   ts <- getTime "%a %m/%d %k:%M:%S"
-  (cp, cn) <- getCPUPercent ch
-  (ct, cn) <- getCPUTemp cn
-  (cf, cn) <- getCPUMaxScalingFreq cn
-  (mp, mn) <- getMemoryAvailable mh
-  (dr, dw, dn) <- getDiskReadWrite dh
-  (df, dn) <- getDiskFree dn
+  cp <- getCPUPercent ch
+  ct <- getCPUTemp ch
+  cf <- getCPUMaxScalingFreq ch
+  mp <- getMemoryAvailable mh
+  (dr, dw) <- getDiskReadWrite dh
+  df <- getDiskFree dh
 --  putStrLn (printf "%.1fW %3d%% %02d:%02d | MemFree: %dM | R/W: %dkbit/%dkbit | %s" pow p h m mp (r`div`1000`div`125) (w`div`1000`div`125) ts)
 --  putStrLn ((show cp) ++ (show ct))
 --  printf "%.1f\n" cf
@@ -77,7 +77,7 @@ mainLoop user bh nh ch mh ph dh = do
   printf "\n"
   hFlush stdout
   threadDelay 1000000
-  mainLoop user bh nn cn mn ph dn
+  mainLoop user bh nh ch mh ph dh
 
 main :: IO()
 main = do
