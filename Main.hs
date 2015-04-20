@@ -63,7 +63,7 @@ mainLoop user bh nh ch mh ph dh = do
   printf " %s %s" (convertUnit r  "B" "k" "M" "G") (convertUnit w "B" "k" "M" "G")
 -- format Disk section
   printf " |"
-  printf " ^i(/home/moepi/.xmonad/xbm/diskette.xbm) %dG" df
+  printf " ^i(/home/" ++ user ++ "/.xmonad/xbm/diskette.xbm) %dG" df
   printf " %s %s" (convertUnit dr  "B" "k" "M" "G") (convertUnit dw "B" "k" "M" "G")
 -- format Memory section
   printf " |"
