@@ -54,6 +54,10 @@ printCPU user cp ct cf = do
   printf " %d°C" ct
   where printbars pc = (printf "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()") (cpuColor pc) (16- (flip div 100  (16 * pc)))
 
+timeToXBM :: (Int, Int) -> (Int, Int)
+timeToXBM (h, m) = (xh, xm)
+  where xh = h `mod` 12
+        xm = m `div` 15
 
 mainLoop :: String -> BatteryHandle -> NetworkHandles -> CPUHandle -> MemoryHandle -> PowerHandle -> DiskHandle ->  IO()
 mainLoop user bh nh ch mh ph dh = do
@@ -65,6 +69,8 @@ mainLoop user bh nh ch mh ph dh = do
   let m = (s - h * 3600) `div` 60
   nv <- getReadWriteMulti nh
   ts <- getTime "%a %m/%d %k:%M:%S"
+  t <- getHM
+  let (th, tm) = timeToXBM t
   cp <- getCPUPercent ch
   ct <- getCPUTemp ch
   cf <- getCPUMaxScalingFreq ch
@@ -93,7 +99,7 @@ mainLoop user bh nh ch mh ph dh = do
   printf " ^fg(%s)^i(%s) %.1fW %3d%% %2d:%02d^fg()" (batteryColor online p) (batterySymbol online p user) pow p h m
 -- format Time section
   printf " |"
-  printf (" ^i(/home/" ++ user ++ "/.xmonad/xbm/clock.xbm)  %s") ts
+  printf (" ^i(/home/" ++ user ++ "/.xmonad/xbm/%d-%d.xbm)  %s") th tm ts
   printf "\n"
   hFlush stdout
   threadDelay 1000000
