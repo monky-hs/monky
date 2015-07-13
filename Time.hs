@@ -15,7 +15,7 @@ getTime :: String -> IO String
 getTime str = do
   t <- getCurrentTime
   z <- getCurrentTimeZone
-  return $formatTime Data.Time.Format.defaultTimeLocale str $utcToLocalTime z t
+  return $formatTime defaultTimeLocale str $utcToLocalTime z t
 
 getHM :: IO (Int, Int)
 getHM = do
