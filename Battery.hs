@@ -1,15 +1,17 @@
-module Battery (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft)
+module Battery (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
 where
 
-import System.Directory
-import Utility
+import Power
+
 import Config
 import Data.IORef
+import System.Directory
+import Utility
 
 -- FilesArray for the files, those have to be handled different so they
 -- get their own type for pattern matching
 -- Everything needed as state will be carried in the battery handle
-data BatteryHandle = BatH FilesArray (IORef Int)
+data BatteryHandle = BatH PowerHandle FilesArray (IORef Int)
 
 --PowerNow will use: power_now energy_now energy_full
 --ChargeNow will use: voltage_now current_now current_avg charge_now charge_full
@@ -42,10 +44,10 @@ getCurrentStatusInt f = do
 
 
 getCurrentStatus :: BatteryHandle -> IO Int
-getCurrentStatus (BatH (PowerNow _ _ _ adp) _) =
+getCurrentStatus (BatH _ (PowerNow _ _ _ adp) _) =
   getCurrentStatusInt adp
 
-getCurrentStatus (BatH (ChargeNow _ _ _ _ _ adp) _) =
+getCurrentStatus (BatH _ (ChargeNow _ _ _ _ _ adp) _) =
   getCurrentStatusInt adp
 
 
@@ -57,10 +59,10 @@ getCurrentLevelInt n f = do
 
 
 getCurrentLevel :: BatteryHandle -> IO (Int)
-getCurrentLevel (BatH (PowerNow _ now full _) _) =
+getCurrentLevel (BatH _ (PowerNow _ now full _) _) =
   getCurrentLevelInt now full
 
-getCurrentLevel (BatH (ChargeNow _ _ _ now full _) _) =
+getCurrentLevel (BatH _ (ChargeNow _ _ _ now full _) _) =
   getCurrentLevelInt now full
 
 
@@ -74,32 +76,35 @@ getTimeLeftInt n c f s adp = do
   let avg = (change*20+s*80) `div` 100
   return ( if avg >= 3600 then gap `div` (avg `div` 3600) else 0, avg)
 
+getLoading :: BatteryHandle -> IO Float
+getLoading (BatH ph _ _) = getPowerNow ph
+
 
 
 getTimeLeft :: BatteryHandle -> IO Int
-getTimeLeft (BatH (PowerNow pnow enow efull adp) s)= do
+getTimeLeft (BatH _ (PowerNow pnow enow efull adp) s)= do
   c <- readIORef s
   (t, n) <- getTimeLeftInt enow pnow efull c adp
   writeIORef s n
   return t
 
-getTimeLeft (BatH (ChargeNow _ _ cavg chnow chfull adp) s)= do
+getTimeLeft (BatH _ (ChargeNow _ _ cavg chnow chfull adp) s)= do
   c <- readIORef s
   (t, n) <- getTimeLeftInt chnow cavg chfull c adp
   return t
 
 
-createPowerNowHandle :: IO BatteryHandle
-createPowerNowHandle = do
+createPowerNowHandle :: PowerHandle -> IO BatteryHandle
+createPowerNowHandle ph = do
   power_now <- fopen pnow_path
   energy_now <- fopen enow_path
   energy_full <- fopen efull_path
   adp_online <- fopen adp_path
   ref <- newIORef (0 :: Int)
-  return $BatH (PowerNow power_now energy_now energy_full adp_online) ref
+  return $BatH ph (PowerNow power_now energy_now energy_full adp_online) ref
 
-createChargeNowHandle :: IO BatteryHandle
-createChargeNowHandle = do
+createChargeNowHandle :: PowerHandle -> IO BatteryHandle
+createChargeNowHandle ph = do
   voltage_now <- fopen vnow_path
   current_now <- fopen cnow_path
   current_avg <- fopen cavg_path
@@ -107,11 +112,11 @@ createChargeNowHandle = do
   charge_full <- fopen chfull_path
   adp_online <- fopen adp_path
   ref <- newIORef (0 :: Int)
-  return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
+  return $BatH ph (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 
-getBatteryHandle :: IO BatteryHandle
-getBatteryHandle = do
+getBatteryHandle :: PowerHandle -> IO BatteryHandle
+getBatteryHandle ph = do
   exists <- doesFileExist "/sys/class/power_supply/BAT0/power_now"
   if exists
-  then createPowerNowHandle
-  else createChargeNowHandle
+  then createPowerNowHandle ph
+  else createChargeNowHandle ph
