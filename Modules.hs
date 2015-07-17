@@ -14,6 +14,7 @@ import Network
 import Power
 import Time
 import Utility
+import SSID
 
 data Modules = forall a . Module a => MW a
 class Module a where
@@ -155,8 +156,14 @@ instance Module DiskHandle where
   getText u a = getDiskText u a
   getInterval _ = 5
 
+{- SSID module -}
+
+instance Module SSIDHandle where
+  getText _ a = getCurrentSSID a
+  getInterval _ = 10
 
 getModules = do
+  sh <- getSSIDHandle wifi_device
   nh <- getNetworkHandles network_devices
   ch <- getCPUHandle
   mh <- getMemoryHandle
@@ -165,7 +172,8 @@ getModules = do
   dh <- getDiskHandle disk_drive disk_part
   let th = getTimeHandle  "%m/%d %k:%M:%S"
   return 
-    [ MW ch
+    [ MW sh
+    , MW ch
     , MW nh
     , MW mh
     , MW bh
