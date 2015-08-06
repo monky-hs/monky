@@ -15,6 +15,7 @@ import Power
 import Time
 import Utility
 import SSID
+import Alsa
 
 data Modules = forall a . Module a => MW a
 class Module a where
@@ -162,8 +163,24 @@ instance Module SSIDHandle where
   getText _ a = getCurrentSSID a
   getInterval _ = 10
 
+{- ALSA module -}
+
+getVolumeStr :: VOLHandle -> IO String
+getVolumeStr h = do
+  updateVOLH h
+  m <- getMute h
+  v <- getVolumePercent h
+  return $if m
+    then "Mute"
+    else printf "% 3d%%" v
+
+instance Module VOLHandle where
+  getText _ a = getVolumeStr a
+  getInterval _ = 5
+
 getModules = do
   sh <- getSSIDHandle wifi_device
+  vh <- getVOLHandle "default"
   nh <- getNetworkHandles network_devices
   ch <- getCPUHandle
   mh <- getMemoryHandle
@@ -173,6 +190,7 @@ getModules = do
   let th = getTimeHandle  "%m/%d %k:%M:%S"
   return 
     [ MW sh
+    , MW vh
     , MW ch
     , MW nh
     , MW mh
