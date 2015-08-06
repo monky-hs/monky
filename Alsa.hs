@@ -1,5 +1,6 @@
 module Alsa 
-(VOLHandle, getMute, getVolumeRaw, getVolumePercent, updateVOLH, getVOLHandle)
+(VOLHandle, getMute, getVolumeRaw, getVolumePercent, updateVOLH, getVOLHandle,
+isLoaded)
 where
 
 
@@ -9,6 +10,11 @@ import Foreign.C.String
 import Foreign.Ptr
 import Foreign.Storable
 import Foreign.Marshal.Alloc
+import Control.Monad.Trans.Except
+import Control.Monad.Trans
+
+liftExceptT :: ((a -> m (Either e b)) -> m (Either e b)) -> (a -> ExceptT e m b) -> ExceptT e m b
+liftExceptT g f = ExceptT (g (runExceptT . f))
 
 data RegOpt = RegOpt
 data MClass = MClass
@@ -30,10 +36,10 @@ foreign import ccall "snd_mixer_attach" mixer_attach :: MixerHandle -> CString -
 foreign import ccall "snd_mixer_selem_register" mixer_register :: MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt
 foreign import ccall "snd_mixer_load" mixer_load :: MixerHandle -> IO CInt
 
-foreign import ccall "snd_mixer_selem_id_set_index" sid_sindex :: SidHandle -> CInt -> IO CInt
-foreign import ccall "snd_mixer_selem_id_set_name" sid_sname :: SidHandle -> CString -> IO CInt
+foreign import ccall "snd_mixer_selem_id_set_index" sid_sindex :: SidHandle -> CInt -> IO ()
+foreign import ccall "snd_mixer_selem_id_set_name" sid_sname :: SidHandle -> CString -> IO ()
 foreign import ccall "snd_mixer_selem_id_malloc" sid_alloc :: SidHandleAlloc -> IO CInt
-foreign import ccall "snd_mixer_selem_id_free" sid_free :: SidHandle -> IO CInt
+foreign import ccall "snd_mixer_selem_id_free" sid_free :: SidHandle -> IO ()
 
 foreign import ccall "snd_mixer_find_selem" elem_find :: MixerHandle -> SidHandle -> IO ElemHandle
 foreign import ccall "snd_mixer_selem_get_playback_volume_range" elem_gvrange :: ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt
@@ -44,41 +50,51 @@ foreign import ccall "snd_mixer_handle_events" mixer_handle_events :: MixerHandl
 
 
 -- TODO fix error handling
-openMixer :: IO MixerHandle
-openMixer = alloca $ \ptr -> do
-  ret <- mixer_open ptr 0
-  peek ptr
+openMixer :: ExceptT Int IO MixerHandle
+openMixer = liftExceptT alloca $ \ptr -> do
+  rval <- liftIO (mixer_open ptr 0)
+  if rval < 0
+     then throwE $fromIntegral rval
+     else liftIO (peek ptr)
 
-mixerAttach :: MixerHandle -> String -> IO ()
+mixerAttach :: MixerHandle -> String -> ExceptT Int IO ()
 mixerAttach handle card = do
-  ret <- withCString card $ \ccard -> mixer_attach handle ccard
-  return ()
+  rval <- liftIO(withCString card $ \ccard -> mixer_attach handle ccard)
+  if rval < 0
+     then throwE $fromIntegral rval
+     else liftIO (return ())
 
-mixerRegister :: MixerHandle -> IO ()
+mixerRegister :: MixerHandle -> ExceptT Int IO ()
 mixerRegister handle = do
-  ret <- mixer_register handle nullPtr nullPtr
-  return ()
+  rval <- liftIO(mixer_register handle nullPtr nullPtr)
+  if rval < 0
+     then throwE $fromIntegral rval
+     else liftIO(return ())
 
-mixerLoad :: MixerHandle -> IO ()
+mixerLoad :: MixerHandle -> ExceptT Int IO ()
 mixerLoad handle = do
-  ret <- mixer_load handle
-  return ()
+  rval <- liftIO(mixer_load handle)
+  if rval < 0
+     then throwE $fromIntegral rval
+     else liftIO(return ())
 
 
 withSid :: (SidHandle -> IO a) -> IO a
 withSid fun = alloca $ \ptr -> do
-  sid_alloc ptr
-  handle <- peek ptr
-  ret <- fun handle
-  sid_free handle
-  return ret
+  rval <- sid_alloc ptr
+  if rval < 0
+    then error "Failed to allocate sid"
+    else do
+      handle <- peek ptr
+      comp <- fun handle
+      sid_free handle
+      return comp
 
 
 sidSet :: SidHandle -> Int -> String -> IO ()
 sidSet handle index name = do
-  ret <- withCString name $ \cname -> sid_sname handle cname
-  ret2 <- sid_sindex handle $fromIntegral index
-  return ()
+  withCString name $ \cname -> sid_sname handle cname
+  sid_sindex handle $fromIntegral index
 
 
 getElem :: MixerHandle -> String -> Int -> IO ElemHandle
@@ -88,27 +104,27 @@ getElem handle name index = withSid $ \sid -> do
 
 isMute :: ElemHandle -> IO Bool
 isMute handle = alloca $ \ptr -> do
-  elem_gmute handle 0 ptr
+  _ <- elem_gmute handle 0 ptr
   val <- peek ptr
   return $val == 0
 
 
 getVolumeRange :: ElemHandle -> IO (Int, Int)
-getVolumeRange handle = alloca $ \min -> alloca $ \max -> do
-  elem_gvrange handle min max
-  minv <- peek min
-  maxv <- peek max
-  return (fromIntegral minv, fromIntegral maxv)
+getVolumeRange handle = alloca $ \lower -> alloca $ \upper -> do
+  _ <- elem_gvrange handle lower upper
+  lowerv <- peek lower
+  upperv <- peek upper
+  return (fromIntegral lowerv, fromIntegral upperv)
 
 
 getVolume :: ElemHandle -> IO Int
 getVolume handle = alloca $ \ptr -> do
-  elem_gvol handle 0 ptr
+  _ <- elem_gvol handle 0 ptr
   val <- peek ptr
   return $fromIntegral val
 
 
-getMixerHandle :: String -> IO MixerHandle
+getMixerHandle :: String -> ExceptT Int IO MixerHandle
 getMixerHandle card = do
   handle <- openMixer
   mixerAttach handle card
@@ -117,50 +133,58 @@ getMixerHandle card = do
   return handle
 
 percentize :: Int -> Int -> Int -> Int
-percentize val min max = 100 * (val - min) `div` (max-min)
+percentize val lower upper = 100 * (val - lower) `div` (upper-lower)
 
 
-getAudioPercent :: IO Int
-getAudioPercent = do
-  h <- getMixerHandle "default"
-  e <- getElem h "Master" 0
-  (min, max) <- getVolumeRange e
-  val <- getVolume e
-  return $percentize val min max
 
-
-data VOLHandle = VOLH MixerHandle ElemHandle (IORef Int) (IORef Bool) Int Int
+data VOLHandle = VOLH MixerHandle ElemHandle (IORef Int) (IORef Bool) Int Int | Err
 
 updateVOLH :: VOLHandle -> IO ()
-updateVOLH (VOLH handle elem valr muter min max) = do
+updateVOLH (VOLH handle ehandle valr muter _ _) = do
   mixer_handle_events handle
-  val <- getVolume elem
-  mute <- isMute elem
+  val <- getVolume ehandle
+  mute <- isMute ehandle
   writeIORef valr val
   writeIORef muter mute
+updateVOLH Err = do return ()
 
 getVolumeRaw :: VOLHandle -> IO Int
 getVolumeRaw (VOLH _ _ valr _ _ _) = do
   val <- readIORef valr
   return val
+getVolumeRaw Err = do return 0
 
 getVolumePercent :: VOLHandle -> IO Int
-getVolumePercent (VOLH _ _ valr _ min max) = do
+getVolumePercent (VOLH _ _ valr _ lower upper) = do
   val <- readIORef valr
-  return $percentize val min max
+  return $percentize val lower upper
+getVolumePercent Err = do return 0
 
 getMute :: VOLHandle -> IO Bool
 getMute (VOLH _ _ _ muter _ _) = do
   mute <- readIORef muter
   return mute
+getMute Err = do return True
+
+getVOLHandleInt :: Either Int MixerHandle -> IO VOLHandle
+getVOLHandleInt (Right handle) = do
+  ehandle <- getElem handle "Master" 0
+  if ehandle == nullPtr
+    then return Err
+    else do
+      (lower, upper) <- getVolumeRange ehandle
+      val <- getVolume ehandle
+      mute <- isMute ehandle
+      volref <- newIORef val
+      muteref <- newIORef mute
+      return (VOLH handle ehandle volref muteref lower upper)
+getVOLHandleInt _ = return Err
+
+isLoaded :: VOLHandle -> Bool
+isLoaded Err = False
+isLoaded _ = True
 
 getVOLHandle :: String -> IO VOLHandle
 getVOLHandle card = do
-  handle <- getMixerHandle card
-  elem <- getElem handle "Master" 0
-  (min, max) <- getVolumeRange elem
-  val <- getVolume elem
-  mute <- isMute elem
-  volref <- newIORef val
-  muteref <- newIORef mute
-  return (VOLH handle elem volref muteref min max)
+  handle <- runExceptT (getMixerHandle card)
+  getVOLHandleInt handle

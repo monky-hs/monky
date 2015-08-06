@@ -58,7 +58,7 @@ executable monky
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, regex-compat, regex-posix, array, text, unix, network, ioctl
+  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, regex-compat, regex-posix, array, text, unix, network, ioctl, mtl, transformers
 
   -- Directories containing source files.
   -- hs-source-dirs:
