@@ -1,17 +1,38 @@
 module Alsa 
 (VOLHandle, getMute, getVolumeRaw, getVolumePercent, updateVOLH, getVOLHandle,
-isLoaded)
+isLoaded, getPollFDs)
 where
 
-
+import Control.Monad (liftM)
+import Control.Monad.Trans
+import Control.Monad.Trans.Except
 import Data.IORef
-import Foreign.C.Types
 import Foreign.C.String
+import Foreign.C.Types
+import Foreign.Marshal.Alloc
+import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
-import Foreign.Marshal.Alloc
-import Control.Monad.Trans.Except
-import Control.Monad.Trans
+import System.Posix.Types
+
+#include <poll.h>
+
+data PollFD = POLLFD CInt CShort CShort
+
+instance Storable PollFD where
+  sizeOf _ = #{size struct pollfd}
+  alignment _ = alignment (undefined :: CLong)
+  peek p = do
+    fd <- #{peek struct pollfd, fd} p
+    events <- #{peek struct pollfd, events} p
+    revents <- #{peek struct pollfd, revents} p
+    return (POLLFD fd events revents)
+  poke p (POLLFD fd events revents) = do
+    #{poke struct pollfd, fd} p fd
+    #{poke struct pollfd, events} p events
+    #{poke struct pollfd, revents} p revents
+
+type PollFDPtr = Ptr PollFD
 
 liftExceptT :: ((a -> m (Either e b)) -> m (Either e b)) -> (a -> ExceptT e m b) -> ExceptT e m b
 liftExceptT g f = ExceptT (g (runExceptT . f))
@@ -47,6 +68,18 @@ foreign import ccall "snd_mixer_selem_get_playback_volume" elem_gvol :: ElemHand
 foreign import ccall "snd_mixer_selem_get_playback_switch" elem_gmute :: ElemHandle -> Int -> Ptr CInt -> IO CInt
 foreign import ccall "snd_mixer_handle_events" mixer_handle_events :: MixerHandle -> IO ()
 
+foreign import ccall "snd_mixer_poll_descriptors" get_pdescs :: MixerHandle -> PollFDPtr -> CInt -> IO CInt
+foreign import ccall "snd_mixer_poll_descriptors_count" get_pdescc :: MixerHandle -> IO CInt
+
+
+getPollDescs :: MixerHandle -> IO [CInt]
+getPollDescs h = do
+  count <- get_pdescc h
+  allocaArray (fromIntegral count) $ \ptr -> do
+    c2 <- get_pdescs h ptr count
+    if count == c2
+      then liftM (map  (\(POLLFD fd _ _) -> fd)) (peekArray (fromIntegral c2) ptr)
+      else return [] -- This should not happen
 
 
 -- TODO fix error handling
@@ -183,6 +216,11 @@ getVOLHandleInt _ = return Err
 isLoaded :: VOLHandle -> Bool
 isLoaded Err = False
 isLoaded _ = True
+
+getPollFDs :: VOLHandle -> IO [Fd]
+getPollFDs (VOLH h _ _ _ _ _) = liftM (map (\x -> Fd x)) (getPollDescs h)
+getPollFDs Err = do return []
+
 
 getVOLHandle :: String -> IO VOLHandle
 getVOLHandle card = do

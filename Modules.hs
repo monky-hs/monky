@@ -3,6 +3,7 @@ module Modules
 -- We cannot limit export here because of the instances (move them?)
 where
 
+import System.Posix.Types
 import Text.Printf (printf)
 
 import Config
@@ -21,7 +22,8 @@ data Modules = forall a . Module a => MW a
 class Module a where
     getText :: String -> a -> IO String
     getInterval :: a -> Int
-
+    getFDs :: a -> IO [Fd]
+    getFDs _ = do return []
 
 {- CPU Module -}
 
@@ -176,7 +178,11 @@ getVolumeStr h = do
 
 instance Module VOLHandle where
   getText _ a = getVolumeStr a
-  getInterval _ = 5
+  getInterval _ = 0
+  getFDs = getPollFDs
+
+
+{- Module list -}
 
 getModules = do
   sh <- getSSIDHandle wifi_device
