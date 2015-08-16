@@ -1,1 +1,86 @@
-monky (like conky, but moep-onky). Maybe renamed to mongy ... :)
+monky (like conky, but moep-ongy). Maybe renamed to mongy ... :)
+
+This project is intended to feed a line of text to a status-bar (dzen2) for
+system overview e.g. cpu/memory usage.
+
+While conky is capable to do this, conky also has some support for drawing its
+own windows which we don't need and starts a bunch of processes every time it
+outputs a line.
+
+One of the design points for monky is to create a long lived application that
+creates handles at startup and uses them repeatedly to get the current usage.
+
+monky aims to have a configuration style comparable to xmonad.
+Currently the configuration and compilation is done in tree (copy repo and
+execute 'cabal install'), but this should be changed later on for distribution
+support.
+
+monky consists of a control logic and a collection of modules.
+
+All modules export the following functions:
+  - getText: returns the String that should be printed for this module
+  - getInterval: how often this modules text should be updated
+  - getFDs: return the file descriptors used to wait for events
+
+monky runs in a loop and prints a line once every second. Each line will be
+called a *tick*.
+If the value returned by getInterval is >0 the getText function will be called
+every 'getInterval ticks' and buffered by the control logic.
+If getInterval returns a number <= 0, an event based system will be used, and
+the text of the module will be updated each time an event occurs.
+
+getFDs is only used if the interval is set <= 0, to retrieve the event fds.
+Events may interrupt one tick and trigger another line earlier than 1 second 
+after the former line.
+
+
+ == Modules ==
+
+The modules are a collection of utilities to read system status.
+They export their own interfaces, the mapping to getText is done as part of the
+control logic and will be exported as configuration to the user.
+
+ = Alsa =
+
+The alsa module connects to the alsa sound system.
+It exports: getMute, getVolumeRaw, getVolumePercent, isLoaded
+It also supports event based updates.
+
+ = Time =
+
+The time module exports a strftime-like interface to the system time.
+It exports: getTime, getHM (get Hour/minutes)
+
+ = Battery =
+
+The battery module can be used to read the current status (loading/used/full) of
+a battery as well as an guessed remaining time and a current power usage.
+It exports: getTimeLeft, getLoading, getCurrentStatus, getCurrentLevel
+The battery module is somewhat hardware depended (actually it is the driver),
+and not fully implemented.
+
+ = Network =
+
+The network module reads he current read/write rate of one or more network
+adapters, showing the first connected one or an error if none is connected.
+It exports: getReadWriteMulti
+
+ = SSID =
+
+The ssid module can be used to get the ESSID (human readable string) of the
+network an adapter is currently connected to.
+It exports: getCurrentSSID
+The current implementation uses ioctls and sometimes crashes monky
+This is going to be rewritten for netlink based communication, which will
+hopefully fix the crashes and will allow for event based updates
+
+ = CPU =
+
+The cpu module gives access to cpu usage per core, the cpu temperature and the
+current max scaling freq (for some nerds that adjust this value [speed button!])
+It exports: getCPUPercent, getCPUTemp, getCPUMaxScalingFreq
+
+ = Memory =
+
+The memory module gives access to the current main memory usage.
+It exports: getMemoryAvailable
