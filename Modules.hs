@@ -7,6 +7,7 @@ import System.Posix.Types
 import Text.Printf (printf)
 
 import Config
+import Power
 import Battery
 import CPU
 import Disk
@@ -22,7 +23,7 @@ class Module a where
     getText :: String -> a -> IO String
     getInterval :: a -> Int
     getFDs :: a -> IO [Fd]
-    getFDs _ = do return []
+    getFDs _ = return []
 
 {- CPU Module -}
 
@@ -36,9 +37,9 @@ cpuColor p
 formatCPUText :: String -> [Int] -> Int -> Float -> String
 formatCPUText user cp ct cf =
   let bars = map printbars cp :: [String] in
-  (freq ++ (concat bars) ++ printf " %d°C" ct)
+  (freq ++ concat bars ++ printf " %d°C" ct)
   where 
-    printbars pc = (printf "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()") (cpuColor pc) (16- (flip div 100  (16 * pc))) :: String
+    printbars pc = printf "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()" (cpuColor pc) (16- div (16 * pc) 100) :: String
     freq = printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/cpu.xbm) %.1fG ^p(-3)") cf :: String
 
 getCPUText :: String -> CPUHandle -> IO String
@@ -49,7 +50,7 @@ getCPUText user ch = do
   return (formatCPUText user cp ct cf)
 
 instance Module CPUHandle where
-  getText u a = getCPUText u a
+  getText = getCPUText
   getInterval _ = 5
 
 
@@ -73,7 +74,7 @@ batterySymbol s p user
 
 formatBatteryText :: String -> Int -> Int -> Int -> Float -> String
 formatBatteryText user p s online pow =
-  (printf "^fg(%s)^i(%s) %.1fW %3d%% %2d:%02d^fg()" (batteryColor online p) (batterySymbol online p user) pow p h m) :: String
+  printf "^fg(%s)^i(%s) %.1fW %3d%% %2d:%02d^fg()" (batteryColor online p) (batterySymbol online p user) pow p h m :: String
   where 
     h = s `div` 3600
     m = (s - h * 3600) `div` 60
@@ -87,7 +88,7 @@ getBatteryText user bh = do
   return (formatBatteryText user p s online pow)
 
 instance Module BatteryHandle where
-  getText u a = getBatteryText u a
+  getText = getBatteryText
   getInterval _ = 5
 
 
@@ -95,9 +96,9 @@ instance Module BatteryHandle where
 
 formatNetworkText :: Maybe (Int, Int) -> String
 formatNetworkText Nothing =
-  (printf "Network: off") :: String
+  printf "Network: off" :: String
 formatNetworkText (Just (r, w)) =
-  (printf "%s %s" (convertUnit r  "B" "k" "M" "G") (convertUnit w "B" "k" "M" "G")) :: String
+  printf "%s %s" (convertUnit r  "B" "k" "M" "G") (convertUnit w "B" "k" "M" "G") :: String
 
 getNetworkText :: String -> NetworkHandles -> IO String
 getNetworkText _ nh = do
@@ -106,7 +107,7 @@ getNetworkText _ nh = do
 
 
 instance Module NetworkHandles where
-  getText u a = getNetworkText u a
+  getText = getNetworkText
   getInterval _ = 5
 
 {- Memory Module -}
@@ -117,7 +118,7 @@ getMemoryText user mh = do
   return (printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/mem.xbm) %s") (convertUnit mp "B" "K" "M" "G") :: String)
 
 instance Module MemoryHandle where
-  getText u a = getMemoryText u a
+  getText = getMemoryText
   getInterval _ = 5
 
 
@@ -136,14 +137,14 @@ getTimeString user h = do
   return (printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/%d-%d.xbm)  %s") th tm ts)
 
 instance Module TimeHandle where
-    getText u a = getTimeString u a
+    getText = getTimeString
     getInterval _ = 1
 
 {- Disk module -}
 
 formatDiskText :: String -> Int -> Int -> Int -> String
 formatDiskText user dr dw df =
-  (printf "%s %s" eins zwei :: String)
+  printf "%s %s" eins zwei :: String
   where
     eins = printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/diskette.xbm) %dG") df :: String
     zwei = printf "%s %s" (convertUnit dr  "B" "k" "M" "G") (convertUnit dw "B" "k" "M" "G") :: String
@@ -155,13 +156,13 @@ getDiskText u dh = do
   return (formatDiskText u dr dw df)
 
 instance Module DiskHandle where
-  getText u a = getDiskText u a
+  getText = getDiskText
   getInterval _ = 5
 
 {- SSID module -}
 
 instance Module SSIDHandle where
-  getText _ a = getCurrentSSID a
+  getText _ = getCurrentSSID
   getInterval _ = 10
 
 {- ALSA module -}
@@ -171,12 +172,12 @@ getVolumeStr h = do
   updateVOLH h
   m <- getMute h
   v <- getVolumePercent h
-  return $if m
-    then "Mute"
-    else printf "% 3d%%" v
+  if m
+    then return "Mute"
+    else return $printf "% 3d%%" v
 
 instance Module VOLHandle where
-  getText _ a = getVolumeStr a
+  getText _ = getVolumeStr
   getInterval _ = 0
   getFDs = getPollFDs
 

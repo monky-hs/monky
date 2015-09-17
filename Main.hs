@@ -17,8 +17,8 @@ data ModuleWrapper = MWrapper Modules (IORef String)
 getWrapperText :: Int -> String -> ModuleWrapper -> IO String
 getWrapperText i u (MWrapper (MW m) r) 
   | getInterval m <= 0 = readIORef r
-  | getInterval m > 0 =do
-  if i `mod` (getInterval m) == 0
+  | getInterval m > 0 =
+  if i `mod` getInterval m == 0
     then do
       s <- getText u m
       writeIORef r s
@@ -44,21 +44,20 @@ updateText (MWrapper (MW m) r) u = do
   writeIORef r s
 
 doUpdate :: Fd -> [(ModuleWrapper, [Fd])] -> String -> IO ()
-doUpdate _ [] _ = do return ()
+doUpdate _ [] _ = return ()
 doUpdate f ((mw, fds):xs) u = if f `elem` fds
   then updateText mw u
   else doUpdate f xs u
 
 doUpdatesInt :: [Fd] -> [(ModuleWrapper, [Fd])] -> String -> IO ()
-doUpdatesInt [] _ _ = do return ()
+doUpdatesInt [] _ _ = return ()
 doUpdatesInt (fd:fds) xs u = do
   doUpdate fd xs u
   doUpdatesInt fds xs u
 
-doUpdates :: (Maybe ([Fd], [Fd], [Fd])) -> [(ModuleWrapper, [Fd])] -> String -> IO ()
-doUpdates (Just (fds, _, _)) xs u = do
-  doUpdatesInt fds xs u
-doUpdates Nothing _ _ = do return ()
+doUpdates :: Maybe ([Fd], [Fd], [Fd]) -> [(ModuleWrapper, [Fd])] -> String -> IO ()
+doUpdates (Just (fds, _, _)) xs u = doUpdatesInt fds xs u
+doUpdates Nothing _ _ = return ()
 
 
 {- Main loop -}
@@ -67,7 +66,7 @@ mainLoop :: Int -> String -> [(ModuleWrapper, [Fd])] -> [ModuleWrapper] -> IO()
 mainLoop i u f m = do
   printMonkyLine i u m
   hFlush stdout
-  e <- select' (concat (map snd f)) [] [] (Time (CTimeval 1 0))
+  e <- select' (concatMap snd f) [] [] (Time (CTimeval 1 0))
   doUpdates e f u
   mainLoop (i+1) u f m
 
@@ -90,8 +89,8 @@ startLoop u m = do
     getFDList = map (\(MWrapper (MW mw) ref) -> if getInterval mw <= 0
                then do 
                  fds <- getFDs mw
-                 return ((MWrapper (MW mw) ref), fds)
-               else return ((MWrapper (MW mw) ref), []))
+                 return (MWrapper (MW mw) ref, fds)
+               else return (MWrapper (MW mw) ref, []))
     rmEmpty = filter (\(_, xs) -> xs /= [])
 
 

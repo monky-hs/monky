@@ -38,8 +38,7 @@ readLineN h 0 = do
   line <- hGetLine h
   hSeek h AbsoluteSeek 0
   return line
-readLineN h n = do
-  readLineN h (n-1)
+readLineN h n = readLineN h (n-1)
 
 readLineByLine :: File -> [String] -> IO [String]
 readLineByLine h ls = do
@@ -47,7 +46,7 @@ readLineByLine h ls = do
   if e
   then return ls
   else do
-    l <- (hGetLine h)
+    l <- hGetLine h
     readLineByLine h (ls ++ [l])
 
 readContent :: File -> IO [String]
@@ -72,7 +71,7 @@ readIntInLineStartingWith :: File -> String -> IO Int
 readIntInLineStartingWith h s = do
   hSeek h AbsoluteSeek 0
   line <- readLineStartingWith h s
-  let str = (subRegex (mkRegex "[^0-9]+") (subRegex (mkRegex ("[^0-9]+")) line "") "")
+  let str = subRegex (mkRegex "[^0-9]+") (subRegex (mkRegex "[^0-9]+") line "") ""
   return (read str :: Int)
 
 fopen :: String -> IO File

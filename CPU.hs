@@ -45,9 +45,9 @@ getCPUFreqsMax i = liftM2 (:) (fopen (pathMaxScaling (i - 1))) (getCPUFreqsMax (
 getCPUPercent :: CPUHandle -> IO [Int]
 getCPUPercent (CPUH f _ _ aref wref) = do
   content <- readContent f
-  let d = map (map read) (map (drop 1) (map words (filter (\l -> isPrefixOf "cpu"l && ((>3) . length . head . words $ l)) content))) :: [[Int]]
+  let d = map ((map read . drop 1) . words) (filter (\l -> isPrefixOf "cpu"l && ((>3) . length . head . words $ l)) content) :: [[Int]]
   let sall = map sum d
-  let work = map sum (map (take 3) d)
+  let work = map (sum . take 3) d
   a <- readIORef aref
   w <- readIORef wref
   let cwork = zipWith (-) work w
@@ -63,7 +63,7 @@ getCPUTemp (CPUH _ f _ _ _) = do
 
 getCPUMaxScalingFreq :: CPUHandle -> IO Float
 getCPUMaxScalingFreq (CPUH _ _ files _ _) = do
-  vals <- sequence $ map readValue files
+  vals <- mapM readValue files
   return (fromIntegral (maximum vals) / 1000000)
 
 getCPUFreqs :: ScalingType -> Int -> IO [File]
@@ -75,7 +75,7 @@ getCPUFreqs ScalingCur = getCPUFreqsCur
 getNumberOfCores :: File -> IO Int
 getNumberOfCores f = do
   stats <- readContent f
-  return $length (filter (\l -> isPrefixOf "cpu" l) stats) - 1
+  return $length (filter (isPrefixOf "cpu") stats) - 1
 
 getCPUHandle :: ScalingType -> IO CPUHandle
 getCPUHandle t = do

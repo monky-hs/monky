@@ -18,30 +18,27 @@ data BatteryHandle = BatH PowerHandle FilesArray (IORef Int)
 data FilesArray = PowerNow File File File File |
   ChargeNow File File File File File File deriving(Show)
 
-pnow_path :: String
-pnow_path   = "/sys/class/power_supply/BAT0/power_now"
-enow_path :: String
-enow_path   = "/sys/class/power_supply/BAT0/energy_now"
-efull_path :: String
-efull_path  = "/sys/class/power_supply/BAT0/energy_full"
-vnow_path :: String
-vnow_path   = "/sys/class/power_supply/BAT0/voltage_now"
-cnow_path :: String
-cnow_path   = "/sys/class/power_supply/BAT0/current_now"
-cavg_path :: String
-cavg_path   = "/sys/class/power_supply/BAT0/current_avg"
-chnow_path :: String
-chnow_path  = "/sys/class/power_supply/BAT0/charge_now"
-chfull_path :: String
-chfull_path = "/sys/class/power_supply/BAT0/charge_full"
-adp_path :: String
-adp_path    = "/sys/class/power_supply/"++ external_power ++"/online"
+pnowPath :: String
+pnowPath   = "/sys/class/power_supply/BAT0/power_now"
+enowPath :: String
+enowPath   = "/sys/class/power_supply/BAT0/energy_now"
+efullPath :: String
+efullPath  = "/sys/class/power_supply/BAT0/energy_full"
+vnowPath :: String
+vnowPath   = "/sys/class/power_supply/BAT0/voltage_now"
+cnowPath :: String
+cnowPath   = "/sys/class/power_supply/BAT0/current_now"
+cavgPath :: String
+cavgPath   = "/sys/class/power_supply/BAT0/current_avg"
+chnowPath :: String
+chnowPath  = "/sys/class/power_supply/BAT0/charge_now"
+chfullPath :: String
+chfullPath = "/sys/class/power_supply/BAT0/charge_full"
+adpPath :: String
+adpPath    = "/sys/class/power_supply/"++ external_power ++"/online"
 
 getCurrentStatusInt :: File -> IO Int
-getCurrentStatusInt f = do
-  online <- readValue f
-  return online
-
+getCurrentStatusInt = readValue
 
 getCurrentStatus :: BatteryHandle -> IO Int
 getCurrentStatus (BatH _ (PowerNow _ _ _ adp) _) =
@@ -58,7 +55,7 @@ getCurrentLevelInt n f = do
   return $ now * 100 `div` full
 
 
-getCurrentLevel :: BatteryHandle -> IO (Int)
+getCurrentLevel :: BatteryHandle -> IO Int
 getCurrentLevel (BatH _ (PowerNow _ now full _) _) =
   getCurrentLevelInt now full
 
@@ -96,21 +93,21 @@ getTimeLeft (BatH _ (ChargeNow _ _ cavg chnow chfull adp) s)= do
 
 createPowerNowHandle :: PowerHandle -> IO BatteryHandle
 createPowerNowHandle ph = do
-  power_now <- fopen pnow_path
-  energy_now <- fopen enow_path
-  energy_full <- fopen efull_path
-  adp_online <- fopen adp_path
+  power_now <- fopen pnowPath
+  energy_now <- fopen enowPath
+  energy_full <- fopen efullPath
+  adp_online <- fopen adpPath
   ref <- newIORef (0 :: Int)
   return $BatH ph (PowerNow power_now energy_now energy_full adp_online) ref
 
 createChargeNowHandle :: PowerHandle -> IO BatteryHandle
 createChargeNowHandle ph = do
-  voltage_now <- fopen vnow_path
-  current_now <- fopen cnow_path
-  current_avg <- fopen cavg_path
-  charge_now <- fopen chnow_path
-  charge_full <- fopen chfull_path
-  adp_online <- fopen adp_path
+  voltage_now <- fopen vnowPath
+  current_now <- fopen cnowPath
+  current_avg <- fopen cavgPath
+  charge_now <- fopen chnowPath
+  charge_full <- fopen chfullPath
+  adp_online <- fopen adpPath
   ref <- newIORef (0 :: Int)
   return $BatH ph (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 

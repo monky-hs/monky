@@ -33,12 +33,12 @@ getReadWriteReal (NetH readf writef _ readref writeref timeref) = do
   otime <- readIORef timeref
   let cread = oread - read
   let cwrite = owrite - write
-  let ctime = (otime - time)
+  let ctime = otime - time
   writeIORef readref read
   writeIORef writeref write
   writeIORef timeref time
-  return ((cread * 8) `div` (round ctime),
-    (cwrite * 8) `div` (round ctime))
+  return ((cread * 8) `div` round ctime,
+    (cwrite * 8) `div` round ctime)
 
 getReadWrite :: NetworkHandle -> IO (Maybe (Int, Int))
 getReadWrite (NetH readf writef statef readref writeref timeref) = do
@@ -50,7 +50,7 @@ getReadWrite (NetH readf writef statef readref writeref timeref) = do
     return $Just val
 
 getMultiReadWriteInt :: [NetworkHandle] -> IO (Maybe (Int, Int))
-getMultiReadWriteInt [] = do return Nothing
+getMultiReadWriteInt [] = return Nothing
 getMultiReadWriteInt (x:xs) = do
   val <- getReadWrite x
   case val of
@@ -72,7 +72,7 @@ getNetworkHandle dev = do
   where path = basePath ++ dev
 
 getNetworkHandles :: [String] -> IO NetworkHandles
-getNetworkHandles [] = do return $NetHs []
+getNetworkHandles [] = return $NetHs []
 getNetworkHandles (x:xs) = do
   handle <- getNetworkHandle x
   (NetHs ns) <- getNetworkHandles xs

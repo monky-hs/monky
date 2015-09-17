@@ -37,18 +37,18 @@ type PollFDPtr = Ptr PollFD
 liftExceptT :: ((a -> m (Either e b)) -> m (Either e b)) -> (a -> ExceptT e m b) -> ExceptT e m b
 liftExceptT g f = ExceptT (g (runExceptT . f))
 
-data RegOpt = RegOpt
-data MClass = MClass
+data RegOpt
+data MClass
 
-data Mixer = Mixer
+data Mixer
 type MixerHandle = Ptr Mixer
 type MixerHandleAlloc = Ptr MixerHandle
 
-data Sid = Sid
+data Sid
 type SidHandle = Ptr Sid
 type SidHandleAlloc = Ptr SidHandle
 
-data Elem = Elem
+data Elem
 type ElemHandle = Ptr Elem
 
 
@@ -179,25 +179,21 @@ updateVOLH (VOLH handle ehandle valr muter _ _) = do
   mute <- isMute ehandle
   writeIORef valr val
   writeIORef muter mute
-updateVOLH Err = do return ()
+updateVOLH Err = return ()
 
 getVolumeRaw :: VOLHandle -> IO Int
-getVolumeRaw (VOLH _ _ valr _ _ _) = do
-  val <- readIORef valr
-  return val
-getVolumeRaw Err = do return 0
+getVolumeRaw (VOLH _ _ valr _ _ _) = readIORef valr
+getVolumeRaw Err = return 0
 
 getVolumePercent :: VOLHandle -> IO Int
 getVolumePercent (VOLH _ _ valr _ lower upper) = do
   val <- readIORef valr
   return $percentize val lower upper
-getVolumePercent Err = do return 0
+getVolumePercent Err = return 0
 
 getMute :: VOLHandle -> IO Bool
-getMute (VOLH _ _ _ muter _ _) = do
-  mute <- readIORef muter
-  return mute
-getMute Err = do return True
+getMute (VOLH _ _ _ muter _ _) = readIORef muter
+getMute Err = return True
 
 getVOLHandleInt :: Either Int MixerHandle -> IO VOLHandle
 getVOLHandleInt (Right handle) = do
@@ -219,7 +215,7 @@ isLoaded _ = True
 
 getPollFDs :: VOLHandle -> IO [Fd]
 getPollFDs (VOLH h _ _ _ _ _) = liftM (map (\x -> Fd x)) (getPollDescs h)
-getPollFDs Err = do return []
+getPollFDs Err =return []
 
 
 getVOLHandle :: String -> IO VOLHandle
