@@ -1,3 +1,11 @@
+{-|
+Module      : CPU
+Description : Allows acces to information about the systems cpu
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+-}
 module CPU
 (CPUHandle, getCPUHandle, getCPUPercent, getCPUTemp, getCPUMaxScalingFreq,
 ScalingType(..))
@@ -12,9 +20,13 @@ import Text.Printf (printf)
 import Control.Monad (liftM2)
 
 {- Stat temp freqencies work all-}
+-- |The Handle exported
 data CPUHandle = CPUH File File [File] (IORef [Int]) (IORef [Int])
 
-data ScalingType = ScalingMax | ScalingCur
+-- |Which values should be returned by getCPUFreq
+data ScalingType 
+  = ScalingMax -- ^Use the maximum frequencie allowed
+  | ScalingCur -- ^Use the current frequencie used
 
 pathStat :: String
 pathStat = "/proc/stat"
@@ -43,7 +55,7 @@ getCPUFreqsMax :: Int -> IO [File]
 getCPUFreqsMax 0 = return []
 getCPUFreqsMax i = liftM2 (:) (fopen (pathMaxScaling (i - 1))) (getCPUFreqsMax (i - 1))
 
-
+-- |Get the cpu usage per virtual cpu
 getCPUPercent :: CPUHandle -> IO [Int]
 getCPUPercent (CPUH f _ _ aref wref) = do
   content <- readContent f
@@ -62,15 +74,23 @@ getCPUPercent (CPUH f _ _ aref wref) = do
     readVals = (map read . tail) . words
     fold x xs = if isCPU x then (readVals x :: [Int]):xs else xs
 
+-- |get current CPU temperature
 getCPUTemp :: CPUHandle -> IO Int
 getCPUTemp (CPUH _ f _ _ _) = do
   temp <- readValue f
   return $div temp 1000
 
+
+{- |this function returns a frequency according th the 'ScalingType' of the
+handle.
+
+The returned valued will be the max of all virtual proceessors on the system.
+-}
 getCPUMaxScalingFreq :: CPUHandle -> IO Float
 getCPUMaxScalingFreq (CPUH _ _ files _ _) = do
   vals <- mapM readValue files
   return (fromIntegral (maximum vals) / 1000000)
+
 
 getCPUFreqs :: ScalingType -> Int -> IO [File]
 getCPUFreqs ScalingMax = getCPUFreqsMax
@@ -83,6 +103,7 @@ getNumberOfCores f = do
   stats <- readContent f
   return $length (filter (isPrefixOf "cpu") stats) - 1
 
+-- |Get the CPUhandle
 getCPUHandle :: ScalingType -> IO CPUHandle
 getCPUHandle t = do
   workref <- newIORef ([0] :: [Int])

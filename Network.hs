@@ -1,3 +1,14 @@
+{-|
+Module      : Network
+Description : Allows acces to information about they systems network
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module allows to add multiple network interfaces.
+If multiple network interfaces are active the first one in the list will be
+used.
+-}
 module Network  (NetworkHandles, getReadWriteMulti, getNetworkHandles)
 where
 
@@ -6,15 +17,15 @@ import Data.Time.Clock.POSIX
 import Utility
 import Data.IORef
 
+-- |Internal handle represanting exactly one interface
 data NetworkHandle = NetH File File File (IORef Int) (IORef Int) (IORef POSIXTime)
+-- |The handle exported by this module encapsulating a list of interfaces
 data NetworkHandles = NetHs [NetworkHandle]
 
 basePath :: String
---basePath = "/sys/class/net/"
 basePath = "/sys/class/net/"
 
 readPath :: String
---readPath = "/statistics/rx_bytes"
 readPath = "/statistics/rx_bytes"
 
 writePath :: String
@@ -57,6 +68,10 @@ getMultiReadWriteInt (x:xs) = do
     Nothing -> getMultiReadWriteInt xs
     _ -> return val
 
+{- |Get the read/write rate of the first interface in the list that is connected
+
+The value will be a tuple (Read, Write) in bit/s
+-}
 getReadWriteMulti :: NetworkHandles -> IO (Maybe (Int, Int))
 getReadWriteMulti (NetHs xs) = getMultiReadWriteInt xs
 
@@ -71,6 +86,7 @@ getNetworkHandle dev = do
   return $NetH readf writef statef readref writeref timeref
   where path = basePath ++ dev
 
+-- |Get a 'NetworkHandles' with a 'NetworkHandle' for each network named
 getNetworkHandles :: [String] -> IO NetworkHandles
 getNetworkHandles [] = return $NetHs []
 getNetworkHandles (x:xs) = do

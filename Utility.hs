@@ -1,45 +1,42 @@
-module Utility (readValue, readValues, fopen, File, readLine, readLineStartingWith, readIntInLineStartingWith, readLineN, readContent, convertUnit)
+{-|
+Module      : Utility
+Description : Provides utility functions
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module provides utility functions used in monky modules
+-}
+module Utility (readValue, readValues, fopen, File, readLine, readContent, convertUnit)
 where
 
 import System.IO
-import Text.Regex.Posix ((=~))
-import Text.Regex (mkRegex, subRegex)
 import Text.Printf (printf)
 
+-- |type alias to distinguish system functions from utility
 type File = Handle
 
+-- |Read the first line of the file and convert it into an 'Int'
 readValue :: File -> IO Int
 readValue h = do
   hSeek h AbsoluteSeek 0
   line <- hGetLine h
   return (read line :: Int)
 
+-- |Read the first line of the file and convert the words in it into 'Int's
 readValues :: File -> IO [Int]
 readValues h = do
   hSeek h AbsoluteSeek 0
   line <- hGetLine h
   return (map read $ words line)
 
+-- |Read the first line of the file
 readLine :: File -> IO String
 readLine h = do
   hSeek h AbsoluteSeek 0
   hGetLine h
 
-readLineStartingWith :: File -> String -> IO String
-readLineStartingWith h s = do
-  line <- hGetLine h
-  if line =~ s then
-    return line
-  else
-    readLineStartingWith h s
-
-readLineN :: File -> Int -> IO String
-readLineN h 0 = do
-  line <- hGetLine h
-  hSeek h AbsoluteSeek 0
-  return line
-readLineN h n = readLineN h (n-1)
-
+-- |Internal function for readContent
 readLineByLine :: File -> [String] -> IO [String]
 readLineByLine h ls = do
   e <- hIsEOF h
@@ -49,11 +46,13 @@ readLineByLine h ls = do
     l <- hGetLine h
     readLineByLine h (ls ++ [l])
 
+-- |Rewind the file descriptor and read the complete file as lines
 readContent :: File -> IO [String]
 readContent h = do
   hSeek h AbsoluteSeek 0
   readLineByLine h []
 
+-- |Convert a number into a reasonable scale for SI units
 convertUnit :: Int -> String -> String -> String ->String -> String
 convertUnit rate u1 u2 u3 u4
   | rate < 1000 = printf "%4d%s" rate u1
@@ -67,13 +66,7 @@ convertUnit rate u1 u2 u3 u4
   | rate < 100000000000 = printf "%4.1f%s" ((fromIntegral rate :: Float)/1000000000) u4
   | otherwise = printf "%4d%s" (div rate 1000000000) u4
 
-readIntInLineStartingWith :: File -> String -> IO Int
-readIntInLineStartingWith h s = do
-  hSeek h AbsoluteSeek 0
-  line <- readLineStartingWith h s
-  let str = subRegex (mkRegex "[^0-9]+") (subRegex (mkRegex "[^0-9]+") line "") ""
-  return (read str :: Int)
-
+-- |open a file read only
 fopen :: String -> IO File
 fopen = flip openFile ReadMode
 

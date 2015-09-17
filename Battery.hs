@@ -1,3 +1,15 @@
+{-|
+Module      : Battery
+Description : Allows acces to information about a battery connected to the system
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module allows to read bits of information about a battery connected to tye
+system
+The module is initialized by creating a 'BatteryHandle'.
+A 'PowerHandle' is required for some functions to work properly.
+-}
 module Battery (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
 where
 
@@ -11,6 +23,11 @@ import Utility
 -- FilesArray for the files, those have to be handled different so they
 -- get their own type for pattern matching
 -- Everything needed as state will be carried in the battery handle
+{- |A handle used to access information about the battery
+
+  This has to be given as argument to all functions of this module except the
+  getBatteryHandle
+-} 
 data BatteryHandle = BatH PowerHandle FilesArray (IORef Int)
 
 --PowerNow will use: power_now energy_now energy_full
@@ -37,32 +54,33 @@ chfullPath = "/sys/class/power_supply/BAT0/charge_full"
 adpPath :: String
 adpPath    = "/sys/class/power_supply/"++ external_power ++"/online"
 
+-- |Internal function for getCurrentStatus
 getCurrentStatusInt :: File -> IO Int
 getCurrentStatusInt = readValue
 
+-- |TODO
 getCurrentStatus :: BatteryHandle -> IO Int
 getCurrentStatus (BatH _ (PowerNow _ _ _ adp) _) =
   getCurrentStatusInt adp
-
 getCurrentStatus (BatH _ (ChargeNow _ _ _ _ _ adp) _) =
   getCurrentStatusInt adp
 
-
+-- |Internal function for getcurrentLevel
 getCurrentLevelInt :: File -> File -> IO Int
 getCurrentLevelInt n f = do
   now <- readValue n
   full <- readValue f
   return $ now * 100 `div` full
 
-
+-- |Get the current power level in percent
 getCurrentLevel :: BatteryHandle -> IO Int
 getCurrentLevel (BatH _ (PowerNow _ now full _) _) =
   getCurrentLevelInt now full
-
 getCurrentLevel (BatH _ (ChargeNow _ _ _ now full _) _) =
   getCurrentLevelInt now full
 
 
+-- |Internal function for getTimeLeft
 getTimeLeftInt :: File -> File -> File -> Int -> File -> IO (Int, Int)
 getTimeLeftInt n c f s adp = do
   online <- getCurrentStatusInt adp
@@ -73,24 +91,31 @@ getTimeLeftInt n c f s adp = do
   let avg = (change*20+s*80) `div` 100
   return ( if avg >= 3600 then gap `div` (avg `div` 3600) else 0, avg)
 
+-- |Get current loading speed in Watt/s
 getLoading :: BatteryHandle -> IO Float
-getLoading (BatH ph _ _) = getPowerNow ph
+getLoading (BatH _ (PowerNow pnow _ _ _) _) = do
+  power <- readLine pnow
+  return $(read power :: Float) / 1000000
+getLoading (BatH _ (ChargeNow vnow cnow _ _ _ _) _) = do
+  voltage <- readLine vnow
+  current <- readLine cnow
+  let pow = ((read voltage :: Float) * (read current :: Float)) / 1000000000000
+  return pow
 
-
-
+-- |Get an approximated amount of seconds left until the battery runs out
 getTimeLeft :: BatteryHandle -> IO Int
 getTimeLeft (BatH _ (PowerNow pnow enow efull adp) s)= do
   c <- readIORef s
   (t, n) <- getTimeLeftInt enow pnow efull c adp
   writeIORef s n
   return t
-
 getTimeLeft (BatH _ (ChargeNow _ _ cavg chnow chfull adp) s)= do
   c <- readIORef s
-  (t, n) <- getTimeLeftInt chnow cavg chfull c adp
+  (t, _) <- getTimeLeftInt chnow cavg chfull c adp
   return t
 
 
+-- |Create a power handle that uses the power_now file
 createPowerNowHandle :: PowerHandle -> IO BatteryHandle
 createPowerNowHandle ph = do
   power_now <- fopen pnowPath
@@ -100,6 +125,7 @@ createPowerNowHandle ph = do
   ref <- newIORef (0 :: Int)
   return $BatH ph (PowerNow power_now energy_now energy_full adp_online) ref
 
+-- |Create a power handle that uses the charge_now file
 createChargeNowHandle :: PowerHandle -> IO BatteryHandle
 createChargeNowHandle ph = do
   voltage_now <- fopen vnowPath
@@ -111,6 +137,7 @@ createChargeNowHandle ph = do
   ref <- newIORef (0 :: Int)
   return $BatH ph (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 
+-- |Opens the files used for the battery calculations
 getBatteryHandle :: PowerHandle -> IO BatteryHandle
 getBatteryHandle ph = do
   exists <- doesFileExist "/sys/class/power_supply/BAT0/power_now"

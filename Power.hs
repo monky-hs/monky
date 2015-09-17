@@ -1,3 +1,7 @@
+{-|
+Description : delete me
+TODO remove
+-}
 module Power (PowerHandle, getPowerHandle, getPowerNow)
 where
 

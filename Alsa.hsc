@@ -1,4 +1,14 @@
-module Alsa 
+{-|
+Module      : Alsa
+Description : Allows acces to information about the alsa sound system
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module interfaces with libalsa directly over ffi and a bunch of code
+written as hsc.
+-}
+module Alsa
 (VOLHandle, getMute, getVolumeRaw, getVolumePercent, updateVOLH, getVOLHandle,
 isLoaded, getPollFDs)
 where
@@ -170,8 +180,10 @@ percentize val lower upper = 100 * (val - lower) `div` (upper-lower)
 
 
 
+-- |The handle exported by this module
 data VOLHandle = VOLH MixerHandle ElemHandle (IORef Int) (IORef Bool) Int Int | Err
 
+-- |Update the volume handle, this is a alsa specific function
 updateVOLH :: VOLHandle -> IO ()
 updateVOLH (VOLH handle ehandle valr muter _ _) = do
   mixer_handle_events handle
@@ -181,16 +193,22 @@ updateVOLH (VOLH handle ehandle valr muter _ _) = do
   writeIORef muter mute
 updateVOLH Err = return ()
 
+-- |Get the raw volume value from alsa
 getVolumeRaw :: VOLHandle -> IO Int
 getVolumeRaw (VOLH _ _ valr _ _ _) = readIORef valr
 getVolumeRaw Err = return 0
 
+{- |Get the volume in percent (100% = loudest 0%=lowest)
+
+0% does not equal a muted device
+-}
 getVolumePercent :: VOLHandle -> IO Int
 getVolumePercent (VOLH _ _ valr _ lower upper) = do
   val <- readIORef valr
   return $percentize val lower upper
 getVolumePercent Err = return 0
 
+-- |return 'True' if the device is muted
 getMute :: VOLHandle -> IO Bool
 getMute (VOLH _ _ _ muter _ _) = readIORef muter
 getMute Err = return True
@@ -209,15 +227,22 @@ getVOLHandleInt (Right handle) = do
       return (VOLH handle ehandle volref muteref lower upper)
 getVOLHandleInt _ = return Err
 
+-- |Check if there was an error creating the handle
 isLoaded :: VOLHandle -> Bool
 isLoaded Err = False
 isLoaded _ = True
 
+
+-- |Get PollFds for polling interface
 getPollFDs :: VOLHandle -> IO [Fd]
 getPollFDs (VOLH h _ _ _ _ _) = liftM (map (\x -> Fd x)) (getPollDescs h)
 getPollFDs Err =return []
 
+{- |Get the alsa handle
 
+This calls quite a few functions form libalsa and may throw an error if
+something happened.
+-}
 getVOLHandle :: String -> IO VOLHandle
 getVOLHandle card = do
   handle <- runExceptT (getMixerHandle card)

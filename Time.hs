@@ -1,3 +1,12 @@
+{-|
+Module      : Time
+Description : Allows acces to information about they system time
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+TODO rewrite module to use handle
+-}
 module Time
 where
 
