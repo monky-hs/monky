@@ -1,13 +1,13 @@
 import Modules
 
-import Data.IORef
+import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Monad (liftM)
-import System.IO
-import System.Posix.Types
+import System.IO (hFlush, stdout)
+import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
-import System.Posix.IO.Select
-import System.Posix.IO.Select.Types
+import System.Posix.IO.Select (select')
+import System.Posix.IO.Select.Types (Timeout(..), CTimeval(..))
 import Text.Printf (printf)
 
 
@@ -15,7 +15,7 @@ data ModuleWrapper = MWrapper Modules (IORef String)
 
 {- Wrapper logic -}
 getWrapperText :: Int -> String -> ModuleWrapper -> IO String
-getWrapperText i u (MWrapper (MW m) r) 
+getWrapperText i u (MWrapper (MW m) r)
   | getInterval m <= 0 = readIORef r
   | getInterval m > 0 =
   if i `mod` getInterval m == 0
@@ -78,16 +78,15 @@ packMod x = do
   return (MWrapper x ref)
 
 
-startLoop :: String -> IO [Modules] -> IO ()
+startLoop :: String -> [Modules] -> IO ()
 startLoop u m = do
-  n <- liftM (map packMod) m
-  l <- sequence n
-  f <- liftM rmEmpty $sequence $getFDList l
-  sequence_ $map (\(mw, _) -> updateText mw u) f
+  l <- mapM packMod m
+  f <- liftM rmEmpty . sequence $getFDList l
+  mapM_ (\(mw, _) -> updateText mw u) f
   mainLoop 0 u f l
   where
     getFDList = map (\(MWrapper (MW mw) ref) -> if getInterval mw <= 0
-               then do 
+               then do
                  fds <- getFDs mw
                  return (MWrapper (MW mw) ref, fds)
                else return (MWrapper (MW mw) ref, []))
@@ -98,4 +97,5 @@ startLoop u m = do
 main :: IO()
 main = do
   user <- getEffectiveUserName
-  startLoop user getModules
+  modules <- getModules
+  startLoop user modules
