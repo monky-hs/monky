@@ -4,7 +4,9 @@ ScalingType(..))
 where
 
 import Utility (fopen, readValue, readContent, File)
-import Data.List (isPrefixOf)
+import Data.Char (isSpace)
+import Data.List (isPrefixOf, findIndex)
+import Data.Maybe (fromMaybe)
 import Data.IORef
 import Text.Printf (printf)
 import Control.Monad (liftM2)
@@ -45,7 +47,7 @@ getCPUFreqsMax i = liftM2 (:) (fopen (pathMaxScaling (i - 1))) (getCPUFreqsMax (
 getCPUPercent :: CPUHandle -> IO [Int]
 getCPUPercent (CPUH f _ _ aref wref) = do
   content <- readContent f
-  let d = map ((map read . drop 1) . words) (filter (\l -> isPrefixOf "cpu"l && ((>3) . length . head . words $ l)) content) :: [[Int]]
+  let d = foldr fold [] content
   let sall = map sum d
   let work = map (sum . take 3) d
   a <- readIORef aref
@@ -54,7 +56,11 @@ getCPUPercent (CPUH f _ _ aref wref) = do
   let call = zipWith (-) sall a
   writeIORef wref work
   writeIORef aref sall
-  return $zipWith div (map (* 100) cwork) call
+  return $zipWith (div . (* 100)) cwork call
+  where
+    isCPU l = isPrefixOf "cpu" l && ((>3) . fromMaybe 0 $findIndex isSpace l)
+    readVals = (map read . tail) . words
+    fold x xs = if isCPU x then (readVals x :: [Int]):xs else xs
 
 getCPUTemp :: CPUHandle -> IO Int
 getCPUTemp (CPUH _ f _ _ _) = do
