@@ -2,8 +2,6 @@ import Modules
 
 import Data.IORef
 
-import Config
-import Control.Concurrent (threadDelay)
 import Control.Monad (liftM)
 import System.IO
 import System.Posix.Types
@@ -11,7 +9,6 @@ import System.Posix.User (getEffectiveUserName)
 import System.Posix.IO.Select
 import System.Posix.IO.Select.Types
 import Text.Printf (printf)
-import qualified Data.Text
 
 
 data ModuleWrapper = MWrapper Modules (IORef String)
@@ -27,12 +24,13 @@ getWrapperText i u (MWrapper (MW m) r)
       writeIORef r s
       return s
     else readIORef r
+getWrapperText _ _ _ = return "Something borked"
 
 printMonkyLine :: Int -> String -> [ModuleWrapper] -> IO ()
+printMonkyLine _ _ [] = putStrLn "Is this even possible?"
 printMonkyLine i u [x] = do
   t <- getWrapperText i u x
   printf "%s\n" t
-
 printMonkyLine i u (x:xs) = do
   t <- getWrapperText i u x
   printf "%s | " t
@@ -47,8 +45,8 @@ updateText (MWrapper (MW m) r) u = do
 
 doUpdate :: Fd -> [(ModuleWrapper, [Fd])] -> String -> IO ()
 doUpdate _ [] _ = do return ()
-doUpdate f ((mod, fds):xs) u = if f `elem` fds
-  then updateText mod u
+doUpdate f ((mw, fds):xs) u = if f `elem` fds
+  then updateText mw u
   else doUpdate f xs u
 
 doUpdatesInt :: [Fd] -> [(ModuleWrapper, [Fd])] -> String -> IO ()
@@ -86,14 +84,14 @@ startLoop u m = do
   n <- liftM (map packMod) m
   l <- sequence n
   f <- liftM rmEmpty $sequence $getFDList l
-  sequence $map (\(mod, _) -> updateText mod u) f
+  sequence_ $map (\(mw, _) -> updateText mw u) f
   mainLoop 0 u f l
   where
-    getFDList = map (\(MWrapper (MW mod) ref) -> if getInterval mod <= 0
+    getFDList = map (\(MWrapper (MW mw) ref) -> if getInterval mw <= 0
                then do 
-                 fds <- getFDs mod
-                 return ((MWrapper (MW mod) ref), fds)
-               else do return ((MWrapper (MW mod) ref), []))
+                 fds <- getFDs mw
+                 return ((MWrapper (MW mw) ref), fds)
+               else return ((MWrapper (MW mw) ref), []))
     rmEmpty = filter (\(_, xs) -> xs /= [])
 
 

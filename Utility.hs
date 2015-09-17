@@ -41,11 +41,19 @@ readLineN h 0 = do
 readLineN h n = do
   readLineN h (n-1)
 
-readContent :: File -> IO String
+readLineByLine :: File -> [String] -> IO [String]
+readLineByLine h ls = do
+  e <- hIsEOF h
+  if e
+  then return ls
+  else do
+    l <- (hGetLine h)
+    readLineByLine h (ls ++ [l])
+
+readContent :: File -> IO [String]
 readContent h = do
   hSeek h AbsoluteSeek 0
-  content <- hGetContents h
-  return content
+  readLineByLine h []
 
 convertUnit :: Int -> String -> String -> String ->String -> String
 convertUnit rate u1 u2 u3 u4

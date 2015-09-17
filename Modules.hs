@@ -12,7 +12,6 @@ import CPU
 import Disk
 import Memory
 import Network
-import Power
 import Time
 import Utility
 import SSID
@@ -51,7 +50,7 @@ getCPUText user ch = do
 
 instance Module CPUHandle where
   getText u a = getCPUText u a
-  getInterval a = 5
+  getInterval _ = 5
 
 
 {- Battery Module -}
@@ -89,7 +88,7 @@ getBatteryText user bh = do
 
 instance Module BatteryHandle where
   getText u a = getBatteryText u a
-  getInterval a = 5
+  getInterval _ = 5
 
 
 {- Network Module -}
@@ -108,7 +107,7 @@ getNetworkText _ nh = do
 
 instance Module NetworkHandles where
   getText u a = getNetworkText u a
-  getInterval a = 5
+  getInterval _ = 5
 
 {- Memory Module -}
 
@@ -119,7 +118,7 @@ getMemoryText user mh = do
 
 instance Module MemoryHandle where
   getText u a = getMemoryText u a
-  getInterval a = 5
+  getInterval _ = 5
 
 
 {- Time Module -}
@@ -130,8 +129,8 @@ timeToXBM (h, m) = (xh, xm)
         xm = m `div` 15
 
 getTimeString :: String -> TimeHandle -> IO String
-getTimeString user th = do
-  ts <- getTime (getFormat th)
+getTimeString user h = do
+  ts <- getTime (getFormat h)
   t <- getHM
   let (th, tm) = timeToXBM t
   return (printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/%d-%d.xbm)  %s") th tm ts)
@@ -183,18 +182,18 @@ instance Module VOLHandle where
 
 
 {- Module list -}
-
+getModules :: IO [Modules]
 getModules = do
   sh <- getSSIDHandle wifi_device
   vh <- getVOLHandle "default"
   nh <- getNetworkHandles network_devices
-  ch <- getCPUHandle
+  ch <- getCPUHandle ScalingCur
   mh <- getMemoryHandle
   ph <- getPowerHandle
   bh <- getBatteryHandle ph
-  dh <- getDiskHandle disk_drive disk_part
-  let th = getTimeHandle  "%m/%d %k:%M:%S"
-  return 
+  --dh <- getDiskHandle disk_drive disk_part
+  let th = getTimeHandle "%m/%d %k:%M:%S"
+  return
     [ MW sh
     , MW vh
     , MW ch
