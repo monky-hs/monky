@@ -1,13 +1,23 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-|
+Module      : Modules
+Description : A collection of preconfigured modules
+Maintainer  : ongy, moepi
+Stability   : testing
+Portability : Linux
+
+This module provides module-instances for monky.
+
+Those can be used as is and should be a good basis to build your own modules
+-}
 module Modules
--- We cannot limit export here because of the instances (move them?)
+(Modules(..), Module(..), getModules)
 where
 
-import System.Posix.Types
+import System.Posix.Types (Fd)
 import Text.Printf (printf)
 
 import Config
-import Power
 import Battery
 import CPU
 import Disk
@@ -18,11 +28,13 @@ import Utility
 import SSID
 import Alsa
 
+-- |A wrapper around module instances to put them all in a list
 data Modules = forall a . Module a => MW a
+-- |The type class for modules
 class Module a where
-    getText :: String -> a -> IO String
-    getInterval :: a -> Int
-    getFDs :: a -> IO [Fd]
+    getText :: String -> a -> IO String -- ^Get the current text segment
+    getInterval :: a -> Int -- ^Update the buffer everye N seconds (<0 for polling)
+    getFDs :: a -> IO [Fd] -- ^Get the fds the polling mechanisim will use
     getFDs _ = return []
 
 {- CPU Module -}
@@ -87,6 +99,7 @@ getBatteryText user bh = do
   pow <- getLoading bh
   return (formatBatteryText user p s online pow)
 
+-- |Create a Module instance so the Batteryhandle can be used
 instance Module BatteryHandle where
   getText = getBatteryText
   getInterval _ = 5
@@ -131,8 +144,8 @@ timeToXBM (h, m) = (xh, xm)
 
 getTimeString :: String -> TimeHandle -> IO String
 getTimeString user h = do
-  ts <- getTime (getFormat h)
-  t <- getHM
+  ts <- getTime h
+  t <- getHM h
   let (th, tm) = timeToXBM t
   return (printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/%d-%d.xbm)  %s") th tm ts)
 
@@ -183,6 +196,7 @@ instance Module VOLHandle where
 
 
 {- Module list -}
+-- |The module list which will be used to create the output
 getModules :: IO [Modules]
 getModules = do
   sh <- getSSIDHandle wifi_device
@@ -190,10 +204,9 @@ getModules = do
   nh <- getNetworkHandles network_devices
   ch <- getCPUHandle ScalingCur
   mh <- getMemoryHandle
-  ph <- getPowerHandle
-  bh <- getBatteryHandle ph
+  bh <- getBatteryHandle
   --dh <- getDiskHandle disk_drive disk_part
-  let th = getTimeHandle "%m/%d %k:%M:%S"
+  th <- getTimeHandle "%m/%d %k:%M:%S"
   return
     [ MW sh
     , MW vh

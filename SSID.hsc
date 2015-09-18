@@ -1,6 +1,19 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-|
+Module      : SSID
+Description : Provides an interface to the ssid a network device is connected to
+Maintainer  : ongy
+Stability   : experimental
+Portability : Linux
+
+This does sometimes fail because the ioctl fails.
+When this fails is nondeterministic.
+This module will soon be replaced by netlink based module.
+This module treats the SSID as C-string, which is wrong but this will not be
+fixed!! The netlink implementation will replace this.
+-}
 module SSID
 (SSIDHandle, getSSIDHandle, getCurrentSSID)
 where
@@ -17,11 +30,12 @@ import System.Posix.Types
 #include <sys/types.h>
 #include <linux/wireless.h>
 
+-- |The handle exported by this module
 data SSIDHandle = SSIDH SSIDStruct
 
-data IWPoint a = IWPoint { pointer :: Ptr a, length :: Word16, flags :: Word16 }
+data IWPoint a = IWPoint (Ptr a) Word16 Word16
 
-data SSIDStruct = SSIDStruct { name :: [CChar], point :: IWPoint CChar }
+data SSIDStruct = SSIDStruct [CChar] (IWPoint CChar)
 
 data SSIDREQ = SSIDREQ
 
@@ -76,8 +90,12 @@ getSSID s = do
   getSSID_ s
 
 
+{-| Get the ssid of the network the device is conncted to or an empty string if
+it isn't connected
+-}
 getCurrentSSID :: SSIDHandle -> IO String
 getCurrentSSID (SSIDH s) = getSSID s
 
+-- |Get the handle for this module
 getSSIDHandle :: String -> IO SSIDHandle
 getSSIDHandle dev = liftM SSIDH $getSSIDStruct 128 dev

@@ -86,7 +86,7 @@ getNetworkHandle dev = do
   return $NetH readf writef statef readref writeref timeref
   where path = basePath ++ dev
 
--- |Get a 'NetworkHandles' with a 'NetworkHandle' for each network named
+-- |Get a 'NetworkHandles' with a NetworkHandle for each network named
 getNetworkHandles :: [String] -> IO NetworkHandles
 getNetworkHandles [] = return $NetHs []
 getNetworkHandles (x:xs) = do

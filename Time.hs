@@ -1,13 +1,12 @@
 {-|
 Module      : Time
-Description : Allows acces to information about they system time
+Description : Allows acces to read system time
 Maintainer  : ongy
 Stability   : testing
 Portability : Linux
-
-TODO rewrite module to use handle
 -}
 module Time
+(TimeHandle, getTime, getHM, getTimeHandle)
 where
 
 import Data.Time.Clock
@@ -15,23 +14,25 @@ import Data.Time.Format
 import Data.Time.LocalTime
 import System.Locale
 
+-- |the handle exported by this module
 data TimeHandle = TimeH String
 
-getFormat :: TimeHandle -> String
-getFormat (TimeH f) = f
 
-getTime :: String -> IO String
-getTime str = do
+-- |Get the current time in the format given to the handle
+getTime :: TimeHandle -> IO String
+getTime (TimeH str) = do
   t <- getCurrentTime
   z <- getCurrentTimeZone
   return $formatTime defaultTimeLocale str $utcToLocalTime z t
 
-getHM :: IO (Int, Int)
-getHM = do
+-- |Get the current time (HH:MM) format for the current time zone
+getHM :: TimeHandle -> IO (Int, Int)
+getHM _ = do
   t <- getCurrentTime
   z <- getCurrentTimeZone
   let (LocalTime _ (TimeOfDay h m _)) = utcToLocalTime z t
   return (h, m)
 
-getTimeHandle :: String -> TimeHandle
-getTimeHandle format = (TimeH format)
+-- |Get a handle for this module
+getTimeHandle :: String -> IO TimeHandle
+getTimeHandle format = return (TimeH format)

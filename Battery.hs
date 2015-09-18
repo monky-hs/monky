@@ -13,8 +13,6 @@ A 'PowerHandle' is required for some functions to work properly.
 module Battery (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
 where
 
-import Power
-
 import Config
 import Data.IORef
 import System.Directory
@@ -28,7 +26,7 @@ import Utility
   This has to be given as argument to all functions of this module except the
   getBatteryHandle
 -} 
-data BatteryHandle = BatH PowerHandle FilesArray (IORef Int)
+data BatteryHandle = BatH FilesArray (IORef Int)
 
 --PowerNow will use: power_now energy_now energy_full
 --ChargeNow will use: voltage_now current_now current_avg charge_now charge_full
@@ -60,9 +58,9 @@ getCurrentStatusInt = readValue
 
 -- |TODO
 getCurrentStatus :: BatteryHandle -> IO Int
-getCurrentStatus (BatH _ (PowerNow _ _ _ adp) _) =
+getCurrentStatus (BatH (PowerNow _ _ _ adp) _) =
   getCurrentStatusInt adp
-getCurrentStatus (BatH _ (ChargeNow _ _ _ _ _ adp) _) =
+getCurrentStatus (BatH (ChargeNow _ _ _ _ _ adp) _) =
   getCurrentStatusInt adp
 
 -- |Internal function for getcurrentLevel
@@ -74,9 +72,9 @@ getCurrentLevelInt n f = do
 
 -- |Get the current power level in percent
 getCurrentLevel :: BatteryHandle -> IO Int
-getCurrentLevel (BatH _ (PowerNow _ now full _) _) =
+getCurrentLevel (BatH (PowerNow _ now full _) _) =
   getCurrentLevelInt now full
-getCurrentLevel (BatH _ (ChargeNow _ _ _ now full _) _) =
+getCurrentLevel (BatH (ChargeNow _ _ _ now full _) _) =
   getCurrentLevelInt now full
 
 
@@ -93,10 +91,10 @@ getTimeLeftInt n c f s adp = do
 
 -- |Get current loading speed in Watt/s
 getLoading :: BatteryHandle -> IO Float
-getLoading (BatH _ (PowerNow pnow _ _ _) _) = do
+getLoading (BatH (PowerNow pnow _ _ _) _) = do
   power <- readLine pnow
   return $(read power :: Float) / 1000000
-getLoading (BatH _ (ChargeNow vnow cnow _ _ _ _) _) = do
+getLoading (BatH (ChargeNow vnow cnow _ _ _ _) _) = do
   voltage <- readLine vnow
   current <- readLine cnow
   let pow = ((read voltage :: Float) * (read current :: Float)) / 1000000000000
@@ -104,30 +102,30 @@ getLoading (BatH _ (ChargeNow vnow cnow _ _ _ _) _) = do
 
 -- |Get an approximated amount of seconds left until the battery runs out
 getTimeLeft :: BatteryHandle -> IO Int
-getTimeLeft (BatH _ (PowerNow pnow enow efull adp) s)= do
+getTimeLeft (BatH (PowerNow pnow enow efull adp) s)= do
   c <- readIORef s
   (t, n) <- getTimeLeftInt enow pnow efull c adp
   writeIORef s n
   return t
-getTimeLeft (BatH _ (ChargeNow _ _ cavg chnow chfull adp) s)= do
+getTimeLeft (BatH (ChargeNow _ _ cavg chnow chfull adp) s)= do
   c <- readIORef s
   (t, _) <- getTimeLeftInt chnow cavg chfull c adp
   return t
 
 
 -- |Create a power handle that uses the power_now file
-createPowerNowHandle :: PowerHandle -> IO BatteryHandle
-createPowerNowHandle ph = do
+createPowerNowHandle :: IO BatteryHandle
+createPowerNowHandle = do
   power_now <- fopen pnowPath
   energy_now <- fopen enowPath
   energy_full <- fopen efullPath
   adp_online <- fopen adpPath
   ref <- newIORef (0 :: Int)
-  return $BatH ph (PowerNow power_now energy_now energy_full adp_online) ref
+  return $BatH (PowerNow power_now energy_now energy_full adp_online) ref
 
 -- |Create a power handle that uses the charge_now file
-createChargeNowHandle :: PowerHandle -> IO BatteryHandle
-createChargeNowHandle ph = do
+createChargeNowHandle :: IO BatteryHandle
+createChargeNowHandle = do
   voltage_now <- fopen vnowPath
   current_now <- fopen cnowPath
   current_avg <- fopen cavgPath
@@ -135,12 +133,12 @@ createChargeNowHandle ph = do
   charge_full <- fopen chfullPath
   adp_online <- fopen adpPath
   ref <- newIORef (0 :: Int)
-  return $BatH ph (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
+  return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 
 -- |Opens the files used for the battery calculations
-getBatteryHandle :: PowerHandle -> IO BatteryHandle
-getBatteryHandle ph = do
+getBatteryHandle :: IO BatteryHandle
+getBatteryHandle = do
   exists <- doesFileExist "/sys/class/power_supply/BAT0/power_now"
   if exists
-  then createPowerNowHandle ph
-  else createChargeNowHandle ph
+  then createPowerNowHandle
+  else createChargeNowHandle
