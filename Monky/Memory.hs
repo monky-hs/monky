@@ -6,10 +6,10 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Memory  (MemoryHandle, getMemoryAvailable, getMemoryHandle)
+module Monky.Memory (MemoryHandle, getMemoryAvailable, getMemoryHandle)
 where
 
-import Utility (fopen, readContent, File)
+import Monky.Utility (fopen, readContent, File)
 import Data.List (isPrefixOf)
 
 

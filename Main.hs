@@ -18,14 +18,14 @@ where
 
 
 import Monky
-import Modules
-import Config
-import Battery
-import CPU
-import Memory
-import Network
-import Time
-import Alsa
+import Monky.Modules
+import Monky.Config
+--import Monky.Battery
+import Monky.CPU
+import Monky.Memory
+import Monky.Network
+import Monky.Time
+import Monky.Alsa
 
 
 -- |The list of modules
@@ -35,7 +35,7 @@ getModuleList =
   , pack $getCPUHandle ScalingCur
   , pack $getNetworkHandles network_devices
   , pack getMemoryHandle
-  , pack getBatteryHandle
+ -- , pack getBatteryHandle
   , pack $getTimeHandle "%m/%d %k:%M:%S"
   ]
 

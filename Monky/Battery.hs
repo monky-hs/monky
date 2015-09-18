@@ -10,13 +10,14 @@ system
 The module is initialized by creating a 'BatteryHandle'.
 A 'PowerHandle' is required for some functions to work properly.
 -}
-module Battery (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
+module Monky.Battery
+(getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
 where
 
-import Config
+import Monky.Config
 import Data.IORef
 import System.Directory
-import Utility
+import Monky.Utility
 
 -- FilesArray for the files, those have to be handled different so they
 -- get their own type for pattern matching
@@ -140,5 +141,5 @@ getBatteryHandle :: IO BatteryHandle
 getBatteryHandle = do
   exists <- doesFileExist "/sys/class/power_supply/BAT0/power_now"
   if exists
-  then createPowerNowHandle
-  else createChargeNowHandle
+    then createPowerNowHandle
+    else createChargeNowHandle

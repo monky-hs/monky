@@ -9,12 +9,12 @@ This module allows to add multiple network interfaces.
 If multiple network interfaces are active the first one in the list will be
 used.
 -}
-module Network  (NetworkHandles, getReadWriteMulti, getNetworkHandles)
+module Monky.Network (NetworkHandles, getReadWriteMulti, getNetworkHandles)
 where
 
 
 import Data.Time.Clock.POSIX
-import Utility
+import Monky.Utility
 import Data.IORef
 
 -- |Internal handle represanting exactly one interface
@@ -55,10 +55,10 @@ getReadWrite :: NetworkHandle -> IO (Maybe (Int, Int))
 getReadWrite (NetH readf writef statef readref writeref timeref) = do
   state <- readLine statef
   if state == "down"
-  then return Nothing
-  else do
-    val <- getReadWriteReal (NetH readf writef statef readref writeref timeref)
-    return $Just val
+    then return Nothing
+    else do
+      val <- getReadWriteReal (NetH readf writef statef readref writeref timeref)
+      return $Just val
 
 getMultiReadWriteInt :: [NetworkHandle] -> IO (Maybe (Int, Int))
 getMultiReadWriteInt [] = return Nothing

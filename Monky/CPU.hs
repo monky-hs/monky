@@ -6,12 +6,12 @@ Stability   : testing
 Portability : Linux
 
 -}
-module CPU
+module Monky.CPU
 (CPUHandle, getCPUHandle, getCPUPercent, getCPUTemp, getCPUMaxScalingFreq,
 ScalingType(..))
 where
 
-import Utility (fopen, readValue, readContent, File)
+import Monky.Utility (fopen, readValue, readContent, File)
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, findIndex)
 import Data.Maybe (fromMaybe)

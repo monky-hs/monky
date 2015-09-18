@@ -1,8 +1,20 @@
+{-|
+Module      : Monky
+Description : The main module of monky
+Maintainer  : ongy, moepi
+Stability   : testing
+Portability : Linux
+
+This module contains the main logic for monky.
+This has to be included in the Monky.hs. The entry point for monky is startLoop
+which has to be called with a ['IO' 'Modules']. This is done for nicer syntax in
+the main module.
+-}
 module Monky
 (startLoop)
 where
 
-import Modules
+import Monky.Modules
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Applicative((<$>))
@@ -12,6 +24,7 @@ import System.Posix.IO.Select.Types (Timeout(..), CTimeval(..))
 import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
 import Text.Printf (printf)
+
 
 
 -- |The module wrapper used to buffer output strings

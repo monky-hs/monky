@@ -8,7 +8,7 @@ Portability : Linux
 This module allows for some support for btrfs devices.
 This may be renamed in the future when a general block-device module appears.
 -}
-module Disk  (DiskHandle, getDiskReadWrite, getDiskFree, getDiskHandle)
+module Monky.Disk (DiskHandle, getDiskReadWrite, getDiskFree, getDiskHandle)
 where
 
 import Data.Time.Clock.POSIX

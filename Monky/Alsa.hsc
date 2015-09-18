@@ -1,3 +1,5 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE EmptyDataDecls #-}
 {-|
 Module      : Alsa
 Description : Allows acces to information about the alsa sound system
@@ -8,7 +10,7 @@ Portability : Linux
 This module interfaces with libalsa directly over ffi and a bunch of code
 written as hsc.
 -}
-module Alsa
+module Monky.Alsa
 (VOLHandle, getMute, getVolumeRaw, getVolumePercent, updateVOLH, getVOLHandle,
 isLoaded, getPollFDs)
 where
@@ -23,6 +25,7 @@ import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+import System.Posix.DynamicLinker
 import System.Posix.Types
 
 #include <poll.h>
@@ -61,7 +64,28 @@ type SidHandleAlloc = Ptr SidHandle
 data Elem
 type ElemHandle = Ptr Elem
 
+{-
+data LibAlsa = LibAlsa 
+  { mixer_open :: MixerHandleAlloc -> Int -> IO CInt
+  , mixer_attach :: MixerHandle -> CString -> IO CInt
+  , mixer_register :: MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt
+  , MixerHandle -> IO CInt
 
+  , sid_sindex :: SidHandle -> CInt -> IO ()
+  , sid_sname :: SidHandle -> CString -> IO ()
+  , sid_alloc :: SidHandleAlloc -> IO CInt
+  , sid_free :: SidHandle -> IO ()
+
+  , elem_gvrange :: ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt
+  , elem_gvol :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
+  , elem_gmute :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
+
+  , elem_find :: MixerHandle -> SidHandle -> IO ElemHandle
+  , mixer_handle_events :: MixerHandle -> IO ()
+  , get_pdescs :: MixerHandle -> PollFDPtr -> CInt -> IO CInt
+  , get_pdescc :: MixerHandle -> IO CInt
+  }
+-}
 foreign import ccall "snd_mixer_open" mixer_open :: MixerHandleAlloc -> Int -> IO CInt
 foreign import ccall "snd_mixer_attach" mixer_attach :: MixerHandle -> CString -> IO CInt
 foreign import ccall "snd_mixer_selem_register" mixer_register :: MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt
@@ -72,14 +96,34 @@ foreign import ccall "snd_mixer_selem_id_set_name" sid_sname :: SidHandle -> CSt
 foreign import ccall "snd_mixer_selem_id_malloc" sid_alloc :: SidHandleAlloc -> IO CInt
 foreign import ccall "snd_mixer_selem_id_free" sid_free :: SidHandle -> IO ()
 
-foreign import ccall "snd_mixer_find_selem" elem_find :: MixerHandle -> SidHandle -> IO ElemHandle
+
 foreign import ccall "snd_mixer_selem_get_playback_volume_range" elem_gvrange :: ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt
 foreign import ccall "snd_mixer_selem_get_playback_volume" elem_gvol :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
-foreign import ccall "snd_mixer_selem_get_playback_switch" elem_gmute :: ElemHandle -> Int -> Ptr CInt -> IO CInt
-foreign import ccall "snd_mixer_handle_events" mixer_handle_events :: MixerHandle -> IO ()
+foreign import ccall "snd_mixer_selem_get_playback_switch" elem_gmute :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
 
+foreign import ccall "snd_mixer_find_selem" elem_find :: MixerHandle -> SidHandle -> IO ElemHandle
+foreign import ccall "snd_mixer_handle_events" mixer_handle_events :: MixerHandle -> IO ()
 foreign import ccall "snd_mixer_poll_descriptors" get_pdescs :: MixerHandle -> PollFDPtr -> CInt -> IO CInt
 foreign import ccall "snd_mixer_poll_descriptors_count" get_pdescc :: MixerHandle -> IO CInt
+
+{- dynamic linking -}
+foreign import ccall "dynamic" mkFunmII :: FunPtr (MixerHandleAlloc -> Int -> IO CInt) -> (MixerHandleAlloc -> Int -> IO CInt)
+foreign import ccall "dynamic" mkFunMSI :: FunPtr (MixerHandle -> CString -> IO CInt) -> (MixerHandle -> CString -> IO CInt)
+foreign import ccall "dynamic" mkFunMrcI :: FunPtr (MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt) -> (MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt)
+
+foreign import ccall "dynamic" mkFunSII :: FunPtr (SidHandle -> CInt -> IO ()) -> (SidHandle -> CInt -> IO ())
+foreign import ccall "dynamic" mkFunSSV :: FunPtr (SidHandle -> CString -> IO ()) -> (SidHandle -> CString -> IO ())
+foreign import ccall "dynamic" mkFunsI  :: FunPtr (SidHandleAlloc -> IO CInt) -> (SidHandleAlloc -> IO CInt)
+foreign import ccall "dynamic" mkFunSV  :: FunPtr (SidHandle -> IO ()) -> (SidHandle -> IO ())
+
+foreign import ccall "dynamic" mkFunEiiI :: FunPtr (ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt) -> (ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt)
+foreign import ccall "dynamic" mkFunEIiI :: FunPtr (ElemHandle -> Int -> Ptr CInt -> IO CInt) -> (ElemHandle -> Int -> Ptr CInt -> IO CInt)
+
+foreign import ccall "dynamic" mkFunMSE :: FunPtr (MixerHandle -> SidHandle -> IO ElemHandle) -> (MixerHandle -> SidHandle -> IO ElemHandle)
+foreign import ccall "dynamic" mkFunMV :: FunPtr (MixerHandle -> IO ()) -> (MixerHandle -> IO ())
+foreign import ccall "dynamic" mkFunMI :: FunPtr (MixerHandle -> IO CInt) -> (MixerHandle -> IO CInt)
+foreign import ccall "dynamic" mkFunMPII :: FunPtr (MixerHandle -> PollFDPtr -> CInt -> IO CInt) -> (MixerHandle -> PollFDPtr -> CInt -> IO CInt)
+
 
 
 getPollDescs :: MixerHandle -> IO [CInt]

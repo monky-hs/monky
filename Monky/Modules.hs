@@ -10,22 +10,22 @@ This module provides module-instances for monky.
 
 Those can be used as is and should be a good basis to build your own modules
 -}
-module Modules
+module Monky.Modules
 (Modules(..), Module(..), pack)
 where
 
 import System.Posix.Types (Fd)
 import Text.Printf (printf)
 
-import Battery
-import CPU
-import Disk
-import Memory
-import Network
-import Time
-import Utility
-import SSID
-import Alsa
+import Monky.Battery
+import Monky.CPU
+import Monky.Disk
+import Monky.Memory
+import Monky.Network
+import Monky.Time
+import Monky.Utility
+import Monky.SSID
+import Monky.Alsa
 
 -- |A wrapper around module instances to put them all in a list
 data Modules = forall a . Module a => MW a

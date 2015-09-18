@@ -7,7 +7,8 @@ Portability : Linux
 
 This module provides utility functions used in monky modules
 -}
-module Utility (readValue, readValues, fopen, File, readLine, readContent, convertUnit)
+module Monky.Utility
+(readValue, readValues, fopen, File, readLine, readContent, convertUnit)
 where
 
 import System.IO
@@ -39,12 +40,12 @@ readLine h = do
 -- |Internal function for readContent
 readLineByLine :: File -> [String] -> IO [String]
 readLineByLine h ls = do
-  e <- hIsEOF h
-  if e
-  then return ls
-  else do
-    l <- hGetLine h
-    readLineByLine h (ls ++ [l])
+  eof <- hIsEOF h
+  if eof
+    then return ls
+    else do
+      l <- hGetLine h
+      readLineByLine h (ls ++ [l])
 
 -- |Rewind the file descriptor and read the complete file as lines
 readContent :: File -> IO [String]

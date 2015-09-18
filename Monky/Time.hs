@@ -5,7 +5,7 @@ Maintainer  : ongy
 Stability   : testing
 Portability : Linux
 -}
-module Time
+module Monky.Time
 (TimeHandle, getTime, getHM, getTimeHandle)
 where
 

@@ -14,7 +14,7 @@ This module will soon be replaced by netlink based module.
 This module treats the SSID as C-string, which is wrong but this will not be
 fixed!! The netlink implementation will replace this.
 -}
-module SSID
+module Monky.SSID
 (SSIDHandle, getSSIDHandle, getCurrentSSID)
 where
 
