@@ -196,24 +196,22 @@ instance Module VOLHandle where
 
 
 {- Module list -}
--- |The module list which will be used to create the output
+
+-- |Function to make packaging modules easier
+pack :: Module a => IO a -> IO Modules
+pack a = a >>= (return . MW)
+
+-- |The list of modules
+getModuleList :: [IO Modules]
+getModuleList =
+  [ pack $getVOLHandle "default"
+  , pack $getCPUHandle ScalingCur
+  , pack $getNetworkHandles network_devices
+  , pack getMemoryHandle
+  , pack getBatteryHandle
+  , pack $getTimeHandle "%m/%d %k:%M:%S"
+  ]
+
+-- |Sequence the list of modules for the current interface (TODO)
 getModules :: IO [Modules]
-getModules = do
-  sh <- getSSIDHandle wifi_device
-  vh <- getVOLHandle "default"
-  nh <- getNetworkHandles network_devices
-  ch <- getCPUHandle ScalingCur
-  mh <- getMemoryHandle
-  bh <- getBatteryHandle
-  --dh <- getDiskHandle disk_drive disk_part
-  th <- getTimeHandle "%m/%d %k:%M:%S"
-  return
-    [ MW sh
-    , MW vh
-    , MW ch
-    , MW nh
-    , MW mh
-    , MW bh
-    --, MW dh
-    , MW th
-    ]
+getModules = sequence getModuleList
