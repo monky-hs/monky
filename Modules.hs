@@ -11,13 +11,12 @@ This module provides module-instances for monky.
 Those can be used as is and should be a good basis to build your own modules
 -}
 module Modules
-(Modules(..), Module(..), getModules)
+(Modules(..), Module(..), pack)
 where
 
 import System.Posix.Types (Fd)
 import Text.Printf (printf)
 
-import Config
 import Battery
 import CPU
 import Disk
@@ -200,18 +199,3 @@ instance Module VOLHandle where
 -- |Function to make packaging modules easier
 pack :: Module a => IO a -> IO Modules
 pack a = a >>= (return . MW)
-
--- |The list of modules
-getModuleList :: [IO Modules]
-getModuleList =
-  [ pack $getVOLHandle "default"
-  , pack $getCPUHandle ScalingCur
-  , pack $getNetworkHandles network_devices
-  , pack getMemoryHandle
-  , pack getBatteryHandle
-  , pack $getTimeHandle "%m/%d %k:%M:%S"
-  ]
-
--- |Sequence the list of modules for the current interface (TODO)
-getModules :: IO [Modules]
-getModules = sequence getModuleList
