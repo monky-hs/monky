@@ -52,13 +52,13 @@ executable monky
   -- Modules included in this executable, other than Main.
   -- other-modules:
 
-  other-modules: Monky.Config Monky.Disk Monky.Modules Monky.SSID Monky.Time Monky.CPU Monky.Memory Monky.Network Monky.Utility Monky.Alsa Monky.Battery Monky
+  other-modules: 
 
   -- LANGUAGE extensions used by modules in this package.
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, regex-compat, regex-posix, array, text, unix, network, ioctl, mtl, transformers, select
+  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, process, unix
 
   -- Directories containing source files.
   -- hs-source-dirs:

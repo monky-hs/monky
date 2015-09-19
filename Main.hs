@@ -16,30 +16,52 @@ module Main
 (main)
 where
 
+import Data.List (isSuffixOf)
+import Control.Monad (when)
+import System.Directory
+import System.Process (callCommand)
+import System.Posix.Process (executeFile)
+import System.IO (withFile, IOMode(WriteMode), hPutStr)
 
-import Monky
-import Monky.Modules
-import Monky.Config
---import Monky.Battery
-import Monky.CPU
-import Monky.Memory
-import Monky.Network
-import Monky.Time
-import Monky.Alsa
-
-
--- |The list of modules
-getModuleList :: [IO Modules]
-getModuleList =
-  [ pack $getVOLHandle "default"
-  , pack $getCPUHandle ScalingCur
-  , pack $getNetworkHandles network_devices
-  , pack getMemoryHandle
- -- , pack getBatteryHandle
-  , pack $getTimeHandle "%m/%d %k:%M:%S"
-  ]
+changeDir :: IO ()
+changeDir = do
+  home <- getHomeDirectory
+  let mdir = home ++ "/.monky"
+  createDirectoryIfMissing False mdir
+  setCurrentDirectory mdir
 
 
--- |Entrypoint for the application.
-main :: IO()
-main = startLoop getModuleList
+exampleFile :: String
+exampleFile =
+ "import Monky\n" ++
+ "import Monky.Modules\n" ++
+ "import Monky.CPU\n" ++
+ "import Monky.Memory\n" ++
+ "\n" ++
+ "main :: IO()\n" ++
+ "main = startLoop [pack $getCPUHandle ScalingCur, pack getMemoryHandle ]"
+
+createExample :: IO ()
+createExample = withFile "monky.hs" WriteMode (flip hPutStr exampleFile)
+
+compile :: IO ()
+compile = callCommand "ghc --make monky.hs -o monky"
+
+compileIfUpdated :: IO ()
+compileIfUpdated = do
+  files <- getDirectoryContents "."
+  if "monky" `elem` files
+    then when ("monky.hs" `elem` files) $do
+      modT <- getModificationTime "monky"
+      times <- sequence $map getModificationTime $filter (isSuffixOf ".hs") files
+      when (maximum times > modT) compile
+    else do
+      when ("monky.hs" `notElem` files) (createExample >> (putStrLn $show files))
+      compile
+
+
+main :: IO ()
+main = do
+  changeDir
+  compileIfUpdated
+  executeFile "./monky" False [] Nothing
