@@ -19,7 +19,7 @@ where
 import Data.List (isSuffixOf)
 import Control.Monad (when)
 import System.Directory
-import System.Process (callCommand)
+import System.Process (system)
 import System.Posix.Process (executeFile)
 import System.IO (withFile, IOMode(WriteMode), hPutStr)
 
@@ -45,7 +45,7 @@ createExample :: IO ()
 createExample = withFile "monky.hs" WriteMode (flip hPutStr exampleFile)
 
 compile :: IO ()
-compile = callCommand "ghc --make monky.hs -o monky"
+compile = system "ghc --make monky.hs -o monky" >> return ()
 
 compileIfUpdated :: IO ()
 compileIfUpdated = do

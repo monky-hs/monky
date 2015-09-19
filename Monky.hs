@@ -51,10 +51,10 @@ printMonkyLine :: Int -> String -> [ModuleWrapper] -> IO ()
 printMonkyLine _ _ [] = putStrLn "Is this even possible?"
 printMonkyLine i u [x] = do
   t <- getWrapperText i u x
-  printf "%s\n" t
+  putStrLn t
 printMonkyLine i u (x:xs) = do
   t <- getWrapperText i u x
-  printf "%s | " t
+  putStr $printf "%s | " t
   printMonkyLine i u xs
 
 
