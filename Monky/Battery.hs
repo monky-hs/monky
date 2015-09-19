@@ -14,7 +14,6 @@ module Monky.Battery
 (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
 where
 
-import Monky.Config
 import Data.IORef
 import System.Directory
 import Monky.Utility
@@ -50,8 +49,8 @@ chnowPath :: String
 chnowPath  = "/sys/class/power_supply/BAT0/charge_now"
 chfullPath :: String
 chfullPath = "/sys/class/power_supply/BAT0/charge_full"
-adpPath :: String
-adpPath    = "/sys/class/power_supply/"++ external_power ++"/online"
+adpPath :: String -> String
+adpPath e  = "/sys/class/power_supply/"++ e ++"/online"
 
 -- |Internal function for getCurrentStatus
 getCurrentStatusInt :: File -> IO Int
@@ -115,31 +114,31 @@ getTimeLeft (BatH (ChargeNow _ _ cavg chnow chfull adp) s)= do
 
 
 -- |Create a power handle that uses the power_now file
-createPowerNowHandle :: IO BatteryHandle
-createPowerNowHandle = do
+createPowerNowHandle :: String -> IO BatteryHandle
+createPowerNowHandle e = do
   power_now <- fopen pnowPath
   energy_now <- fopen enowPath
   energy_full <- fopen efullPath
-  adp_online <- fopen adpPath
+  adp_online <- fopen $adpPath e
   ref <- newIORef (0 :: Int)
   return $BatH (PowerNow power_now energy_now energy_full adp_online) ref
 
 -- |Create a power handle that uses the charge_now file
-createChargeNowHandle :: IO BatteryHandle
-createChargeNowHandle = do
+createChargeNowHandle :: String -> IO BatteryHandle
+createChargeNowHandle e = do
   voltage_now <- fopen vnowPath
   current_now <- fopen cnowPath
   current_avg <- fopen cavgPath
   charge_now <- fopen chnowPath
   charge_full <- fopen chfullPath
-  adp_online <- fopen adpPath
+  adp_online <- fopen $adpPath e
   ref <- newIORef (0 :: Int)
   return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 
 -- |Opens the files used for the battery calculations
-getBatteryHandle :: IO BatteryHandle
-getBatteryHandle = do
+getBatteryHandle :: String -> IO BatteryHandle
+getBatteryHandle e = do
   exists <- doesFileExist "/sys/class/power_supply/BAT0/power_now"
   if exists
-    then createPowerNowHandle
-    else createChargeNowHandle
+    then createPowerNowHandle e
+    else createChargeNowHandle e
