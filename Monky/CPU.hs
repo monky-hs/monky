@@ -1,6 +1,6 @@
 {-|
 Module      : CPU
-Description : Allows acces to information about the systems cpu
+Description : Allows access to information about the systems cpu
 Maintainer  : ongy
 Stability   : testing
 Portability : Linux
@@ -20,7 +20,7 @@ import Text.Printf (printf)
 import Control.Monad (liftM2)
 
 {- Stat temp freqencies work all-}
--- |The Handle exported
+-- |The handle exported by this module
 data CPUHandle = CPUH File File [File] (IORef [Int]) (IORef [Int])
 
 -- |Which values should be returned by getCPUFreq
@@ -55,7 +55,7 @@ getCPUFreqsMax :: Int -> IO [File]
 getCPUFreqsMax 0 = return []
 getCPUFreqsMax i = liftM2 (:) (fopen (pathMaxScaling (i - 1))) (getCPUFreqsMax (i - 1))
 
--- |Get the cpu usage per virtual cpu
+-- |Get the cpu usage in percent for each (virtual) cpu
 getCPUPercent :: CPUHandle -> IO [Int]
 getCPUPercent (CPUH f _ _ aref wref) = do
   content <- readContent f
@@ -84,7 +84,7 @@ getCPUTemp (CPUH _ f _ _ _) = do
 {- |this function returns a frequency according th the 'ScalingType' of the
 handle.
 
-The returned valued will be the max of all virtual proceessors on the system.
+The returned valued will be the max of all (virtual) proceessors on the system.
 -}
 getCPUMaxScalingFreq :: CPUHandle -> IO Float
 getCPUMaxScalingFreq (CPUH _ _ files _ _) = do
@@ -103,7 +103,7 @@ getNumberOfCores f = do
   stats <- readContent f
   return $length (filter (isPrefixOf "cpu") stats) - 1
 
--- |Get the CPUhandle
+-- |Create an 'CPUhandle'
 getCPUHandle :: ScalingType -> IO CPUHandle
 getCPUHandle t = do
   workref <- newIORef ([0] :: [Int])

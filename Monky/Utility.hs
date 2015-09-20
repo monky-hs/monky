@@ -1,7 +1,7 @@
 {-|
 Module      : Utility
 Description : Provides utility functions
-Maintainer  : ongy
+Maintainer  : ongy, moepi
 Stability   : testing
 Portability : Linux
 

@@ -1,14 +1,18 @@
 {-|
 Module      : Monky
-Description : The main module of monky
+Description : The main module for monky
 Maintainer  : ongy, moepi
 Stability   : testing
 Portability : Linux
 
 This module contains the main logic for monky.
 This has to be included in the Monky.hs. The entry point for monky is startLoop
-which has to be called with a ['IO' 'Modules']. This is done for nicer syntax in
-the main module.
+which has to be called with a ['IO' 'Modules'].
+This type was chosen to make the syntax in the config file prettier.
+
+The submodules of this generally provide an interface based on handles.
+To use them, get the handle at the beginning of you application and hand it to
+other functions later on.
 -}
 module Monky
 (startLoop)
@@ -103,7 +107,11 @@ packMod x = do
   ref <- newIORef ("" :: String)
   return (MWrapper x ref)
 
--- |Creates the IORefs for the wrappers and sets up polling fds
+{- |Starts the main loop for monky
+
+This is the entry-point for printing normal lines.
+This function never returns.
+-}
 startLoop :: [IO Modules] -> IO ()
 startLoop mods = do
   u <- getEffectiveUserName

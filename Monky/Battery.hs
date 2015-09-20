@@ -1,14 +1,11 @@
 {-|
 Module      : Battery
-Description : Allows acces to information about a battery connected to the system
+Description : Allows access to information about a battery connected to the system
 Maintainer  : ongy
 Stability   : testing
 Portability : Linux
 
-This module allows to read bits of information about a battery connected to tye
-system
-The module is initialized by creating a 'BatteryHandle'.
-A 'PowerHandle' is required for some functions to work properly.
+This module allows to read information about a battery connected to the system.
 -}
 module Monky.Battery
 (getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
@@ -21,11 +18,7 @@ import Monky.Utility
 -- FilesArray for the files, those have to be handled different so they
 -- get their own type for pattern matching
 -- Everything needed as state will be carried in the battery handle
-{- |A handle used to access information about the battery
-
-  This has to be given as argument to all functions of this module except the
-  getBatteryHandle
--} 
+-- |The handle exported by this module
 data BatteryHandle = BatH FilesArray (IORef Int)
 
 --PowerNow will use: power_now energy_now energy_full
@@ -70,7 +63,7 @@ getCurrentLevelInt n f = do
   full <- readValue f
   return $ now * 100 `div` full
 
--- |Get the current power level in percent
+-- |Get the charge left in the battery in percent.
 getCurrentLevel :: BatteryHandle -> IO Int
 getCurrentLevel (BatH (PowerNow _ now full _) _) =
   getCurrentLevelInt now full
@@ -135,8 +128,9 @@ createChargeNowHandle e = do
   ref <- newIORef (0 :: Int)
   return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 
--- |Opens the files used for the battery calculations
-getBatteryHandle :: String -> IO BatteryHandle
+-- |Create a 'BatteryHandle'
+getBatteryHandle :: String  -- ^The name of the wall socket adapter used by the battery
+                 -> IO BatteryHandle
 getBatteryHandle e = do
   exists <- doesFileExist "/sys/class/power_supply/BAT0/power_now"
   if exists

@@ -1,6 +1,6 @@
 {-|
 Module      : Network
-Description : Allows acces to information about they systems network
+Description : Allows access to information about they systems network
 Maintainer  : ongy
 Stability   : testing
 Portability : Linux
@@ -19,7 +19,7 @@ import Data.IORef
 
 -- |Internal handle represanting exactly one interface
 data NetworkHandle = NetH File File File (IORef Int) (IORef Int) (IORef POSIXTime)
--- |The handle exported by this module encapsulating a list of interfaces
+-- |The handle exported by this module
 data NetworkHandles = NetHs [NetworkHandle]
 
 basePath :: String
@@ -70,7 +70,8 @@ getMultiReadWriteInt (x:xs) = do
 
 {- |Get the read/write rate of the first interface in the list that is connected
 
-The value will be a tuple (Read, Write) in bit/s
+The value will be a tuple (Read, Write) in bit/s or 'Nothing' if no network is
+connected.
 -}
 getReadWriteMulti :: NetworkHandles -> IO (Maybe (Int, Int))
 getReadWriteMulti (NetHs xs) = getMultiReadWriteInt xs
@@ -86,8 +87,9 @@ getNetworkHandle dev = do
   return $NetH readf writef statef readref writeref timeref
   where path = basePath ++ dev
 
--- |Get a 'NetworkHandles' with a NetworkHandle for each network named
-getNetworkHandles :: [String] -> IO NetworkHandles
+-- |Create a 'NetworkHandles' for the list of networks
+getNetworkHandles :: [String]  -- ^A list of interface names, the display order will be the same as the order in this list
+                  -> IO NetworkHandles
 getNetworkHandles [] = return $NetHs []
 getNetworkHandles (x:xs) = do
   handle <- getNetworkHandle x

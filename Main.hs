@@ -5,12 +5,19 @@ Maintainer  : ongy, moepi
 Stability   : testing
 Portability : Linux
 
-This application has a subset of the functionality conky proveds.
+This application has a subset of the functionality conky provides.
 
 The goal of this application is to provide a standalone access to most system
 values without spawning thousands of processes (looking at you conky).
-The general design is to create handles at the start which encapsule state and
-file descriptors which are used to get the system status.
+
+It uses a similar configuration style to xmonad, i.e. the config file is a
+haskell source file which uses library functions provided by the application.
+
+The config file has to be placed at "~/.monky/monky.hs". Any valid Haskell
+source file should work (it is compiled with ghc --make).
+
+This executable compiles the configuration if needed, and execs into the main
+executable.
 -}
 module Main
 (main)

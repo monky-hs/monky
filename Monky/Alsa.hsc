@@ -7,8 +7,9 @@ Maintainer  : ongy
 Stability   : testing
 Portability : Linux
 
-This module interfaces with libalsa directly over ffi and a bunch of code
-written as hsc.
+This module provides access to basic audio information provided by the alsa
+audio system.
+This MAY work with pulse, but will report useless/inaccurate values.
 -}
 module Monky.Alsa
 (VOLHandle, getMute, getVolumeRaw, getVolumePercent, updateVOLH, getVOLHandle,
@@ -229,7 +230,13 @@ percentize val lower upper = 100 * (val - lower) `div` (upper-lower)
 -- |The handle exported by this module
 data VOLHandle = VOLH LibAlsa MixerHandle ElemHandle (IORef Int) (IORef Bool) Int Int | Err
 
--- |Update the volume handle, this is a alsa specific function
+{- |Update the volume handle.
+
+This function has to be called to update the handle internally.
+Calling this will get the current state into the handle, which can then by
+queried by the other functions. Until this is called again, the results of other
+functions will not update to the current state of the system.
+-}
 updateVOLH :: VOLHandle -> IO ()
 updateVOLH (VOLH l handle ehandle valr muter _ _) = do
   mixer_handle_events l handle
@@ -246,7 +253,7 @@ getVolumeRaw Err = return 0
 
 {- |Get the volume in percent (100% = loudest 0%=lowest)
 
-0% does not equal a muted device
+0% does not equal a muted device.
 -}
 getVolumePercent :: VOLHandle -> IO Int
 getVolumePercent (VOLH _ _ _ valr _ lower upper) = do
@@ -307,11 +314,12 @@ getLib = do
   get_pdescc_ <- mkFunMI . castFunPtr <$> dlsym h "snd_mixer_poll_descriptors_count"
   return $LibAlsa mixer_open_ mixer_attach_ mixer_register_ mixer_load_ sid_sindex_ sid_sname_ sid_alloc_ sid_free_ elem_gvrange_ elem_gvol_ elem_gmute_ elem_find_ mixer_handle_events_ get_pdescs_ get_pdescc_
 
-{- |Get the alsa handle
-This calls quite a few functions form libalsa and may throw an error if
-something happened.
+{- |Create an 'VOLHandle'
+
+This may throw an exception if a function provided by alsa fails.
 -}
-getVOLHandle :: String -> IO VOLHandle
+getVOLHandle :: String -- ^The audio-card to use
+             -> IO VOLHandle
 getVOLHandle card = do
   l <- getLib
   handle <- runExceptT (getMixerHandle card l)

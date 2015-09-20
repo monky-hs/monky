@@ -1,10 +1,11 @@
 {-|
 Module      : Time
-Description : Allows acces to read system time
+Description : Allows access to read system time
 Maintainer  : ongy
 Stability   : testing
 Portability : Linux
 -}
+
 module Monky.Time
 (TimeHandle, getTime, getHM, getTimeHandle)
 where
@@ -14,18 +15,18 @@ import Data.Time.Format
 import Data.Time.LocalTime
 import System.Locale
 
--- |the handle exported by this module
+-- |The handle exported by this module.
 data TimeHandle = TimeH String
 
 
--- |Get the current time in the format given to the handle
+-- |Get the current time in the format given to the handle.
 getTime :: TimeHandle -> IO String
 getTime (TimeH str) = do
   t <- getCurrentTime
   z <- getCurrentTimeZone
   return $formatTime defaultTimeLocale str $utcToLocalTime z t
 
--- |Get the current time (HH:MM) format for the current time zone
+-- |Get the current time (HH:MM) format for the current time zone.
 getHM :: TimeHandle -> IO (Int, Int)
 getHM _ = do
   t <- getCurrentTime
@@ -34,5 +35,6 @@ getHM _ = do
   return (h, m)
 
 -- |Get a handle for this module
-getTimeHandle :: String -> IO TimeHandle
+getTimeHandle :: String  -- ^The format that should be used for 'getTime' in strftime format
+              -> IO TimeHandle
 getTimeHandle format = return (TimeH format)

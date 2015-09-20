@@ -1,6 +1,6 @@
 {-|
 Module      : Memory
-Description : Allows acces to information about they system memory
+Description : Allows to access information about they systems main memory
 Maintainer  : ongy
 Stability   : testing
 Portability : Linux

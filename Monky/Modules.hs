@@ -1,14 +1,18 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-|
 Module      : Modules
-Description : A collection of preconfigured modules
+Description : The module definition used by 'startLoop'
 Maintainer  : ongy, moepi
-Stability   : testing
+Stability   : experimental
 Portability : Linux
 
-This module provides module-instances for monky.
+This module provides module-instances for monky. (for now) 
+TODO: Move into seperate example files
 
-Those can be used as is and should be a good basis to build your own modules
+Those can be used as is and should be a good basis to build your own modules.
+
+This module provides the 'Module' class which is used to define a 'Monky'
+compatible module.
 -}
 module Monky.Modules
 (Modules(..), Module(..), pack)
@@ -27,17 +31,21 @@ import Monky.Utility
 import Monky.SSID
 import Monky.Alsa
 
--- |A wrapper around module instances to put them all in a list
+
+-- |A wrapper around module instances so they can be put into a list.
 data Modules = forall a . Module a => MW a
 -- |The type class for modules
 class Module a where
-    getText :: String -> a -> IO String -- ^Get the current text segment
-    getInterval :: a -> Int -- ^Update the buffer everye N seconds (<0 for polling)
-    getFDs :: a -> IO [Fd] -- ^Get the fds the polling mechanisim will use
+    getText :: String -- ^The current user
+            -> a -- ^The handle to this module
+            -> IO String -- ^The text segment that should be displayed for this module
+    getInterval :: a  -- ^The handle to this module
+                -> Int -- ^How many seconds to wait between updates (may be constant)
+    getFDs :: a -- ^The handle to this module
+           -> IO [Fd] -- ^The 'Fd's to listen on for events
     getFDs _ = return []
 
 {- CPU Module -}
-
 cpuColor :: Int -> String
 cpuColor p
   | p < 15 = "#009900"
@@ -66,7 +74,6 @@ instance Module CPUHandle where
 
 
 {- Battery Module -}
-
 batteryColor :: Int -> Int -> String
 batteryColor s p
   | s == 1 = "#009900"
@@ -98,14 +105,12 @@ getBatteryText user bh = do
   pow <- getLoading bh
   return (formatBatteryText user p s online pow)
 
--- |Create a Module instance so the Batteryhandle can be used
 instance Module BatteryHandle where
   getText = getBatteryText
   getInterval _ = 5
 
 
 {- Network Module -}
-
 formatNetworkText :: Maybe (Int, Int) -> String
 formatNetworkText Nothing =
   printf "Network: off" :: String
@@ -123,7 +128,6 @@ instance Module NetworkHandles where
   getInterval _ = 5
 
 {- Memory Module -}
-
 getMemoryText :: String -> MemoryHandle -> IO String
 getMemoryText user mh = do
   mp <- getMemoryAvailable mh
@@ -135,7 +139,6 @@ instance Module MemoryHandle where
 
 
 {- Time Module -}
-
 timeToXBM :: (Int, Int) -> (Int, Int)
 timeToXBM (h, m) = (xh, xm)
   where xh = h `mod` 12
@@ -153,7 +156,6 @@ instance Module TimeHandle where
     getInterval _ = 1
 
 {- Disk module -}
-
 formatDiskText :: String -> Int -> Int -> Int -> String
 formatDiskText user dr dw df =
   printf "%s %s" eins zwei :: String
@@ -172,13 +174,11 @@ instance Module DiskHandle where
   getInterval _ = 5
 
 {- SSID module -}
-
 instance Module SSIDHandle where
   getText _ = getCurrentSSID
   getInterval _ = 10
 
 {- ALSA module -}
-
 getVolumeStr :: VOLHandle -> IO String
 getVolumeStr h = do
   updateVOLH h
@@ -197,5 +197,7 @@ instance Module VOLHandle where
 {- Module list -}
 
 -- |Function to make packaging modules easier
-pack :: Module a => IO a -> IO Modules
+pack :: Module a
+     => IO a -- ^The function to get a module (get??Handle)
+     -> IO Modules -- ^The packed module ready to be given to 'startLoop'
 pack a = a >>= (return . MW)
