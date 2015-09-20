@@ -33,14 +33,12 @@ import Monky.Alsa
 
 
 -- |A wrapper around module instances so they can be put into a list.
-data Modules = forall a . Module a => MW a
+data Modules = forall a . Module a => MW a Int
 -- |The type class for modules
 class Module a where
     getText :: String -- ^The current user
             -> a -- ^The handle to this module
             -> IO String -- ^The text segment that should be displayed for this module
-    getInterval :: a  -- ^The handle to this module
-                -> Int -- ^How many seconds to wait between updates (may be constant)
     getFDs :: a -- ^The handle to this module
            -> IO [Fd] -- ^The 'Fd's to listen on for events
     getFDs _ = return []
@@ -70,7 +68,6 @@ getCPUText user ch = do
 
 instance Module CPUHandle where
   getText = getCPUText
-  getInterval _ = 5
 
 
 {- Battery Module -}
@@ -107,7 +104,6 @@ getBatteryText user bh = do
 
 instance Module BatteryHandle where
   getText = getBatteryText
-  getInterval _ = 5
 
 
 {- Network Module -}
@@ -125,7 +121,6 @@ getNetworkText _ nh = do
 
 instance Module NetworkHandles where
   getText = getNetworkText
-  getInterval _ = 5
 
 {- Memory Module -}
 getMemoryText :: String -> MemoryHandle -> IO String
@@ -135,7 +130,6 @@ getMemoryText user mh = do
 
 instance Module MemoryHandle where
   getText = getMemoryText
-  getInterval _ = 5
 
 
 {- Time Module -}
@@ -153,7 +147,6 @@ getTimeString user h = do
 
 instance Module TimeHandle where
     getText = getTimeString
-    getInterval _ = 1
 
 {- Disk module -}
 formatDiskText :: String -> Int -> Int -> Int -> String
@@ -171,12 +164,10 @@ getDiskText u dh = do
 
 instance Module DiskHandle where
   getText = getDiskText
-  getInterval _ = 5
 
 {- SSID module -}
 instance Module SSIDHandle where
   getText _ = getCurrentSSID
-  getInterval _ = 10
 
 {- ALSA module -}
 getVolumeStr :: VOLHandle -> IO String
@@ -190,7 +181,6 @@ getVolumeStr h = do
 
 instance Module VOLHandle where
   getText _ = getVolumeStr
-  getInterval _ = 0
   getFDs = getPollFDs
 
 
@@ -198,6 +188,7 @@ instance Module VOLHandle where
 
 -- |Function to make packaging modules easier
 pack :: Module a
-     => IO a -- ^The function to get a module (get??Handle)
+     => Int -- ^The refresh rate for this module
+     -> IO a -- ^The function to get a module (get??Handle)
      -> IO Modules -- ^The packed module ready to be given to 'startLoop'
-pack a = a >>= (return . MW)
+pack i a = a >>= (return . flip MW i)

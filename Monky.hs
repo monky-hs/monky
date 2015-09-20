@@ -39,10 +39,10 @@ data ModuleWrapper = MWrapper Modules (IORef String)
 --
 -- This function updates the string buffer if needed and reeturns its contents
 getWrapperText :: Int -> String -> ModuleWrapper -> IO String
-getWrapperText i u (MWrapper (MW m) r)
-  | getInterval m <= 0 = readIORef r
-  | getInterval m > 0 =
-  if i `mod` getInterval m == 0
+getWrapperText tick u (MWrapper (MW m i) r)
+  | i <= 0 = readIORef r
+  | i > 0 =
+  if tick `mod` i == 0
     then do
       s <- getText u m
       writeIORef r s
@@ -65,7 +65,7 @@ printMonkyLine i u (x:xs) = do
 {- Polling logic -}
 -- |Update the IORef buffereing the modules section
 updateText :: ModuleWrapper -> String -> IO ()
-updateText (MWrapper (MW m) r) u = do
+updateText (MWrapper (MW m _) r) u = do
   s <- getText u m
   writeIORef r s
 
@@ -121,10 +121,10 @@ startLoop mods = do
   mapM_ (\(mw, _) -> updateText mw u) f
   mainLoop 0 u f l
   where
-    getFDList (MWrapper (MW mw) ref) = if getInterval mw <= 0
+    getFDList (MWrapper (MW mw i) ref) = if i <= 0
                then do
                  fds <- getFDs mw
-                 return (MWrapper (MW mw) ref, fds)
-               else return (MWrapper (MW mw) ref, [])
+                 return (MWrapper (MW mw i) ref, fds)
+               else return (MWrapper (MW mw i) ref, [])
     rmEmpty = filter (\(_, xs) -> xs /= [])
 
