@@ -1,5 +1,5 @@
 {-|
-Module      : Time
+Module      : Monky.Time
 Description : Allows access to read system time
 Maintainer  : ongy
 Stability   : testing

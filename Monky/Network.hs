@@ -1,5 +1,5 @@
 {-|
-Module      : Network
+Module      : Monky.Network
 Description : Allows access to information about they systems network
 Maintainer  : ongy
 Stability   : testing

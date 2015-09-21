@@ -1,5 +1,5 @@
 {-|
-Module      : CPU
+Module      : Monky.CPU
 Description : Allows access to information about the systems cpu
 Maintainer  : ongy
 Stability   : testing

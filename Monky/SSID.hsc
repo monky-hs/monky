@@ -2,7 +2,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-|
-Module      : SSID
+Module      : Monky.SSID
 Description : Provides an interface to the ssid a network device is connected to
 Maintainer  : ongy
 Stability   : experimental

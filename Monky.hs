@@ -32,7 +32,7 @@ import Text.Printf (printf)
 
 -- |Export the version of monky to modules
 getVersion :: (Int, Int, Int, Int)
-getVersion = (0, 1, 0, 0)
+getVersion = (1, 0, 0, 0)
 
 -- |The module wrapper used to buffer output strings
 data ModuleWrapper = MWrapper Modules (IORef String)

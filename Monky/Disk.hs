@@ -1,5 +1,5 @@
 {-|
-Module      : Disk
+Module      : Monky.Disk
 Description : Allows access to information about a btrfs pool
 Maintainer  : moepi
 Stability   : experimental

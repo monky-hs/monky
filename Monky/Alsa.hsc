@@ -1,7 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-|
-Module      : Alsa
+Module      : Monky.Alsa
 Description : Allows acces to information about the alsa sound system
 Maintainer  : ongy
 Stability   : testing
@@ -140,7 +140,6 @@ getPollDescs h l = do
       else return [] -- This should not happen
 
 
--- TODO fix error handling
 openMixer :: LibAlsa -> ExceptT Int IO MixerHandle
 openMixer l = liftExceptT alloca $ \ptr -> do
   rval <- liftIO (mixer_open l ptr 0)
@@ -316,7 +315,7 @@ getLib = do
 
 {- |Create an 'VOLHandle'
 
-This may throw an exception if a function provided by alsa fails.
+This function returns a type save error value if any alsa function fails
 -}
 getVOLHandle :: String -- ^The audio-card to use
              -> IO VOLHandle

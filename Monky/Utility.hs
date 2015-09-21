@@ -1,5 +1,5 @@
 {-|
-Module      : Utility
+Module      : Monky.Utility
 Description : Provides utility functions
 Maintainer  : ongy, moepi
 Stability   : testing
@@ -8,14 +8,21 @@ Portability : Linux
 This module provides utility functions used in monky modules
 -}
 module Monky.Utility
-(readValue, readValues, fopen, File, readLine, readContent, convertUnit)
+(readValue, readValues, fopen, File, readLine, readContent, convertUnit, findLine)
 where
 
 import System.IO
+import Data.List (isPrefixOf)
 import Text.Printf (printf)
 
 -- |type alias to distinguish system functions from utility
 type File = Handle
+
+-- |Find a line in a list of Strings
+
+findLine :: String -> [String] -> Maybe String
+findLine y (x:xs) = if isPrefixOf y x then Just x else findLine y xs
+findLine _ [] = Nothing
 
 -- |Read the first line of the file and convert it into an 'Int'
 readValue :: File -> IO Int

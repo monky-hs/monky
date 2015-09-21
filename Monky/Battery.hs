@@ -1,14 +1,20 @@
 {-|
-Module      : Battery
+Module      : Monky.Battery
 Description : Allows access to information about a battery connected to the system
 Maintainer  : ongy
 Stability   : testing
 Portability : Linux
 
 This module allows to read information about a battery connected to the system.
+
+This module does not support every setup yet.
+The files in /sys/ used by this module are driver dependend.
+If it crashes monky for you setup please make a bug report with an
+`ls /sys/class/power_supply/BAT0/` attached.
 -}
+
 module Monky.Battery
-(getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading)
+(getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading, BatteryState(..))
 where
 
 import Data.IORef
@@ -25,6 +31,9 @@ data BatteryHandle = BatH FilesArray (IORef Int)
 --ChargeNow will use: voltage_now current_now current_avg charge_now charge_full
 data FilesArray = PowerNow File File File File |
   ChargeNow File File File File File File deriving(Show)
+
+-- |Datatype to represent battery state
+data BatteryState = BatFull | BatLoading | BatDraining
 
 pnowPath :: String
 pnowPath   = "/sys/class/power_supply/BAT0/power_now"
@@ -49,12 +58,20 @@ adpPath e  = "/sys/class/power_supply/"++ e ++"/online"
 getCurrentStatusInt :: File -> IO Int
 getCurrentStatusInt = readValue
 
--- |TODO
-getCurrentStatus :: BatteryHandle -> IO Int
-getCurrentStatus (BatH (PowerNow _ _ _ adp) _) =
+getCurrentStatusM :: BatteryHandle -> IO Int
+getCurrentStatusM (BatH (PowerNow _ _ _ adp) _) =
   getCurrentStatusInt adp
-getCurrentStatus (BatH (ChargeNow _ _ _ _ _ adp) _) =
+getCurrentStatusM (BatH (ChargeNow _ _ _ _ _ adp) _) =
   getCurrentStatusInt adp
+
+-- |Get the current state of the battery (loading/draining/full)
+getCurrentStatus :: BatteryHandle -> IO BatteryState
+getCurrentStatus h = do
+  val <- getCurrentStatusM h
+  case val of
+    1 -> return BatLoading
+    0 -> return BatDraining
+    _ -> return BatFull
 
 -- |Internal function for getcurrentLevel
 getCurrentLevelInt :: File -> File -> IO Int
