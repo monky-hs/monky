@@ -23,17 +23,25 @@ module Main
 (main)
 where
 
+import Monky (getVersion)
 import Data.List (isSuffixOf)
 import Control.Monad (when)
-import System.Directory
+import Control.Applicative ((<$>))
+import System.Directory (getDirectoryContents, createDirectoryIfMissing, setCurrentDirectory, getModificationTime, getHomeDirectory)
+import System.Exit (ExitCode(..), exitFailure)
 import System.Process (system)
 import System.Posix.Process (executeFile)
-import System.IO (withFile, IOMode(WriteMode), hPutStr)
+import System.IO (withFile, IOMode(..), hPutStr, hGetLine)
+
+monkyPath :: IO String
+monkyPath = flip (++) "/.monky" <$> getHomeDirectory
+
+compilerFlags :: String
+compilerFlags = "--make -fno-warn-orphans"
 
 changeDir :: IO ()
 changeDir = do
-  home <- getHomeDirectory
-  let mdir = home ++ "/.monky"
+  mdir <- monkyPath
   createDirectoryIfMissing False mdir
   setCurrentDirectory mdir
 
@@ -48,11 +56,31 @@ exampleFile =
  "main :: IO()\n" ++
  "main = startLoop [pack $getCPUHandle ScalingCur, pack getMemoryHandle ]"
 
+
 createExample :: IO ()
 createExample = withFile "monky.hs" WriteMode (flip hPutStr exampleFile)
 
+
+createVersionFile :: ExitCode -> IO ()
+createVersionFile (ExitFailure _) = putStrLn "Compiliation failed" >> exitFailure
+createVersionFile ExitSuccess = withFile ".version" WriteMode (\file ->
+   hPutStr file (show getVersion))
+
+
 compile :: IO ()
-compile = system "ghc --make monky.hs -o monky" >> return ()
+compile = system ("ghc " ++ compilerFlags ++ " monky.hs -o monky") >>= createVersionFile
+
+
+hasMonkyUpdated :: [FilePath] -> IO Bool
+hasMonkyUpdated files = do
+  if ".version" `elem` files
+    then withFile ".version" ReadMode (\file -> do
+      l <- hGetLine file
+      let (oldH, oldh, oldm, _) = (read l :: (Int, Int, Int, Int))
+      let (newH, newh, newm, _) = getVersion
+      return (oldH < newH || oldh < newh || oldm < newm))
+    else return True
+
 
 compileIfUpdated :: IO ()
 compileIfUpdated = do
@@ -61,10 +89,12 @@ compileIfUpdated = do
     then when ("monky.hs" `elem` files) $do
       modT <- getModificationTime "monky"
       times <- sequence $map getModificationTime $filter (isSuffixOf ".hs") files
-      when (maximum times > modT) compile
+      monkyUpdated <- hasMonkyUpdated files
+      when (maximum times > modT || monkyUpdated) compile
     else do
       when ("monky.hs" `notElem` files) (createExample >> (putStrLn $show files))
       compile
+
 
 
 main :: IO ()

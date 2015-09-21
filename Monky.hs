@@ -15,7 +15,7 @@ To use them, get the handle at the beginning of you application and hand it to
 other functions later on.
 -}
 module Monky
-(startLoop)
+(startLoop, getVersion)
 where
 
 import Monky.Modules
@@ -30,6 +30,9 @@ import System.Posix.User (getEffectiveUserName)
 import Text.Printf (printf)
 
 
+-- |Export the version of monky to modules
+getVersion :: (Int, Int, Int, Int)
+getVersion = (0, 1, 0, 0)
 
 -- |The module wrapper used to buffer output strings
 data ModuleWrapper = MWrapper Modules (IORef String)
