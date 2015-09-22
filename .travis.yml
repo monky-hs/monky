@@ -1,0 +1,6 @@
+ghc:
+  - 7.8
+  - 7.6
+
+#Overwrite the test script, since we don't have any tests
+script: cabal configure && cabal install --only-dependencies && cabal build
