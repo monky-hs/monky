@@ -1,3 +1,4 @@
+[![BuildStatus](https://travis-ci.org/monky-hs/monky.svg?branch=master)]
 Monky is an application to feed status bars (like dzen2) with a lines to display.
 
 # Install
