@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Time
 Description : Allows access to read system time
@@ -13,7 +14,12 @@ where
 import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
+
+-- 4.8 breaks with System.Locale import
+#if MIN_VERSION_base(4,8,0)
+#else
 import System.Locale
+#endif
 
 -- |The handle exported by this module.
 data TimeHandle = TimeH String

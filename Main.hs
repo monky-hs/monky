@@ -57,7 +57,7 @@ exampleFile =
  "import Monky.Examples.Memory\n" ++
  "\n" ++
  "main :: IO()\n" ++
- "main = startLoop [pack $getCPUHandle ScalingCur, pack getMemoryHandle ]"
+ "main = startLoop [pack 5 $getCPUHandle ScalingCur, pack 5 getMemoryHandle]"
 
 
 createExample :: IO ()
