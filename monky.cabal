@@ -73,7 +73,7 @@ library
   exposed-modules: Monky.Examples.Alsa Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory
 
   build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, select
-  if impl(ghc <= 7.8)
+  if impl(ghc < 7.10)
     build-depends: transformers-compat
   
   ghc-options:         -Wall -O2 -fno-warn-orphans
