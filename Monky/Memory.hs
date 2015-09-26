@@ -52,7 +52,7 @@ getMemoryAvailable (MemoryH f) = do
 getMemoryTotal :: MemoryHandle -> IO Int
 getMemoryTotal (MemoryH f) = do
   contents <- readContent f
-  return $getVal $fromMaybe "a 0" $findLine "Memtotal" contents
+  return $getVal $fromMaybe "a 0" $findLine "MemTotal" contents
 
 -- |Get the amount of memory used by the kernel and processes
 getMemoryUsed :: MemoryHandle -> IO Int
