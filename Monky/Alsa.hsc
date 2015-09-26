@@ -1,5 +1,24 @@
+{-
+    Copyright 2015 Markus Ongyerth, Stephan Guenther
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-|
 Module      : Monky.Alsa
 Description : Allows acces to information about the alsa sound system
@@ -16,18 +35,18 @@ module Monky.Alsa
 isLoaded, getPollFDs)
 where
 
+import Monky.Template
+
 import Control.Applicative ((<$>))
-import Control.Monad (liftM)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Data.IORef
-import Foreign.C.String
-import Foreign.C.Types
+import Foreign.C.String (CString, withCString)
+import Foreign.C.Types (CInt(..), CShort, CLong)
 import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
-import System.Posix.DynamicLinker
 import System.Posix.Types
 
 #include <poll.h>
@@ -66,67 +85,27 @@ type SidHandleAlloc = Ptr SidHandle
 data Elem
 type ElemHandle = Ptr Elem
 
+importLib "LibAlsa" "libasound.so"
+  [ ("mixer_open", "snd_mixer_open", "MixerHandleAlloc -> Int -> IO CInt")
+  , ("mixer_attach", "snd_mixer_attach", "MixerHandle -> CString -> IO CInt")
+  , ("mixer_register", "snd_mixer_selem_register", "MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt")
+  , ("mixer_load", "snd_mixer_load", "MixerHandle -> IO CInt")
 
-data LibAlsa = LibAlsa
-  { mixer_open :: MixerHandleAlloc -> Int -> IO CInt
-  , mixer_attach :: MixerHandle -> CString -> IO CInt
-  , mixer_register :: MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt
-  , mixer_load :: MixerHandle -> IO CInt
+  , ("sid_sindex", "snd_mixer_selem_id_set_index", "SidHandle -> CInt -> IO ()")
+  , ("sid_sname", "snd_mixer_selem_id_set_name", "SidHandle -> CString -> IO ()")
+  , ("sid_alloc", "snd_mixer_selem_id_malloc", "SidHandleAlloc -> IO CInt")
+  , ("sid_free", "snd_mixer_selem_id_free", "SidHandle -> IO ()")
 
-  , sid_sindex :: SidHandle -> CInt -> IO ()
-  , sid_sname :: SidHandle -> CString -> IO ()
-  , sid_alloc :: SidHandleAlloc -> IO CInt
-  , sid_free :: SidHandle -> IO ()
+  , ("elem_gvrange", "snd_mixer_selem_get_playback_volume_range", "ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt")
+  , ("elem_gvol", "snd_mixer_selem_get_playback_volume", "ElemHandle -> CInt -> Ptr CInt -> IO CInt")
+  , ("elem_gmute", "snd_mixer_selem_get_playback_switch", "ElemHandle -> CInt -> Ptr CInt -> IO CInt")
 
-  , elem_gvrange :: ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt
-  , elem_gvol :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
-  , elem_gmute :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
+  , ("elem_find", "snd_mixer_find_selem", "MixerHandle -> SidHandle -> IO ElemHandle")
+  , ("mixer_handle_events", "snd_mixer_handle_events", "MixerHandle -> IO ()")
+  , ("get_pdescs", "snd_mixer_poll_descriptors", "MixerHandle -> PollFDPtr -> CInt -> IO CInt")
+  , ("get_pdescc", "snd_mixer_poll_descriptors_count", "MixerHandle -> IO CInt")
+  ]
 
-  , elem_find :: MixerHandle -> SidHandle -> IO ElemHandle
-  , mixer_handle_events :: MixerHandle -> IO ()
-  , get_pdescs :: MixerHandle -> PollFDPtr -> CInt -> IO CInt
-  , get_pdescc :: MixerHandle -> IO CInt
-  }
-
-{-
-foreign import ccall "snd_mixer_open" mixer_open :: MixerHandleAlloc -> Int -> IO CInt
-foreign import ccall "snd_mixer_attach" mixer_attach :: MixerHandle -> CString -> IO CInt
-foreign import ccall "snd_mixer_selem_register" mixer_register :: MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt
-foreign import ccall "snd_mixer_load" mixer_load :: MixerHandle -> IO CInt
-
-foreign import ccall "snd_mixer_selem_id_set_index" sid_sindex :: SidHandle -> CInt -> IO ()
-foreign import ccall "snd_mixer_selem_id_set_name" sid_sname :: SidHandle -> CString -> IO ()
-foreign import ccall "snd_mixer_selem_id_malloc" sid_alloc :: SidHandleAlloc -> IO CInt
-foreign import ccall "snd_mixer_selem_id_free" sid_free :: SidHandle -> IO ()
-
-
-foreign import ccall "snd_mixer_selem_get_playback_volume_range" elem_gvrange :: ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt
-foreign import ccall "snd_mixer_selem_get_playback_volume" elem_gvol :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
-foreign import ccall "snd_mixer_selem_get_playback_switch" elem_gmute :: ElemHandle -> CInt -> Ptr CInt -> IO CInt
-
-foreign import ccall "snd_mixer_find_selem" elem_find :: MixerHandle -> SidHandle -> IO ElemHandle
-foreign import ccall "snd_mixer_handle_events" mixer_handle_events :: MixerHandle -> IO ()
-foreign import ccall "snd_mixer_poll_descriptors" get_pdescs :: MixerHandle -> PollFDPtr -> CInt -> IO CInt
-foreign import ccall "snd_mixer_poll_descriptors_count" get_pdescc :: MixerHandle -> IO CInt
--}
-
-{- dynamic linking -}
-foreign import ccall "dynamic" mkFunmII :: FunPtr (MixerHandleAlloc -> Int -> IO CInt) -> (MixerHandleAlloc -> Int -> IO CInt)
-foreign import ccall "dynamic" mkFunMSI :: FunPtr (MixerHandle -> CString -> IO CInt) -> (MixerHandle -> CString -> IO CInt)
-foreign import ccall "dynamic" mkFunMrcI :: FunPtr (MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt) -> (MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt)
-
-foreign import ccall "dynamic" mkFunSIV :: FunPtr (SidHandle -> CInt -> IO ()) -> (SidHandle -> CInt -> IO ())
-foreign import ccall "dynamic" mkFunSSV :: FunPtr (SidHandle -> CString -> IO ()) -> (SidHandle -> CString -> IO ())
-foreign import ccall "dynamic" mkFunsI  :: FunPtr (SidHandleAlloc -> IO CInt) -> (SidHandleAlloc -> IO CInt)
-foreign import ccall "dynamic" mkFunSV  :: FunPtr (SidHandle -> IO ()) -> (SidHandle -> IO ())
-
-foreign import ccall "dynamic" mkFunEiiI :: FunPtr (ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt) -> (ElemHandle -> Ptr CInt -> Ptr CInt -> IO CInt)
-foreign import ccall "dynamic" mkFunEIiI :: FunPtr (ElemHandle -> CInt -> Ptr CInt -> IO CInt) -> (ElemHandle -> CInt -> Ptr CInt -> IO CInt)
-
-foreign import ccall "dynamic" mkFunMSE :: FunPtr (MixerHandle -> SidHandle -> IO ElemHandle) -> (MixerHandle -> SidHandle -> IO ElemHandle)
-foreign import ccall "dynamic" mkFunMV :: FunPtr (MixerHandle -> IO ()) -> (MixerHandle -> IO ())
-foreign import ccall "dynamic" mkFunMI :: FunPtr (MixerHandle -> IO CInt) -> (MixerHandle -> IO CInt)
-foreign import ccall "dynamic" mkFunMPII :: FunPtr (MixerHandle -> PollFDPtr -> CInt -> IO CInt) -> (MixerHandle -> PollFDPtr -> CInt -> IO CInt)
 
 
 
@@ -136,7 +115,7 @@ getPollDescs h l = do
   allocaArray (fromIntegral count) $ \ptr -> do
     c2 <- get_pdescs l h ptr count
     if count == c2
-      then liftM (map  (\(POLLFD fd _ _) -> fd)) (peekArray (fromIntegral c2) ptr)
+      then map  (\(POLLFD fd _ _) -> fd) <$> (peekArray (fromIntegral c2) ptr)
       else return [] -- This should not happen
 
 
@@ -144,28 +123,28 @@ openMixer :: LibAlsa -> ExceptT Int IO MixerHandle
 openMixer l = liftExceptT alloca $ \ptr -> do
   rval <- liftIO (mixer_open l ptr 0)
   if rval < 0
-     then throwE $fromIntegral rval
+     then throwE $ fromIntegral rval
      else liftIO (peek ptr)
 
 mixerAttach :: MixerHandle -> String -> LibAlsa -> ExceptT Int IO ()
 mixerAttach handle card l = do
   rval <- liftIO(withCString card $ \ccard -> mixer_attach l handle ccard)
   if rval < 0
-     then throwE $fromIntegral rval
+     then throwE $ fromIntegral rval
      else liftIO (return ())
 
 mixerRegister :: MixerHandle -> LibAlsa -> ExceptT Int IO ()
 mixerRegister handle l = do
   rval <- liftIO(mixer_register l handle nullPtr nullPtr)
   if rval < 0
-     then throwE $fromIntegral rval
+     then throwE $ fromIntegral rval
      else liftIO(return ())
 
 mixerLoad :: MixerHandle -> LibAlsa -> ExceptT Int IO ()
 mixerLoad handle l = do
   rval <- liftIO(mixer_load l handle)
   if rval < 0
-     then throwE $fromIntegral rval
+     then throwE $ fromIntegral rval
      else liftIO(return ())
 
 
@@ -184,7 +163,7 @@ withSid l fun = alloca $ \ptr -> do
 sidSet :: SidHandle -> Int -> String -> LibAlsa -> IO ()
 sidSet handle index name l = do
   withCString name $ \cname -> sid_sname l handle cname
-  sid_sindex l handle $fromIntegral index
+  sid_sindex l handle $ fromIntegral index
 
 
 getElem :: MixerHandle -> String -> Int -> LibAlsa -> IO ElemHandle
@@ -196,7 +175,7 @@ isMute :: ElemHandle -> LibAlsa -> IO Bool
 isMute handle l = alloca $ \ptr -> do
   _ <- elem_gmute l handle 0 ptr
   val <- peek ptr
-  return $val == 0
+  return $ val == 0
 
 
 getVolumeRange :: ElemHandle -> LibAlsa -> IO (Int, Int)
@@ -211,7 +190,7 @@ getVolume :: ElemHandle -> LibAlsa -> IO Int
 getVolume handle l = alloca $ \ptr -> do
   _ <- elem_gvol l handle 0 ptr
   val <- peek ptr
-  return $fromIntegral val
+  return $ fromIntegral val
 
 
 getMixerHandle :: String -> LibAlsa -> ExceptT Int IO MixerHandle
@@ -257,7 +236,7 @@ getVolumeRaw Err = return 0
 getVolumePercent :: VOLHandle -> IO Int
 getVolumePercent (VOLH _ _ _ valr _ lower upper) = do
   val <- readIORef valr
-  return $percentize val lower upper
+  return $ percentize val lower upper
 getVolumePercent Err = return 0
 
 -- |return 'True' if the device is muted
@@ -287,31 +266,8 @@ isLoaded _ = True
 
 -- |Get PollFds for polling interface
 getPollFDs :: VOLHandle -> IO [Fd]
-getPollFDs (VOLH l h _ _ _ _ _) = liftM (map (\x -> Fd x)) (getPollDescs h l)
+getPollFDs (VOLH l h _ _ _ _ _) = map (\x -> Fd x) <$> (getPollDescs h l)
 getPollFDs Err =return []
-
-getLib :: IO LibAlsa
-getLib = do
-  h <- dlopen "libasound.so" [RTLD_LAZY]
-  mixer_open_ <- mkFunmII . castFunPtr <$> dlsym h "snd_mixer_open"
-  mixer_attach_ <- mkFunMSI . castFunPtr <$> dlsym h "snd_mixer_attach"
-  mixer_register_ <- mkFunMrcI . castFunPtr <$> dlsym h "snd_mixer_selem_register"
-  mixer_load_ <- mkFunMI . castFunPtr <$> dlsym h "snd_mixer_load"
-
-  sid_sindex_ <- mkFunSIV . castFunPtr <$> dlsym h "snd_mixer_selem_id_set_index"
-  sid_sname_ <- mkFunSSV . castFunPtr <$> dlsym h "snd_mixer_selem_id_set_name"
-  sid_alloc_ <- mkFunsI . castFunPtr <$> dlsym h "snd_mixer_selem_id_malloc"
-  sid_free_ <- mkFunSV . castFunPtr <$> dlsym h "snd_mixer_selem_id_free"
-
-  elem_gvrange_ <- mkFunEiiI . castFunPtr <$> dlsym h "snd_mixer_selem_get_playback_volume_range"
-  elem_gvol_ <- mkFunEIiI . castFunPtr <$> dlsym h "snd_mixer_selem_get_playback_volume"
-  elem_gmute_ <- mkFunEIiI . castFunPtr <$> dlsym h "snd_mixer_selem_get_playback_switch"
-
-  elem_find_ <- mkFunMSE . castFunPtr <$> dlsym h "snd_mixer_find_selem"
-  mixer_handle_events_ <- mkFunMV . castFunPtr <$> dlsym h "snd_mixer_handle_events"
-  get_pdescs_ <- mkFunMPII . castFunPtr <$> dlsym h "snd_mixer_poll_descriptors"
-  get_pdescc_ <- mkFunMI . castFunPtr <$> dlsym h "snd_mixer_poll_descriptors_count"
-  return $LibAlsa mixer_open_ mixer_attach_ mixer_register_ mixer_load_ sid_sindex_ sid_sname_ sid_alloc_ sid_free_ elem_gvrange_ elem_gvol_ elem_gmute_ elem_find_ mixer_handle_events_ get_pdescs_ get_pdescc_
 
 {- |Create an 'VOLHandle'
 
@@ -320,6 +276,6 @@ This function returns a type save error value if any alsa function fails
 getVOLHandle :: String -- ^The audio-card to use
              -> IO VOLHandle
 getVOLHandle card = do
-  l <- getLib
+  l <- getLibAlsa
   handle <- runExceptT (getMixerHandle card l)
   getVOLHandleInt handle l
