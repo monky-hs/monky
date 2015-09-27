@@ -81,7 +81,7 @@ exampleFile =
 
 
 createExample :: IO ()
-createExample = withFile "monky.hs" WriteMode (flip hPutStr exampleFile)
+createExample = withFile "monky.hs" WriteMode (`hPutStr` exampleFile)
 
 
 createVersionFile :: ExitCode -> IO ()
@@ -95,11 +95,11 @@ compile = system ("ghc " ++ compilerFlags ++ " monky.hs -o monky") >>= createVer
 
 
 hasMonkyUpdated :: [FilePath] -> IO Bool
-hasMonkyUpdated files = do
+hasMonkyUpdated files =
   if ".version" `elem` files
     then withFile ".version" ReadMode (\file -> do
       l <- hGetLine file
-      let (oldH, oldh, oldm, _) = (read l :: (Int, Int, Int, Int))
+      let (oldH, oldh, oldm, _) = read l :: (Int, Int, Int, Int)
       let (newH, newh, newm, _) = getVersion
       return (oldH < newH || oldh < newh || oldm < newm))
     else return True
@@ -108,7 +108,7 @@ needsRecompilation :: IO Bool
 needsRecompilation = do
   files <- getDirectoryContents "."
   if "monky" `elem` files
-    then if ("monky.hs" `elem` files) 
+    then if "monky.hs" `elem` files
       then do
         modT <- getModificationTime "monky"
         times <- sequence $map getModificationTime $filter (isSuffixOf ".hs") files
@@ -121,9 +121,7 @@ needsRecompilation = do
 
 
 compileIfUpdated :: IO ()
-compileIfUpdated = do
-  rec <- needsRecompilation 
-  when rec compile
+compileIfUpdated = needsRecompilation >>= flip when compile
 
 
 forceRecomp :: IO ()
@@ -148,7 +146,7 @@ main :: IO ()
 main = do
   changeDir
   args <- getArgs
-  if args == []
+  if null args
     then compileIfUpdated
     else mapM_ parseArgs args
   executeFile "./monky" False [] Nothing

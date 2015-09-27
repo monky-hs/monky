@@ -49,4 +49,4 @@ pack :: Module a
      => Int -- ^The refresh rate for this module
      -> IO a -- ^The function to get a module (get??Handle)
      -> IO Modules -- ^The packed module ready to be given to 'startLoop'
-pack i a = a >>= (return . flip MW i)
+pack i = fmap (flip MW i)

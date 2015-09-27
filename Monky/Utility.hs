@@ -39,7 +39,7 @@ type File = Handle
 -- |Find a line in a list of Strings
 
 findLine :: String -> [String] -> Maybe String
-findLine y (x:xs) = if isPrefixOf y x then Just x else findLine y xs
+findLine y (x:xs) = if y `isPrefixOf` x then Just x else findLine y xs
 findLine _ [] = Nothing
 
 -- |Read the first line of the file and convert it into an 'Int'

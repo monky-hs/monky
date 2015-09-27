@@ -52,11 +52,11 @@ sectorSize = 512
 
 -- |Get the read write rates from the disk (in bytes/s)
 getDiskReadWrite :: DiskHandle -> IO (Int, Int)
-getDiskReadWrite Empty = do return (0, 0)
+getDiskReadWrite Empty = return (0, 0)
 getDiskReadWrite (BTRFSH _ _ _ readref writeref timeref) = do
   content <- readFile path
   time <- getPOSIXTime
-  let values = map read (drop 1 (filter (\l -> (head l) == "dm-0") (map (drop 2) (map words (lines content))) !! 0)) :: [Int]
+  let values = map read . drop 1 . head . filter (\l -> head l == "dm-0") . map (drop 2 . words) $ lines content :: [Int]
   let nread = (values !! 2) * sectorSize
   let write = (values !! 6) * sectorSize
   oread <- readIORef readref
@@ -72,7 +72,7 @@ getDiskReadWrite (BTRFSH _ _ _ readref writeref timeref) = do
 
 -- |Get the space left on the disk
 getDiskFree :: DiskHandle -> IO Int
-getDiskFree Empty = do return 0
+getDiskFree Empty = return 0
 getDiskFree (BTRFSH _ _ size _ _ _) = do
   dused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/data/bytes_used")
   mused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/metadata/bytes_used")
@@ -82,9 +82,9 @@ getDiskFree (BTRFSH _ _ size _ _ _) = do
 
 -- |Get the disk handle
 getDiskHandle :: String -> Int -> IO DiskHandle
-getDiskHandle "" 0 = do return Empty
+getDiskHandle "" 0 = return Empty
 getDiskHandle dev part = do
-  content <- readFile (basePath ++ dev ++ "/" ++ dev ++ (show part) ++ "/size")
+  content <- readFile (basePath ++ dev ++ "/" ++ dev ++ show part ++ "/size")
   let size = (read content :: Int) * sectorSize
   readref <- newIORef (0 :: Int)
   writeref <- newIORef (0 :: Int)

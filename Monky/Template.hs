@@ -74,8 +74,8 @@ trim = rtrim . ltrim
 -- |Split ys at every occurence of xs
 splitAtEvery :: String -> String -> String -> [String]
 splitAtEvery _ [] zs = [zs]
-splitAtEvery xs (y:ys) zs = if isPrefixOf xs (y:ys)
-  then zs:(splitAtEvery xs (cut ys) [])
+splitAtEvery xs (y:ys) zs = if xs `isPrefixOf` (y:ys)
+  then zs:splitAtEvery xs (cut ys) []
   else splitAtEvery xs ys (zs ++ [y])
   where cut = drop (length xs -1)
 
@@ -102,7 +102,7 @@ getType :: String -> Q Type
 getType xs = if ' ' `elem` xs
   then let [t,a] = words xs in
     liftM2 AppT (getT t) (getT a)
-  else (getT xs)
+  else getT xs
   where getT "()" = return (TupleT 0)
         getT ys = ConT <$> getName ys
 
@@ -142,7 +142,7 @@ getFun handle (alias, name, typeString) = do
 -- Create the return statement, this applies the constructor
 mkRet :: Name -> [String] -> Q Stmt
 mkRet hname xs = do
-  let funs = map (\x -> (mkName x, (VarE (mkName (x ++ "_"))))) xs
+  let funs = map (\x -> (mkName x, VarE (mkName (x ++ "_")))) xs
   ret <- getVName "return"
   let con = RecConE hname funs
   return $ NoBindS (AppE (VarE ret) con)
@@ -153,7 +153,7 @@ mkGetHandle :: Name -> String -> Q Stmt
 mkGetHandle h libname = do
   dlopenN <- getVName "dlopen"
   lazy <- getVName "RTLD_LAZY"
-  let hExp = AppE (AppE (VarE dlopenN) (LitE (StringL libname))) (ListE [(ConE lazy)])
+  let hExp = AppE (AppE (VarE dlopenN) (LitE (StringL libname))) (ListE [ConE lazy])
   return $ BindS (VarP h) hExp
 
 
@@ -164,7 +164,7 @@ mkGetFun lname name hname funs = do
   let handle = mkName "handle"
   ghandle <- mkGetHandle handle lname
   funStmts <- mapM (getFun (VarE handle)) funs
-  ret <- mkRet hname ((map (\(x,_,_) -> x)) funs)
+  ret <- mkRet hname (map (\(x,_,_) -> x) funs)
   let fun = FunD funName [Clause [] (NormalB $ DoE (ghandle:funStmts ++ [ret])) []]
   io <- getName "IO"
   let libT = mkName name
@@ -190,8 +190,8 @@ importLib
   -> Q [Dec]
 importLib hname lname xs = do
   let name = mkName hname
-  funs <- mapM mkFunDesc $ map (\(x,_,y) -> (x,y)) xs
-  transformers <- mapM (mkTransformer) $ nub $ map (\(_,_,x) -> x) xs
+  funs <- mapM (mkFunDesc . (\(x,_,y) -> (x,y))) xs
+  transformers <- mapM mkTransformer $ nub $ map (\(_,_,x) -> x) xs
   let dhandle = DataD [] name [] [RecC (mkName hname) funs] []
   fun <- mkGetFun lname hname name xs
   return (dhandle:transformers ++ fun)
