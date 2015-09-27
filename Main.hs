@@ -46,11 +46,12 @@ import Monky (getVersion)
 import Data.List (isSuffixOf)
 import Control.Monad (when)
 import Control.Applicative ((<$>))
-import System.Directory (getDirectoryContents, createDirectoryIfMissing, setCurrentDirectory, getModificationTime, getHomeDirectory)
+import System.Directory (getDirectoryContents, createDirectoryIfMissing, setCurrentDirectory, getModificationTime, getHomeDirectory, removeFile)
 import System.Exit (ExitCode(..), exitFailure)
 import System.Process (system)
 import System.Posix.Process (executeFile)
 import System.IO (withFile, IOMode(..), hPutStr, hGetLine)
+import System.Environment (getArgs)
 
 monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
@@ -103,24 +104,51 @@ hasMonkyUpdated files = do
       return (oldH < newH || oldh < newh || oldm < newm))
     else return True
 
+needsRecompilation :: IO Bool
+needsRecompilation = do
+  files <- getDirectoryContents "."
+  if "monky" `elem` files
+    then if ("monky.hs" `elem` files) 
+      then do
+        modT <- getModificationTime "monky"
+        times <- sequence $map getModificationTime $filter (isSuffixOf ".hs") files
+        monkyUpdated <- hasMonkyUpdated files
+        return (maximum times > modT || monkyUpdated)
+      else return False
+    else do
+      when ("monky.hs" `notElem` files) createExample
+      return True
+
 
 compileIfUpdated :: IO ()
 compileIfUpdated = do
+  rec <- needsRecompilation 
+  when rec compile
+
+
+forceRecomp :: IO ()
+forceRecomp = do
   files <- getDirectoryContents "."
-  if "monky" `elem` files
-    then when ("monky.hs" `elem` files) $do
-      modT <- getModificationTime "monky"
-      times <- sequence $map getModificationTime $filter (isSuffixOf ".hs") files
-      monkyUpdated <- hasMonkyUpdated files
-      when (maximum times > modT || monkyUpdated) compile
-    else do
-      when ("monky.hs" `notElem` files) (createExample >> (putStrLn $show files))
-      compile
+  mapM_ removeFile (filter isCompiled files)
+  when ("monky" `elem` files) (removeFile "monky")
+  compile
+  where isCompiled s = isSuffixOf ".hi" s || isSuffixOf ".o" s
 
 
+parseArgs :: String -> IO ()
+parseArgs "--recompile" = forceRecomp
+parseArgs "-r" = parseArgs "--recompile"
+parseArgs _ = printUsage >> exitFailure
+
+
+printUsage :: IO ()
+printUsage = putStrLn "Call with no argument for normal mode, or with \"--recompile\" to force recompilation"
 
 main :: IO ()
 main = do
   changeDir
-  compileIfUpdated
+  args <- getArgs
+  if args == []
+    then compileIfUpdated
+    else mapM_ parseArgs args
   executeFile "./monky" False [] Nothing
