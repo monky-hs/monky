@@ -25,7 +25,7 @@ getTimeString user h = do
   ts <- getTime h
   t <- getHM h
   let (th, tm) = timeToXBM t
-  return (printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/%d-%d.xbm)  %s") th tm ts)
+  return (printf ("^i(/home/" ++ user ++ "/.monky/xbm/%d-%d.xbm)  %s") th tm ts)
 
 -- |Example instance for time module
 instance Module TimeHandle where

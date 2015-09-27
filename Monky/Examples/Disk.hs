@@ -20,7 +20,7 @@ formatDiskText :: String -> Int -> Int -> Int -> String
 formatDiskText user dr dw df =
   printf "%s %s" eins zwei :: String
   where
-    eins = printf ("^i(/home/" ++ user ++ "/.xmonad/xbm/diskette.xbm) %dG") df :: String
+    eins = printf ("^i(/home/" ++ user ++ "/.monky/xbm/diskette.xbm) %dG") df :: String
     zwei = printf "%s %s" (convertUnit dr  "B" "k" "M" "G") (convertUnit dw "B" "k" "M" "G") :: String
 
 getDiskText :: String -> DiskHandle -> IO String
