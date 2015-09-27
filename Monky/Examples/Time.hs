@@ -15,17 +15,10 @@ import Monky.Modules
 import Monky.Time
 
 {- Time Module -}
-timeToXBM :: (Int, Int) -> (Int, Int)
-timeToXBM (h, m) = (xh, xm)
-  where xh = h `mod` 12
-        xm = m `div` 15
-
 getTimeString :: String -> TimeHandle -> IO String
 getTimeString user h = do
   ts <- getTime h
-  t <- getHM h
-  let (th, tm) = timeToXBM t
-  return (printf ("^i(/home/" ++ user ++ "/.monky/xbm/%d-%d.xbm)  %s") th tm ts)
+  return (printf ("^i(/home/" ++ user ++ "/.monky/xbm/clock.xbm)  %s") ts)
 
 -- |Example instance for time module
 instance Module TimeHandle where

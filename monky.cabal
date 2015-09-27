@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.0.0.1
+version:             1.1.0.0
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -70,7 +70,9 @@ executable monky
 
 library
   exposed-modules: Monky.Disk Monky.Modules Monky.SSID Monky.Time Monky.CPU Monky.Memory Monky.Network Monky.Utility Monky.Alsa Monky.Battery Monky
-  exposed-modules: Monky.Examples.Alsa Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory
+  exposed-modules: Monky.Examples.Alsa Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory 
+  exposed-modules: Monky.Examples.TimeFancy
+
   other-modules: Monky.Template
 
   build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, select, template-haskell
