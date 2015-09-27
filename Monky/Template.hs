@@ -18,26 +18,34 @@
 -}
 {-|
 Module      : Monky.Template
-Description : This module provides a template haskell template for including librarys
+Description : This module provides a template haskell splice for including librarys
 Maintainer  : ongy, moepi
 Stability   : testing
 Portability : Linux
 
+This module is intended to be used by Monky modules, /not/ for configuration.
+
 This module provides the 'importLib' templateHaskell function to import a
 C-library easily.
 
-To use this, set the "{-# LANGUAGE TemplateHaskell #-}" pragma in your module
+To use this, set the __LANGUAGE TemplateHaskell__ pragma in your module
 file and include this module.
 
-Useage:
-use 'importLib" as top-level declaration in your file. Like: 
-importLib "Name" "libraryfile" [functions]
+Usage:
+Use 'importLib" as top-level declaration in your file. Like: 
+
+@
+importLib "LibAlsa" "libasound.so" []
+@
+
 This will create a data type for the library, and a function to get a handle for
-this library (data <Name> and get<Name>).
+this library (data <LibAlsa> and get<LibAlsa>).
 To call your functions use the record syntax on that handle.
 -}
 module Monky.Template
-(importLib, module Foreign.Ptr, module System.Posix.DynamicLinker)
+( importLib
+, module Foreign.Ptr
+, module System.Posix.DynamicLinker)
 where
 
 import Foreign.Ptr (Ptr, FunPtr, castFunPtr)
