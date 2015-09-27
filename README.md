@@ -1,4 +1,5 @@
-[![BuildStatus](https://travis-ci.org/monky-hs/monky.svg?branch=master)]
+![BuildStatus](https://travis-ci.org/monky-hs/monky.svg?branch=master)
+
 Monky is an application to feed status bars (like dzen2) with a lines to display.
 
 # Install
@@ -28,3 +29,14 @@ And it enables those who know haskell to build whatever they like.
 ## Why should I use a statusbar
 
 It looks sleek with tiling window managers, e.g. [xmonad](http://xmonad.org/).
+
+### Notes
+
+The default examples use `.xbm` files.
+They have been build with the 
+[nice icon pack from sm4tik](http://awesome.naquadah.org/wiki/Nice_Icons). (This
+is hosted in the awesome wiki because the original source disappeared).
+
+Copy them into `~/.monky/xbm/`.
+
+For the fancy clock example you will also need the `.xbm` files in this repo.
