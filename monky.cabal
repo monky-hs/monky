@@ -47,7 +47,7 @@ cabal-version:       >=1.10
 
 Flag with-mpd
   Description: Include the MPD example
-  Default: True
+  Default: False
 
 executable monky
   -- .hs or .lhs file containing the Main module.
