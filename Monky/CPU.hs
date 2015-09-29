@@ -86,17 +86,19 @@ getCPUPercent (CPUH f _ _ aref wref) = do
   let call = zipWith (-) sall a
   writeIORef wref work
   writeIORef aref sall
-  return $zipWith (div . (* 100)) cwork call
+  return $zipWith (sdiv . (* 100)) cwork call
   where
     isCPU l = isPrefixOf "cpu" l && ((>3) . fromMaybe 0 $findIndex isSpace l)
     readVals = (map read . tail) . words
     fold x xs = if isCPU x then (readVals x :: [Int]):xs else xs
+    sdiv x 0 = x
+    sdiv x y = x `div` y
 
 -- |get current CPU temperature
 getCPUTemp :: CPUHandle -> IO Int
 getCPUTemp (CPUH _ f _ _ _) = do
   temp <- readValue f
-  return $div temp 1000
+  return (temp `div` 1000)
 
 
 {- |this function returns a frequency according th the 'ScalingType' of the
