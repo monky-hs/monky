@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.2.0.1
+version:             1.2.0.2
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -79,7 +79,7 @@ library
 
   other-modules: Monky.Template
 
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, select, template-haskell, containers
+  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers
   if impl(ghc < 7.10)
     build-depends: transformers-compat
 
