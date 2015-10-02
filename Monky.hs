@@ -105,6 +105,7 @@ getEvtMgr = do
   mgr <- getSystemEventManager
   case mgr of
     Just x -> return x
+<<<<<<< HEAD
 #if MIN_VERSION_base(4,7,0) && !MIN_VERSION_base(4,8,0)
     -- For some reason 4.7 uses an additional bool here
     Nothing -> new False
@@ -119,6 +120,12 @@ startEvents [] _ _ = return ()
 #else
 startEvents [] m _ = forkIO (loop m) >> return ()
 #endif
+=======
+    Nothing -> new False
+
+startEvents :: [(ModuleWrapper, [Fd])] -> EventManager -> String -> IO ()
+startEvents [] _ _ = return ()
+>>>>>>> Change event system to GHC.Events instead of select package
 startEvents ((mw,fs):xs) m u = do
   mapM_ (\fd -> registerFd m (\_ _ -> updateText mw u) fd evtRead) fs
   startEvents xs m u
