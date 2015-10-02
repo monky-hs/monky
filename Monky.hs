@@ -40,17 +40,18 @@ import Monky.Modules
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
 import Control.Applicative((<$>))
+import Control.Concurrent (threadDelay)
 import System.IO (hFlush, stdout)
-import System.Posix.IO.Select (select')
-import System.Posix.IO.Select.Types (Timeout(..), CTimeval(..))
 import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
 import Text.Printf (printf)
 
+import GHC.Event
+
 
 -- |Export the version of monky to modules
 getVersion :: (Int, Int, Int, Int)
-getVersion = (1, 2, 0, 0)
+getVersion = (1, 2, 0, 1)
 
 -- |The module wrapper used to buffer output strings
 data ModuleWrapper = MWrapper Modules (IORef String)
@@ -90,35 +91,27 @@ updateText (MWrapper (MW m _) r) u = do
   s <- getText u m
   writeIORef r s
 
--- |Update a single wrapper based on the file descriptor found in select output
-doUpdate :: Fd -> [(ModuleWrapper, [Fd])] -> String -> IO ()
-doUpdate _ [] _ = return ()
-doUpdate f ((mw, fds):xs) u = if f `elem` fds
-  then updateText mw u
-  else doUpdate f xs u
-
--- |Internal function for doUpdates
-doUpdatesInt :: [Fd] -> [(ModuleWrapper, [Fd])] -> String -> IO ()
-doUpdatesInt [] _ _ = return ()
-doUpdatesInt (fd:fds) xs u = do
-  doUpdate fd xs u
-  doUpdatesInt fds xs u
-
--- |Update the modules that triggered the select call
-doUpdates :: Maybe ([Fd], [Fd], [Fd]) -> [(ModuleWrapper, [Fd])] -> String -> IO ()
-doUpdates (Just (fds, _, _)) xs u = doUpdatesInt fds xs u
-doUpdates Nothing _ _ = return ()
-
 
 {- Main loop -}
+getEvtMgr :: IO EventManager
+getEvtMgr = do
+  mgr <- getSystemEventManager
+  case mgr of
+    Just x -> return x
+    Nothing -> new False
+
+startEvents :: [(ModuleWrapper, [Fd])] -> EventManager -> String -> IO ()
+startEvents [] _ _ = return ()
+startEvents ((mw,fs):xs) m u = do
+  mapM_ (\fd -> registerFd m (\_ _ -> updateText mw u) fd evtRead) fs
+  startEvents xs m u
 
 -- |The main loop which waits for events and updates the wrappers
 mainLoop :: Int -> String -> [(ModuleWrapper, [Fd])] -> [ModuleWrapper] -> IO()
 mainLoop i u f m = do
   printMonkyLine i u m
   hFlush stdout
-  e <- select' (concatMap snd f) [] [] (Time (CTimeval 1 0))
-  doUpdates e f u
+  threadDelay 1000000
   mainLoop (i+1) u f m
 
 
@@ -140,6 +133,8 @@ startLoop mods = do
   l <- mapM packMod m
   f <- rmEmpty <$> mapM getFDList l
   mapM_ (\(mw, _) -> updateText mw u) f
+  evtmgr <- getEvtMgr
+  startEvents f evtmgr u
   mainLoop 0 u f l
   where
     getFDList (MWrapper (MW mw i) ref) = if i <= 0
