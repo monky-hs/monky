@@ -32,7 +32,7 @@ To use this, set the __LANGUAGE TemplateHaskell__ pragma in your module
 file and include this module.
 
 Usage:
-Use 'importLib" as top-level declaration in your file. Like: 
+Use 'importLib' as top-level declaration in your file. Like: 
 
 @
 importLib "LibAlsa" "libasound.so" []
@@ -120,9 +120,17 @@ mkFunDesc (x,y) = do
   t <- applyArrows <$> mapM getType (prepareFun y)
   return (mkName x, NotStrict, t)
 
+
+clean :: String -> String
+clean ('(':xs) = "vo" ++ clean xs
+clean (')':xs) = "id" ++ clean xs
+clean (x:xs) = x:clean xs
+clean [] = []
+
+
 -- Get the transformer name, this is some ugly name mangeling
 transName :: String -> Name
-transName = mkName . ("mkFun" ++) . filter isOk
+transName = mkName . clean . ("mkFun" ++) . filter isOk
   where isOk c = not (isSpace c) && c /= '-' && c /= '>'
 
 -- Get the function described by the three-tuple (Alias, C-Name, TypeString)
