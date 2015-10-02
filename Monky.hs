@@ -115,11 +115,9 @@ getEvtMgr = do
 startEvents :: [(ModuleWrapper, [Fd])] -> EventManager -> String -> IO ()
 #if MIN_VERSION_base(4,7,0)
   -- loop does not exist for 4.7+
-startEvents [] _ _ = 
-  return ()
+startEvents [] _ _ = return ()
 #else
-startEvents [] m _ = 
-  forkIO (loop m)
+startEvents [] m _ = forkIO (loop m) >> return ()
 #endif
 startEvents ((mw,fs):xs) m u = do
   mapM_ (\fd -> registerFd m (\_ _ -> updateText mw u) fd evtRead) fs
