@@ -58,7 +58,7 @@ import GHC.Event (loop)
 
 -- |Export the version of monky to modules
 getVersion :: (Int, Int, Int, Int)
-getVersion = (1, 2, 0, 3)
+getVersion = (1, 2, 0, 4)
 
 -- |The module wrapper used to buffer output strings
 data ModuleWrapper = MWrapper Modules (IORef String)
