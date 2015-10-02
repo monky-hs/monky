@@ -58,7 +58,7 @@ import GHC.Event (loop)
 
 -- |Export the version of monky to modules
 getVersion :: (Int, Int, Int, Int)
-getVersion = (1, 2, 0, 2)
+getVersion = (1, 2, 0, 3)
 
 -- |The module wrapper used to buffer output strings
 data ModuleWrapper = MWrapper Modules (IORef String)
@@ -113,11 +113,12 @@ getEvtMgr = do
 #endif
 
 startEvents :: [(ModuleWrapper, [Fd])] -> EventManager -> String -> IO ()
-startEvents [] _ _ = 
 #if MIN_VERSION_base(4,7,0)
   -- loop does not exist for 4.7+
+startEvents [] _ _ = 
   return ()
 #else
+startEvents [] m _ = 
   forkIO (loop m)
 #endif
 startEvents ((mw,fs):xs) m u = do
