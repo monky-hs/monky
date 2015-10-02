@@ -1,25 +1,28 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Monky.MPD
 (MPDSocket, State(..), TagCollection(..), SongInfo(..), Status(..),
- getMPDStatus, getMPDSong, getMPDSocket,
+ getMPDStatus, getMPDSong, getMPDSocket, closeMPDSocket,
  doQuery -- This might not stay
  )
 where
 
-import System.Socket
-import Data.Maybe (isJust,fromJust)
-import qualified Data.ByteString.Char8 as BS (unpack,pack)
 
 import Control.Applicative ((<$>))
+import Control.Exception (try)
+import Control.Monad.Trans
+import Control.Monad.Trans.Except
 import Data.List (isPrefixOf)
-
+import Data.Maybe (isJust,fromJust)
+import System.Posix.IO.Select (select')
+import System.Posix.IO.Select.Types (Timeout(..), CTimeval(..))
+import System.Socket
+import qualified Data.ByteString.Char8 as BS (unpack,pack)
+import qualified Data.ByteString.Lazy as BS (fromStrict)
 import qualified Data.Map as M
 
+type MPDInfo = AddressInfo Inet6 Stream TCP
 type MPDSock = Socket Inet6 Stream TCP
 data MPDSocket = MPDSocket MPDSock
-type MPDInfo = AddressInfo Inet6 Stream TCP
-
-data Response = Err String | Success [String] deriving (Show,Eq)
 
 data State = Playing | Stopped | Paused deriving (Show,Eq)
 
@@ -35,7 +38,7 @@ data TagCollection = TagCollection
   , tagTrack           :: Maybe String
   , tagName            :: Maybe String
   , tagGenre           :: Maybe String
-  , tagDate            :: Maybe String -- TODO this should parse as date
+  , tagDate            :: Maybe String
   , tagComposer        :: Maybe String
   , tagPerformer       :: Maybe String
   , tagComment         :: Maybe String
@@ -51,7 +54,7 @@ data SongInfo = SongInfo
   {
     songFile     :: String
   , songRange    :: Maybe (Float, Float)
-  , songMTime    :: Maybe String -- time_print
+  , songMTime    :: Maybe String -- TODO time_print
   , songTime     :: Maybe Int
   , songDuration :: Maybe Float
   , songTags     :: TagCollection
@@ -80,54 +83,83 @@ data Status = Status
   , nextSong       :: Maybe Int --added with 0.15
   , nextSongId     :: Maybe Int --added with 0.15
   , time           :: Maybe Int
-  , elapsed        :: Maybe Float --added with [3]
+  , elapsed        :: Maybe Float --added with 0.16
   , bitrate        :: Maybe Int
-  , duration       :: Maybe Int --added with [4]
+  , duration       :: Maybe Int --added with 0.20
   , audio          :: Maybe (Int,Int,Int)
   , updating       :: Maybe Int
   , mpderror       :: Maybe String
   } deriving (Show, Eq)
 
-doMPDConnInit :: MPDSocket -> IO (Maybe String)
-doMPDConnInit (MPDSocket s) = do
+
+rethrowSExcpt :: String -> SocketException -> ExceptT String IO a
+rethrowSExcpt xs e = throwE (xs ++ ": " ++ show e)
+
+
+trySExcpt :: String -> IO a -> ExceptT String IO a
+trySExcpt l f = rethrow =<< (liftIO $try f)
+  where rethrow (Left x) = rethrowSExcpt l x
+        rethrow (Right x) = return x
+
+closeMPDSocket :: MPDSocket -> IO ()
+closeMPDSocket (MPDSocket sock) = close sock
+
+-- Is this connection exception recoverable or should we just die?
+recoverableCon :: SocketException -> Bool
+recoverableCon x
+  | x == eConnectionRefused = True
+  | x == eNetworkUnreachable = True
+  | otherwise = False
+
+
+tryConnect :: [MPDInfo] -> MPDSock -> ExceptT String IO MPDSock
+tryConnect [] _ = error "Tryed to connect with non existing socket"
+tryConnect (x:xs) sock =
+  liftIO (try . connect sock $socketAddress x) >>= handleExcpt
+  where handleExcpt (Right _) = return sock
+        handleExcpt (Left y) = if recoverableCon y 
+          then liftIO (close sock) >> openMPDSocket xs
+          else rethrowSExcpt "Connect" y
+
+
+-- TODO check if readable (select)
+doMPDConnInit :: MPDSock -> IO (Maybe String)
+doMPDConnInit s = do
   v <- BS.unpack <$> receive s 64 (MessageFlags 0)
   if "OK MPD " `isPrefixOf` v
     then return . Just $drop 7 v
     else return Nothing
 
--- This would be the place to do version checking for mpd protocol
-openMPDSocket :: [MPDInfo] -> IO MPDSocket
-openMPDSocket [] = error "Could not open connection"
-openMPDSocket (x:xs) = do
-  sock <- socket :: IO (Socket Inet6 Stream TCP)
-  connect sock $socketAddress x
-  let msock = MPDSocket sock
-  version <- doMPDConnInit msock
-  if isJust version
-    then return msock
-    else close sock >> openMPDSocket xs
 
-getMPDSocket :: String -> String -> IO MPDSocket
+-- |Open one 'MPDSock' connected to a host specified by one of the 'MPDInfo'
+-- or throw an exception (either ran out of hosts or something underlying failed)
+openMPDSocket :: [MPDInfo] -> ExceptT String IO MPDSock
+openMPDSocket [] = throwE "Could not open connection"
+openMPDSocket xs = do
+  sock <- trySExcpt "socket" (socket :: IO (Socket Inet6 Stream TCP))
+  csock <- tryConnect xs sock
+  version <- trySExcpt "readInit" $doMPDConnInit csock
+  if isJust version
+    then liftIO $return csock
+    else liftIO (close sock) >> openMPDSocket (tail xs)
+
+
+getMPDSocket :: String -> String -> IO (Either String MPDSocket)
 getMPDSocket host port = do
   xs <- getAddressInfo (Just $BS.pack host) (Just $BS.pack port) aiV4Mapped
-  openMPDSocket xs
+  sock <- runExceptT $openMPDSocket xs
+  return $fmap MPDSocket sock
 
 
-recvMessage :: MPDSock -> IO Response
-recvMessage sock = do
-  message <- BS.unpack <$> receive sock 4096 (MessageFlags 0)
-  if "ACK" `isPrefixOf` message
-    then return . Err $drop 4 message
-    else return . Success . init $lines message
+recvMessage :: MPDSock -> ExceptT String IO [String]
+recvMessage sock = 
+  trySExcpt "receive" $lines . BS.unpack <$> receive sock 4096 (MessageFlags 0)
 
-sendMessage :: MPDSock -> String -> IO ()
-sendMessage sock message = do
-  ret <- send sock (BS.pack message) (MessageFlags 0)
-  if ret /= length message
-    then error "Could not send whole message"
-    else return ()
+sendMessage :: MPDSock -> String -> ExceptT String IO ()
+sendMessage sock message =
+  trySExcpt "send" (sendAll sock (BS.fromStrict $BS.pack message) (MessageFlags 0)) >> return ()
 
-doQuery :: MPDSocket -> String -> IO Response
+doQuery :: MPDSocket -> String -> ExceptT String IO [String]
 doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> recvMessage s
 
 -- TODO this is silly
@@ -177,8 +209,6 @@ parseStatusRec m [] = Status
 parseStatusRec m (x:xs) = let [key,value] = words x in
   parseStatusRec (M.insert (init key) value m) xs
 
-parseStatus :: [String] -> Status
-parseStatus = parseStatusRec M.empty
 
 parseSongInfoRec :: M.Map String String -> [String] -> SongInfo
 parseSongInfoRec m [] = let tags = TagCollection {
@@ -222,20 +252,27 @@ parseSongInfoRec m [] = let tags = TagCollection {
 parseSongInfoRec m (x:xs) = let (key,' ':value) = break (==' ') x in
   parseSongInfoRec (M.insert (init key) value m) xs
 
-parseSongInfo :: [String] -> SongInfo
-parseSongInfo = parseSongInfoRec M.empty
 
+parseStatus :: [String] -> Status
+parseStatus [] = error "Called parseStatus with []"
+parseStatus xs@(x:_) = if "ACK" `isPrefixOf` x
+  then error x
+  else parseStatusRec M.empty xs
 
-getMPDStatus :: MPDSocket -> IO Status
+getMPDStatus :: MPDSocket -> IO (Either String Status)
 getMPDStatus s = do
-  resp <- doQuery s "status"
-  return $parseResp resp
-  where parseResp (Success xs) = parseStatus xs
-        parseResp (Err x) = error x
+  resp <- runExceptT $doQuery s "status"
+  return $fmap parseStatus resp
 
-getMPDSong :: MPDSocket -> IO SongInfo
+
+
+parseSongInfo :: [String] -> SongInfo
+parseSongInfo [] = error "Called parseSongInfo with []"
+parseSongInfo xs@(x:_) = if "ACK" `isPrefixOf` x
+  then error x
+  else parseSongInfoRec M.empty xs
+
+getMPDSong :: MPDSocket -> IO (Either String SongInfo)
 getMPDSong s = do
-  resp <- doQuery s "currentsong"
-  return $parseResp resp
-  where parseResp (Success xs) = parseSongInfo xs
-        parseResp (Err x) = error x
+  resp <- runExceptT $doQuery s "currentsong"
+  return $fmap parseSongInfo resp
