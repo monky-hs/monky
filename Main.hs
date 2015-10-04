@@ -16,7 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
-
+{-# LANGUAGE CPP #-}
 {-|
 Module      : monky
 Description : A conky clone
@@ -57,7 +57,14 @@ monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
 
 compilerFlags :: String
+#if MIN_VERSION_base(4,8,0)
+-- Currently there is no way to create and start your own GHC.Event.EventManager
+-- on  base 4.8 (4.8.0 and 4.8.1) so we have to use the threaded RTS to force
+-- system manager to exist
+compilerFlags = "--make -fno-warn-orphans -threaded"
+#else
 compilerFlags = "--make -fno-warn-orphans"
+#endif
 
 changeDir :: IO ()
 changeDir = do

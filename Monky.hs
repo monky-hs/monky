@@ -50,6 +50,22 @@ import Text.Printf (printf)
 import GHC.Event (new, EventManager, getSystemEventManager, registerFd, evtRead)
 
 #if MIN_VERSION_base(4,7,0)
+#if MIN_VERSION_base(4,8,0)
+#if MIN_VERSION_base(4,8,1)
+import GHC.Event (Lifetime(..))
+#else
+import Unsafe.Coerce (unsafeCoerce)
+data Lifetime = OneShot | MultiShot
+             deriving (Show, Eq)
+elSupremum :: Lifetime -> Lifetime -> Lifetime
+elSupremum OneShot OneShot = OneShot
+elSupremum _       _       = MultiShot
+{-# INLINE elSupremum #-}
+instance Monoid Lifetime where
+    mempty = OneShot
+    mappend = elSupremum
+#endif
+#endif
 #else
 import Control.Concurrent (forkIO)
 import GHC.Event (loop)
@@ -104,8 +120,9 @@ getEvtMgr :: IO EventManager
 getEvtMgr = do
   mgr <- getSystemEventManager
   case mgr of
-    Just x -> return x
-<<<<<<< HEAD
+    Just x -> do
+      putStrLn "Got system manager"
+      return x
 #if MIN_VERSION_base(4,7,0) && !MIN_VERSION_base(4,8,0)
     -- For some reason 4.7 uses an additional bool here
     Nothing -> new False
@@ -120,15 +137,26 @@ startEvents [] _ _ = return ()
 #else
 startEvents [] m _ = forkIO (loop m) >> return ()
 #endif
-=======
-    Nothing -> new False
-
-startEvents :: [(ModuleWrapper, [Fd])] -> EventManager -> String -> IO ()
-startEvents [] _ _ = return ()
->>>>>>> Change event system to GHC.Events instead of select package
 startEvents ((mw,fs):xs) m u = do
-  mapM_ (\fd -> registerFd m (\_ _ -> updateText mw u) fd evtRead) fs
+  mapM_ addFd fs
   startEvents xs m u
+  where
+#if MIN_VERSION_base(4,8,0)
+#if MIN_VERSION_base(4,8,1)
+    addFd fd = registerFd m (\_ _ -> updateText mw u) fd evtRead MultiShot
+#else
+
+    addFd fd = registerFd m (lambda fd) fd evtRead (unsafeCoerce OneShot)
+    lambda fd _ _ = do
+      updateText mw u
+      -- Since base-4.8.0.0s GHC.Event is broken...
+      -- MultiShot does something similar internally so this should be ok
+      _ <- registerFd m (lambda fd) fd evtRead (unsafeCoerce OneShot)
+      return ()
+#endif
+#else
+    addFd fd = registerFd m (\_ _ -> updateText mw u) fd evtRead
+#endif
 
 -- |The main loop which waits for events and updates the wrappers
 mainLoop :: Int -> String -> [(ModuleWrapper, [Fd])] -> [ModuleWrapper] -> IO()
