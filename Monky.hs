@@ -16,7 +16,6 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
-{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky
 Description : The main module for monky
@@ -37,6 +36,7 @@ module Monky
 (startLoop, getVersion)
 where
 
+import Monky.Event
 import Monky.Modules
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 
@@ -47,29 +47,6 @@ import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
 import Text.Printf (printf)
 
-import GHC.Event (new, EventManager, getSystemEventManager, registerFd, evtRead)
-
-#if MIN_VERSION_base(4,7,0)
-#if MIN_VERSION_base(4,8,0)
-#if MIN_VERSION_base(4,8,1)
-import GHC.Event (Lifetime(..))
-#else
-import Unsafe.Coerce (unsafeCoerce)
-data Lifetime = OneShot | MultiShot
-             deriving (Show, Eq)
-elSupremum :: Lifetime -> Lifetime -> Lifetime
-elSupremum OneShot OneShot = OneShot
-elSupremum _       _       = MultiShot
-{-# INLINE elSupremum #-}
-instance Monoid Lifetime where
-    mempty = OneShot
-    mappend = elSupremum
-#endif
-#endif
-#else
-import Control.Concurrent (forkIO)
-import GHC.Event (loop)
-#endif
 
 
 -- |Export the version of monky to modules
@@ -115,49 +92,6 @@ updateText (MWrapper (MW m _) r) u = do
   writeIORef r s
 
 
-{- Main loop -}
-getEvtMgr :: IO EventManager
-getEvtMgr = do
-  mgr <- getSystemEventManager
-  case mgr of
-    Just x -> do
-      putStrLn "Got system manager"
-      return x
-#if MIN_VERSION_base(4,7,0) && !MIN_VERSION_base(4,8,0)
-    -- For some reason 4.7 uses an additional bool here
-    Nothing -> new False
-#else
-    Nothing -> new
-#endif
-
-startEvents :: [(ModuleWrapper, [Fd])] -> EventManager -> String -> IO ()
-#if MIN_VERSION_base(4,7,0)
-  -- loop does not exist for 4.7+
-startEvents [] _ _ = return ()
-#else
-startEvents [] m _ = forkIO (loop m) >> return ()
-#endif
-startEvents ((mw,fs):xs) m u = do
-  mapM_ addFd fs
-  startEvents xs m u
-  where
-#if MIN_VERSION_base(4,8,0)
-#if MIN_VERSION_base(4,8,1)
-    addFd fd = registerFd m (\_ _ -> updateText mw u) fd evtRead MultiShot
-#else
-
-    addFd fd = registerFd m (lambda fd) fd evtRead (unsafeCoerce OneShot)
-    lambda fd _ _ = do
-      updateText mw u
-      -- Since base-4.8.0.0s GHC.Event is broken...
-      -- MultiShot does something similar internally so this should be ok
-      _ <- registerFd m (lambda fd) fd evtRead (unsafeCoerce OneShot)
-      return ()
-#endif
-#else
-    addFd fd = registerFd m (\_ _ -> updateText mw u) fd evtRead
-#endif
-
 -- |The main loop which waits for events and updates the wrappers
 mainLoop :: Int -> String -> [(ModuleWrapper, [Fd])] -> [ModuleWrapper] -> IO()
 mainLoop i u f m = do
@@ -185,8 +119,7 @@ startLoop mods = do
   l <- mapM packMod m
   f <- rmEmpty <$> mapM getFDList l
   mapM_ (\(mw, _) -> updateText mw u) f
-  evtmgr <- getEvtMgr
-  startEvents f evtmgr u
+  startEventLoop (map (\(x,y) -> (updateText x u, y)) f)
   mainLoop 0 u f l
   where
     getFDList (MWrapper (MW mw i) ref) = if i <= 0
