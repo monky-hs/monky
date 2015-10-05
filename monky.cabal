@@ -62,7 +62,7 @@ executable monky
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, process, unix, select
+  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, process, unix
 
   -- Directories containing source files.
   -- hs-source-dirs:

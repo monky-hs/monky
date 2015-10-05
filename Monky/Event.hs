@@ -63,7 +63,7 @@ startEvents ((act,fs):xs) m = do
 #endif 
 #else 
   -- Old interface before 4.8, works as expected
-    addFd fd = registerFd m (\_ _ -> updateText mw u) fd evtRead
+    addFd fd = registerFd m (\_ _ -> act) fd evtRead
 #endif 
 
 startEventLoop :: [(IO (), [Fd])] -> IO ()
