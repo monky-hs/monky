@@ -82,9 +82,8 @@ library
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers, stm
 
-
   if impl(ghc >= 7.8)
-    exposed-modules: Monky.MPD
+    exposed-modules: Monky.MPD Monky.Examples.MPD
     build-depends: bytestring, socket
   if impl(ghc < 7.10)
     build-depends: transformers-compat

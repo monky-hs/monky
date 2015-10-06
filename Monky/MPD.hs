@@ -1,18 +1,21 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Monky.MPD
 (MPDSocket, State(..), TagCollection(..), SongInfo(..), Status(..),
- getMPDStatus, getMPDSong, getMPDSocket, closeMPDSocket,
+ getMPDStatus, getMPDSong, getMPDSocket, closeMPDSocket, getMPDFd,
  doQuery -- This might not stay
  )
 where
 
 
 import Control.Applicative ((<$>))
+import Control.Concurrent.MVar (readMVar)
 import Control.Exception (try)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
+import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust,fromJust)
+import System.Posix.Types (Fd)
 import System.Socket
 import qualified Data.ByteString.Char8 as BS (unpack,pack)
 import qualified Data.ByteString.Lazy as BS (fromStrict)
@@ -148,6 +151,8 @@ getMPDSocket host port = do
   sock <- runExceptT $openMPDSocket xs
   return $fmap MPDSocket sock
 
+getMPDFd :: MPDSocket -> IO Fd
+getMPDFd (MPDSocket (Socket fd)) = readMVar fd
 
 recvMessage :: MPDSock -> ExceptT String IO [String]
 recvMessage sock = 
@@ -158,7 +163,8 @@ sendMessage sock message =
   trySExcpt "send" (sendAll sock (BS.fromStrict $BS.pack message) (MessageFlags 0)) >> return ()
 
 doQuery :: MPDSocket -> String -> ExceptT String IO [String]
-doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> recvMessage s
+doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> (f <$> recvMessage s)
+  where f = filter (/= "OK")
 
 -- TODO this is silly
 getAudioTuple :: String -> (Int,Int,Int)
@@ -204,7 +210,7 @@ parseStatusRec m [] = Status
         getState_ = getState . fromJust . M.lookup "state"
         getAudio = fmap getAudioTuple . M.lookup "audio"
 -- use init to drop the ':' for keys
-parseStatusRec m (x:xs) = let [key,value] = words x in
+parseStatusRec m (x:xs) = let (key,' ':value) = break (== ' ') x in
   parseStatusRec (M.insert (init key) value m) xs
 
 
@@ -247,7 +253,7 @@ parseSongInfoRec m [] = let tags = TagCollection {
         readT (x,y) = (read x, read y)
 -- use init to drop the ':' for keys
 -- use break instead of words because of comment or artist
-parseSongInfoRec m (x:xs) = let (key,' ':value) = break (==' ') x in
+parseSongInfoRec m (x:xs) = let (key,' ':value) = break (isSpace) x in
   parseSongInfoRec (M.insert (init key) value m) xs
 
 
