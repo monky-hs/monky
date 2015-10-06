@@ -16,7 +16,6 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
-
 {-|
 Module      : monky
 Description : A conky clone
@@ -57,7 +56,8 @@ monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
 
 compilerFlags :: String
-compilerFlags = "--make -fno-warn-orphans"
+-- we need -threaded because of the EventManager in the main loop
+compilerFlags = "--make -fno-warn-orphans -threaded"
 
 changeDir :: IO ()
 changeDir = do
