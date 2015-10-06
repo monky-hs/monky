@@ -13,8 +13,6 @@ import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust,fromJust)
-import System.Posix.IO.Select (select')
-import System.Posix.IO.Select.Types (Timeout(..), CTimeval(..))
 import System.Socket
 import qualified Data.ByteString.Char8 as BS (unpack,pack)
 import qualified Data.ByteString.Lazy as BS (fromStrict)
@@ -122,7 +120,7 @@ tryConnect (x:xs) sock =
           else rethrowSExcpt "Connect" y
 
 
--- TODO check if readable (select)
+-- TODO check if readable (in some way)
 doMPDConnInit :: MPDSock -> IO (Maybe String)
 doMPDConnInit s = do
   v <- BS.unpack <$> receive s 64 (MessageFlags 0)
