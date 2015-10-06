@@ -6,4 +6,4 @@ ghc:
   - 7.6
 
 #Overwrite the test script, since we don't have any tests
-script: cabal install --flags with-mpd --only-dependencies && cabal configure --flags with-mpd && cabal build
+script: cabal install --only-dependencies && cabal configure && cabal build
