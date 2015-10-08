@@ -1,14 +1,14 @@
 {-# LANGUAGE StandaloneDeriving #-}
 module Monky.Examples.MPD
-(MPDHandle, getMPDHandle, getMPDHandle')
+--(MPDHandle, getMPDHandle, getMPDHandle')
 where
 
 
 import Control.Applicative ((<$>))
-import Control.Monad (join)
 import Data.Maybe (fromMaybe)
-import Monky.Modules
 import Monky.MPD
+import Monky.Modules
+import System.Posix.Types (Fd)
 
 
 getPlayingSong :: State -> MPDSocket -> IO (Either String SongInfo)
@@ -30,8 +30,24 @@ getSongTitle sock = getMPDStatus sock >>= getSong
 
 data MPDHandle = MPDHandle MPDSocket
 
+-- TODO ignoring errors is never a good idea
+getEvent :: MPDSocket -> IO String
+getEvent s = do
+  _ <- readOk s
+  t <- getSongTitle s
+  _ <- goIdle s
+  return t
+
+getFd :: MPDSocket -> IO [Fd]
+getFd s = do
+  fd <- getMPDFd s
+  _ <- goIdle s
+  return [fd]
+
 instance Module MPDHandle where
   getText _ (MPDHandle s) = getSongTitle s
+  getEventText _ _ (MPDHandle s) = getEvent s
+  getFDs (MPDHandle s) = getFd s
 
 getMPDHandle
   :: String -- ^The host to connect to

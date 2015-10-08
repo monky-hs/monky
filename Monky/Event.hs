@@ -31,13 +31,13 @@ threadWaitReadSTM' fd = do
 
 
 
-getSTMEvent :: IO () -> Fd -> IO (STM (IO ()))
+getSTMEvent :: (Fd -> IO ()) -> Fd -> IO (STM (IO ()))
 getSTMEvent act fd = do
     (event,rearm) <- threadWaitReadSTM' fd
-    return (event >> return (act >> rearm))
+    return (event >> return (act fd >> rearm))
 
 
-getSTMEvents :: [(IO (), [Fd])] -> IO [STM (IO ())]
+getSTMEvents :: [(Fd -> IO (), [Fd])] -> IO [STM (IO ())]
 getSTMEvents [] = return []
 getSTMEvents ((act, fds):xs) = do
   events <- mapM (getSTMEvent act) fds
@@ -52,7 +52,7 @@ stmLoop events = do
   stmLoop events
 
 
-startSTMEvents :: [(IO (), [Fd])] -> IO ()
+startSTMEvents :: [(Fd -> IO (), [Fd])] -> IO ()
 startSTMEvents xs = do
   events <- getSTMEvents xs
   if null events
@@ -60,5 +60,5 @@ startSTMEvents xs = do
     else stmLoop $foldr1 ((<|>)) events
 
 
-startEventLoop :: [(IO (), [Fd])] -> IO ()
+startEventLoop :: [(Fd -> IO (), [Fd])] -> IO ()
 startEventLoop xs = forkIO (startSTMEvents xs) >> return ()

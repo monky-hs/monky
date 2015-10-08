@@ -2,27 +2,27 @@
 module Monky.MPD
 (MPDSocket, State(..), TagCollection(..), SongInfo(..), Status(..),
  getMPDStatus, getMPDSong, getMPDSocket, closeMPDSocket, getMPDFd,
+ readOk, goIdle,
  doQuery -- This might not stay
  )
 where
 
-
+import System.IO.Error
+import GHC.IO.Exception
 import Control.Applicative ((<$>))
-import Control.Concurrent.MVar (readMVar)
 import Control.Exception (try)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust,fromJust)
-import System.Posix.Types (Fd)
-import System.Socket
+import System.Posix.Types (Fd(..))
+import Network.Socket hiding (recv)
+import Network.Socket.ByteString
 import qualified Data.ByteString.Char8 as BS (unpack,pack)
-import qualified Data.ByteString.Lazy as BS (fromStrict)
 import qualified Data.Map as M
 
-type MPDInfo = AddressInfo Inet6 Stream TCP
-type MPDSock = Socket Inet6 Stream TCP
+type MPDSock = Socket
 data MPDSocket = MPDSocket MPDSock
 
 data State = Playing | Stopped | Paused deriving (Show,Eq)
@@ -93,7 +93,7 @@ data Status = Status
   } deriving (Show, Eq)
 
 
-rethrowSExcpt :: String -> SocketException -> ExceptT String IO a
+rethrowSExcpt :: String -> IOError -> ExceptT String IO a
 rethrowSExcpt xs e = throwE (xs ++ ": " ++ show e)
 
 
@@ -106,19 +106,19 @@ closeMPDSocket :: MPDSocket -> IO ()
 closeMPDSocket (MPDSocket sock) = close sock
 
 -- Is this connection exception recoverable or should we just die?
-recoverableCon :: SocketException -> Bool
+-- TODO
+recoverableCon :: IOError -> Bool
 recoverableCon x
-  | x == eConnectionRefused = True
-  | x == eNetworkUnreachable = True
+  | ioeGetErrorType x == NoSuchThing = True
   | otherwise = False
 
 
-tryConnect :: [MPDInfo] -> MPDSock -> ExceptT String IO MPDSock
+tryConnect :: [AddrInfo] -> MPDSock -> ExceptT String IO MPDSock
 tryConnect [] _ = error "Tryed to connect with non existing socket"
 tryConnect (x:xs) sock =
-  liftIO (try . connect sock $socketAddress x) >>= handleExcpt
+  liftIO (try $connect sock (addrAddress x)) >>= handleExcpt
   where handleExcpt (Right _) = return sock
-        handleExcpt (Left y) = if recoverableCon y 
+        handleExcpt (Left y) = if recoverableCon y
           then liftIO (close sock) >> openMPDSocket xs
           else rethrowSExcpt "Connect" y
 
@@ -126,7 +126,7 @@ tryConnect (x:xs) sock =
 -- TODO check if readable (in some way)
 doMPDConnInit :: MPDSock -> IO (Maybe String)
 doMPDConnInit s = do
-  v <- BS.unpack <$> receive s 64 (MessageFlags 0)
+  v <- BS.unpack <$> recv s 64
   if "OK MPD " `isPrefixOf` v
     then return . Just $drop 7 v
     else return Nothing
@@ -134,37 +134,49 @@ doMPDConnInit s = do
 
 -- |Open one 'MPDSock' connected to a host specified by one of the 'MPDInfo'
 -- or throw an exception (either ran out of hosts or something underlying failed)
-openMPDSocket :: [MPDInfo] -> ExceptT String IO MPDSock
+openMPDSocket :: [AddrInfo] -> ExceptT String IO MPDSock
 openMPDSocket [] = throwE "Could not open connection"
-openMPDSocket xs = do
-  sock <- trySExcpt "socket" (socket :: IO (Socket Inet6 Stream TCP))
-  csock <- tryConnect xs sock
+openMPDSocket ys@(x:xs) = do
+  sock <- trySExcpt "socket" $openSocket x
+  csock <- tryConnect ys sock
   version <- trySExcpt "readInit" $doMPDConnInit csock
   if isJust version
     then liftIO $return csock
-    else liftIO (close sock) >> openMPDSocket (tail xs)
+    else liftIO (close sock) >> openMPDSocket xs
+  where openSocket y = socket (addrFamily y) (addrSocketType y) (addrProtocol y)
 
 
 getMPDSocket :: String -> String -> IO (Either String MPDSocket)
 getMPDSocket host port = do
-  xs <- getAddressInfo (Just $BS.pack host) (Just $BS.pack port) aiV4Mapped
+  xs <- getAddrInfo (Just $defaultHints {addrFlags = [AI_V4MAPPED]}) (Just host) (Just port)
   sock <- runExceptT $openMPDSocket xs
   return $fmap MPDSocket sock
 
 getMPDFd :: MPDSocket -> IO Fd
-getMPDFd (MPDSocket (Socket fd)) = readMVar fd
+getMPDFd (MPDSocket s) = return . Fd $fdSocket s
 
 recvMessage :: MPDSock -> ExceptT String IO [String]
 recvMessage sock = 
-  trySExcpt "receive" $lines . BS.unpack <$> receive sock 4096 (MessageFlags 0)
+  trySExcpt "receive" $lines . BS.unpack <$> recv sock 4096
 
 sendMessage :: MPDSock -> String -> ExceptT String IO ()
 sendMessage sock message =
-  trySExcpt "send" (sendAll sock (BS.fromStrict $BS.pack message) (MessageFlags 0)) >> return ()
+  trySExcpt "send" (sendAll sock $BS.pack message) >> return ()
 
 doQuery :: MPDSocket -> String -> ExceptT String IO [String]
 doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> (f <$> recvMessage s)
   where f = filter (/= "OK")
+
+readOk :: MPDSocket -> IO (Either String ())
+readOk (MPDSocket s) = runExceptT $ do
+  resp <- recvMessage s
+  if resp == ["OK"]
+    then return ()
+    else throwE $concat resp
+
+goIdle :: MPDSocket -> IO (Either String ())
+goIdle (MPDSocket s) = runExceptT (sendMessage s "idle player\n" >> return ())
+
 
 -- TODO this is silly
 getAudioTuple :: String -> (Int,Int,Int)

@@ -91,6 +91,10 @@ updateText (MWrapper (MW m _) r) u = do
   s <- getText u m
   writeIORef r s
 
+updateText' :: ModuleWrapper -> String -> Fd -> IO ()
+updateText' (MWrapper (MW m _) r) u fd = do
+  s <- getEventText fd u m
+  writeIORef r s
 
 -- |The main loop which waits for events and updates the wrappers
 mainLoop :: Int -> String -> [(ModuleWrapper, [Fd])] -> [ModuleWrapper] -> IO()
@@ -117,9 +121,9 @@ startLoop mods = do
   u <- getEffectiveUserName
   m <- sequence mods
   l <- mapM packMod m
+  mapM_ (flip updateText u) l
   f <- rmEmpty <$> mapM getFDList l
-  mapM_ (\(mw, _) -> updateText mw u) f
-  startEventLoop (map (\(x,y) -> (updateText x u, y)) f)
+  startEventLoop (map (\(x,y) -> (updateText' x u, y)) f)
   mainLoop 0 u f l
   where
     getFDList (MWrapper (MW mw i) ref) = if i <= 0

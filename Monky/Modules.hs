@@ -43,6 +43,15 @@ class Module a where
     getFDs :: a -- ^The handle to this module
            -> IO [Fd] -- ^The 'Fd's to listen on for events
     getFDs _ = return []
+    {- |This function is used instead of 'getText' for event triggerd updates.
+
+      The default implementation mappes this to 'getText'
+    -}
+    getEventText :: Fd -- ^The fd that triggered an event
+                 -> String -- ^The current user
+                 -> a -- ^The handle to this module
+                 -> IO String -- ^The text segment that should be displayed
+    getEventText _ = getText
 
 -- |Function to make packaging modules easier
 pack :: Module a
