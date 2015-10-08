@@ -5,66 +5,61 @@ where
 
 
 import System.Posix.Types (Fd)
-import GHC.Event (EventManager, getSystemEventManager, registerFd, evtRead)
+import Control.Applicative ((<|>))
+import Control.Monad (void)
+
+import Control.Concurrent
+import Control.Concurrent.STM.TVar
+
+import Control.Monad.STM
 
 
-#if MIN_VERSION_base(4,8,0)
-#if MIN_VERSION_base(4,8,1)
--- base-4.8.1 exports this properly
-import GHC.Event (Lifetime(..))
-#else
--- recreation of the type for base-4.8.0
-import Unsafe.Coerce (unsafeCoerce)
-data Lifetime = OneShot | MultiShot
-             deriving (Show, Eq)
+armEvent :: TVar Bool -> Fd -> IO ()
+armEvent m fd = do
+    atomically $writeTVar m False
+    threadWaitRead fd
+    atomically $writeTVar m True
 
---elSupremum :: Lifetime -> Lifetime -> Lifetime
---elSupremum OneShot OneShot = OneShot
---elSupremum _       _       = MultiShot
---{-# INLINE elSupremum #-}
---instance Monoid Lifetime where
---    mempty = OneShot
---    mappend = elSupremum
-#endif
-#endif
-
-
-{- Main loop -}
-getEvtMgr :: IO EventManager
-getEvtMgr = do
-  mgr <- getSystemEventManager
-  case mgr of
-    Just x -> return x
-    Nothing -> error "Could not get IOManager, please compile with -threaded"
+-- variation to threadReadWaitSTM that allows rearming of the STM
+threadWaitReadSTM' :: Fd -> IO (STM(), IO ())
+threadWaitReadSTM' fd = do
+  m <- newTVarIO False
+  let rearm = void $forkIO (armEvent m fd)
+  let waitAction = do b <- readTVar m
+                      if b then return () else retry
+  rearm -- start it once
+  return (waitAction, rearm)
 
 
 
-startEvents :: [(IO (), [Fd])] -> EventManager -> IO ()
--- No need to start anything, because 'loop' was removed for base-4.7+ we depend
--- on the system 'EventManager'
-startEvents [] _ = return ()
-startEvents ((act,fs):xs) m = do
-  mapM_ addFd fs
-  startEvents xs m
-  where
-#if MIN_VERSION_base(4,8,0)
-#if MIN_VERSION_base(4,8,1)
-  -- base-4.8.1 (and hopefully upwards) works correctly
-    addFd fd = registerFd m (\_ _ -> act) fd evtRead MultiShot
-#else 
-  -- base-4.8.0 doesn't work with MultiShot so we register OneShots multiple times
-    addFd fd = registerFd m (lambda fd) fd evtRead (unsafeCoerce OneShot)
-    lambda fd _ _ = do
-      _ <- act
-      -- Since base-4.8.0.0s GHC.Event is broken...
-      -- MultiShot does something similar internally so this should be ok
-      _ <- registerFd m (lambda fd) fd evtRead (unsafeCoerce OneShot)
-      return ()
-#endif 
-#else 
-  -- Old interface before 4.8, works as expected
-    addFd fd = registerFd m (\_ _ -> act) fd evtRead
-#endif 
+getSTMEvent :: IO () -> Fd -> IO (STM (IO ()))
+getSTMEvent act fd = do
+    (event,rearm) <- threadWaitReadSTM' fd
+    return (event >> return (act >> rearm))
+
+
+getSTMEvents :: [(IO (), [Fd])] -> IO [STM (IO ())]
+getSTMEvents [] = return []
+getSTMEvents ((act, fds):xs) = do
+  events <- mapM (getSTMEvent act) fds
+  others <- getSTMEvents xs
+  return (events ++ others)
+
+
+stmLoop :: STM (IO ()) -> IO ()
+stmLoop events = do
+  act <- atomically events
+  act
+  stmLoop events
+
+
+startSTMEvents :: [(IO (), [Fd])] -> IO ()
+startSTMEvents xs = do
+  events <- getSTMEvents xs
+  if null events
+    then return ()
+    else stmLoop $foldr1 ((<|>)) events
+
 
 startEventLoop :: [(IO (), [Fd])] -> IO ()
-startEventLoop xs =  getEvtMgr >>= startEvents xs
+startEventLoop xs = forkIO (startSTMEvents xs) >> return ()
