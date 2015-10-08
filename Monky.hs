@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky
 Description : The main module for monky
@@ -33,25 +34,24 @@ To use them, get the handle at the beginning of you application and hand it to
 other functions later on.
 -}
 module Monky
-(startLoop, getVersion)
+(startLoop)
 where
 
+
+import Control.Concurrent (threadDelay)
+import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Monky.Event
 import Monky.Modules
-import Data.IORef (IORef, readIORef, writeIORef, newIORef)
-
-import Control.Applicative((<$>))
-import Control.Concurrent (threadDelay)
 import System.IO (hFlush, stdout)
 import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
 import Text.Printf (printf)
 
 
-
--- |Export the version of monky to modules
-getVersion :: (Int, Int, Int, Int)
-getVersion = (1, 2, 0, 3)
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 -- |The module wrapper used to buffer output strings
 data ModuleWrapper = MWrapper Modules (IORef String)

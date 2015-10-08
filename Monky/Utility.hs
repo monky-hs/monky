@@ -26,7 +26,7 @@ Portability : Linux
 This module provides utility functions used in monky modules
 -}
 module Monky.Utility
-(readValue, readValues, fopen, File, readLine, readContent, convertUnit, findLine)
+(readValue, readValues, fopen, File, readLine, readContent, convertUnit, findLine, splitAtEvery)
 where
 
 import System.IO
@@ -96,3 +96,13 @@ convertUnit rate u1 u2 u3 u4
 fopen :: String -> IO File
 fopen = flip openFile ReadMode
 
+
+-- TODO fix function signature
+-- |Split ys at every occurence of xs
+splitAtEvery :: String -> String -> [String]
+splitAtEvery s str = splitAtEvery' s str []
+  where splitAtEvery' _ [] zs = [zs]
+        splitAtEvery' xs (y:ys) zs = if xs `isPrefixOf` (y:ys)
+          then zs:splitAtEvery' xs (cut ys) []
+          else splitAtEvery' xs ys (zs ++ [y])
+          where cut = drop (length xs -1)
