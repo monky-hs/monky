@@ -56,8 +56,7 @@ monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
 
 compilerFlags :: String
--- we need -threaded because of the EventManager in the main loop
-compilerFlags = "--make -fno-warn-orphans -threaded"
+compilerFlags = "--make -fno-warn-orphans"
 
 changeDir :: IO ()
 changeDir = do
