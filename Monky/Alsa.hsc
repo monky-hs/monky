@@ -35,9 +35,6 @@ module Monky.Alsa
 isLoaded, getPollFDs)
 where
 
-import Monky.Template
-
-import Control.Applicative ((<$>))
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Data.IORef
@@ -47,7 +44,13 @@ import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
+import Monky.Template
 import System.Posix.Types
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 #include <poll.h>
 

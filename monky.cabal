@@ -10,7 +10,9 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.2.0.3
+version:             1.3.0.0
+-- The ABOVE LINE has to stay AS IS (except for version changes) for the
+-- template to work properly
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -62,7 +64,7 @@ executable monky
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, process, unix, stm
+  build-depends:       base >=4.6.0.1 && <5, directory, process, unix, template-haskell
 
   -- Directories containing source files.
   -- hs-source-dirs:
@@ -77,9 +79,10 @@ library
   exposed-modules: Monky.Examples.Alsa Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory
   exposed-modules: Monky.Examples.TimeFancy
 
-  other-modules: Monky.Template Monky.Event
+  exposed-modules: Monky.Version
+  other-modules: Monky.Template Monky.Event Monky.VersionTH
 
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers, stm
+  build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers, stm
   if impl(ghc < 7.10)
     build-depends: transformers-compat
 
