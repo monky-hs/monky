@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : monky
 Description : A conky clone
@@ -41,23 +42,27 @@ module Main
 (main)
 where
 
-import Monky (getVersion)
-import Data.List (isSuffixOf)
 import Control.Monad (when)
-import Control.Applicative ((<$>))
+import Data.List (isSuffixOf)
+import Monky.Version (getVersion)
 import System.Directory (getDirectoryContents, createDirectoryIfMissing, setCurrentDirectory, getModificationTime, getHomeDirectory, removeFile)
-import System.Exit (ExitCode(..), exitFailure)
-import System.Process (system)
-import System.Posix.Process (executeFile)
-import System.IO (withFile, IOMode(..), hPutStr, hGetLine)
 import System.Environment (getArgs)
+import System.Exit (ExitCode(..), exitFailure)
+import System.IO (withFile, IOMode(..), hPutStr, hGetLine)
+import System.Posix.Process (executeFile)
+import System.Process (system)
+
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
 
 compilerFlags :: String
--- we need -threaded because of the EventManager in the main loop
-compilerFlags = "--make -fno-warn-orphans -threaded"
+compilerFlags = "--make -fno-warn-orphans"
 
 changeDir :: IO ()
 changeDir = do

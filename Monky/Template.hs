@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Template
 Description : This module provides a template haskell splice for including librarys
@@ -48,15 +49,18 @@ module Monky.Template
 , module System.Posix.DynamicLinker)
 where
 
+import Control.Monad (liftM2)
+import Data.Char (isSpace)
+import Data.List (nub)
 import Foreign.Ptr (Ptr, FunPtr, castFunPtr)
+import Language.Haskell.TH
+import Monky.Utility
 import System.Posix.DynamicLinker (dlopen, dlsym, RTLDFlags(RTLD_LAZY))
 
+#if MIN_VERSION_base(4,8,0)
+#else
 import Control.Applicative ((<$>))
-import Data.Char (isSpace)
-import Data.List (isPrefixOf, nub)
-import Language.Haskell.TH
-
-import Control.Monad (liftM2)
+#endif
 
 -- trim a string
 ltrim :: String -> String
@@ -71,18 +75,9 @@ rtrim = reverse . ltrim . reverse
 trim :: String -> String
 trim = rtrim . ltrim
 
--- |Split ys at every occurence of xs
-splitAtEvery :: String -> String -> String -> [String]
-splitAtEvery _ [] zs = [zs]
-splitAtEvery xs (y:ys) zs = if xs `isPrefixOf` (y:ys)
-  then zs:splitAtEvery xs (cut ys) []
-  else splitAtEvery xs ys (zs ++ [y])
-  where cut = drop (length xs -1)
-
-
 -- Split function into types
 prepareFun :: String -> [String]
-prepareFun = map trim . flip (splitAtEvery "->") [] . trim
+prepareFun = map trim . splitAtEvery "->" . trim
 
 -- Get the type name or tell user what failed
 getJust :: String -> Maybe Name -> Q Name
