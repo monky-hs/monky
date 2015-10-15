@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
 module Monky.MPD
 (MPDSocket, State(..), TagCollection(..), SongInfo(..), Status(..),
  getMPDStatus, getMPDSong, getMPDSocket, closeMPDSocket, getMPDFd,
@@ -9,18 +10,25 @@ where
 
 import System.IO.Error
 import GHC.IO.Exception
-import Control.Applicative ((<$>))
 import Control.Exception (try)
+import Control.Monad (join)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust,fromJust)
+import Monky.Utility (splitAtEvery)
 import System.Posix.Types (Fd(..))
+import System.Timeout (timeout)
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString
 import qualified Data.ByteString.Char8 as BS (unpack,pack)
 import qualified Data.Map as M
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 type MPDSock = Socket
 data MPDSocket = MPDSocket MPDSock
@@ -55,7 +63,7 @@ data SongInfo = SongInfo
   {
     songFile     :: String
   , songRange    :: Maybe (Float, Float)
-  , songMTime    :: Maybe String -- TODO time_print
+  , songMTime    :: Maybe String
   , songTime     :: Maybe Int
   , songDuration :: Maybe Float
   , songTags     :: TagCollection
@@ -106,7 +114,6 @@ closeMPDSocket :: MPDSocket -> IO ()
 closeMPDSocket (MPDSocket sock) = close sock
 
 -- Is this connection exception recoverable or should we just die?
--- TODO
 recoverableCon :: IOError -> Bool
 recoverableCon x
   | ioeGetErrorType x == NoSuchThing = True
@@ -123,9 +130,8 @@ tryConnect (x:xs) sock =
           else rethrowSExcpt "Connect" y
 
 
--- TODO check if readable (in some way)
 doMPDConnInit :: MPDSock -> IO (Maybe String)
-doMPDConnInit s = do
+doMPDConnInit s = fmap join $timeout 500000 $do
   v <- BS.unpack <$> recv s 64
   if "OK MPD " `isPrefixOf` v
     then return . Just $drop 7 v
@@ -178,12 +184,9 @@ goIdle :: MPDSocket -> IO (Either String ())
 goIdle (MPDSocket s) = runExceptT (sendMessage s "idle player\n" >> return ())
 
 
--- TODO this is silly
 getAudioTuple :: String -> (Int,Int,Int)
-getAudioTuple xs = let
-  (x,':':ys) = break (== ':') xs
-  (y,':':z)  = break (== ':') ys in
-    (read x, read y, read z)
+getAudioTuple xs = let [x,y,z] = read <$> splitAtEvery ":" xs in (x,y,z)
+
 
 getState :: String -> State
 getState "play"  = Playing

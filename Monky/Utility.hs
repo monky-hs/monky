@@ -97,7 +97,6 @@ fopen :: String -> IO File
 fopen = flip openFile ReadMode
 
 
--- TODO fix function signature
 -- |Split ys at every occurence of xs
 splitAtEvery :: String -> String -> [String]
 splitAtEvery s str = splitAtEvery' s str []

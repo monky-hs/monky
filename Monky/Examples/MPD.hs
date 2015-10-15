@@ -1,14 +1,20 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 module Monky.Examples.MPD
 --(MPDHandle, getMPDHandle, getMPDHandle')
 where
 
 
-import Control.Applicative ((<$>))
 import Data.Maybe (fromMaybe)
 import Monky.MPD
 import Monky.Modules
 import System.Posix.Types (Fd)
+
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 
 getPlayingSong :: State -> MPDSocket -> IO (Either String SongInfo)
