@@ -62,7 +62,7 @@ executable monky
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, process, unix, stm
+  build-depends:       base >=4.6.0.1 && <5, directory, process, unix, stm
 
   -- Directories containing source files.
   -- hs-source-dirs:
@@ -79,7 +79,7 @@ library
 
   other-modules: Monky.Template Monky.Event
 
-  build-depends:       base >=4.6.0.1 && <=4.8.0.0, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers, stm
+  build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers, stm
   if impl(ghc < 7.10)
     build-depends: transformers-compat
 
