@@ -17,14 +17,13 @@ import Control.Monad.STM
 armEvent :: TVar Bool -> Fd -> IO ()
 armEvent m fd = do
     atomically $writeTVar m False
-    threadWaitRead fd
-    atomically $writeTVar m True
+    void $forkIO (threadWaitRead fd >> atomically (writeTVar m True))
 
 -- variation to threadReadWaitSTM that allows rearming of the STM
 threadWaitReadSTM' :: Fd -> IO (STM(), IO ())
 threadWaitReadSTM' fd = do
   m <- newTVarIO False
-  let rearm = void $forkIO (armEvent m fd)
+  let rearm = armEvent m fd
   let waitAction = do b <- readTVar m
                       if b then return () else retry
   rearm -- start it once
