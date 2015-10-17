@@ -38,8 +38,9 @@ import Text.Printf (printf)
 import Control.Monad (liftM2)
 
 {- Stat temp freqencies work all-}
+-- stat temp frequencies
 -- |The handle exported by this module
-data CPUHandle = CPUH File File [File] (IORef [Int]) (IORef [Int])
+data CPUHandle = CPUH File (Maybe File) [File] (IORef [Int]) (IORef [Int])
 
 -- |Which values should be returned by getCPUFreq
 data ScalingType 
@@ -49,8 +50,8 @@ data ScalingType
 pathStat :: String
 pathStat = "/proc/stat"
 
-pathTemp :: String
-pathTemp = "/sys/class/thermal/thermal_zone0/temp"
+pathTemp :: String -> String
+pathTemp = printf "/sys/class/thermal/%s/temp"
 
 pathMaxScalingT :: String
 pathMaxScalingT = "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq"
@@ -96,9 +97,11 @@ getCPUPercent (CPUH f _ _ aref wref) = do
 
 -- |get current CPU temperature
 getCPUTemp :: CPUHandle -> IO Int
-getCPUTemp (CPUH _ f _ _ _) = do
-  temp <- readValue f
-  return (temp `div` 1000)
+getCPUTemp (CPUH _ mf _ _ _) = case mf of
+  Nothing -> error "Tried to get cpu temp while Nothing was given as zone"
+  (Just f) -> do
+    temp <- readValue f
+    return (temp `div` 1000)
 
 
 {- |this function returns a frequency according th the 'ScalingType' of the
@@ -123,13 +126,22 @@ getNumberOfCores f = do
   stats <- readContent f
   return $length (filter (isPrefixOf "cpu") stats) - 1
 
--- |Create an 'CPUhandle'
-getCPUHandle :: ScalingType -> IO CPUHandle
-getCPUHandle t = do
+maybeOpenFile :: Maybe String -> IO (Maybe File)
+maybeOpenFile Nothing = return Nothing
+maybeOpenFile (Just x) = fopen x >>= return . Just
+
+
+getCPUHandle' :: ScalingType -> Maybe String -> IO CPUHandle
+getCPUHandle' t xs = do
   workref <- newIORef ([0] :: [Int])
   allref <- newIORef ([0] :: [Int])
   stat <- fopen pathStat
-  temp <- fopen pathTemp
+  temp <- maybeOpenFile $pathTemp <$> xs
   num <- getNumberOfCores stat
   files <- getCPUFreqs t num
   return $CPUH stat temp files allref workref
+
+
+-- |Create an 'CPUhandle'
+getCPUHandle :: ScalingType -> IO CPUHandle
+getCPUHandle = flip getCPUHandle' (Just "thermal_zone0")
