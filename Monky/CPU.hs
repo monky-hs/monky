@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.CPU
 Description : Allows access to information about the systems cpu
@@ -36,6 +37,13 @@ import Data.Maybe (fromMaybe)
 import Data.IORef
 import Text.Printf (printf)
 import Control.Monad (liftM2)
+
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
 
 {- Stat temp freqencies work all-}
 -- stat temp frequencies
