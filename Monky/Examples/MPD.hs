@@ -1,7 +1,15 @@
+{-|
+Module      : Monky.Examples.MPD
+Description : An example module instance for the MPD module
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE CPP #-}
 module Monky.Examples.MPD
---(MPDHandle, getMPDHandle, getMPDHandle')
+(MPDHandle, getMPDHandle, getMPDHandle')
 where
 
 
@@ -34,6 +42,7 @@ getSongTitle sock = getMPDStatus sock >>= getSong
         getTitle (Right x) = fromMaybe "No Title" $extractTitle x
 
 
+-- |The handle for this example
 data MPDHandle = MPDHandle MPDSocket
 
 -- TODO ignoring errors is never a good idea
@@ -41,13 +50,13 @@ getEvent :: MPDSocket -> IO String
 getEvent s = do
   _ <- readOk s
   t <- getSongTitle s
-  _ <- goIdle s "player"
+  _ <- goIdle s " player"
   return t
 
 getFd :: MPDSocket -> IO [Fd]
 getFd s = do
   fd <- getMPDFd s
-  _ <- goIdle s "player"
+  _ <- goIdle s " player"
   return [fd]
 
 instance Module MPDHandle where
@@ -55,6 +64,7 @@ instance Module MPDHandle where
   getEventText _ _ (MPDHandle s) = getEvent s
   getFDs (MPDHandle s) = getFd s
 
+-- |Get the 'MPDHandle' or an error
 getMPDHandle
   :: String -- ^The host to connect to
  -> String  -- ^The port to connect to

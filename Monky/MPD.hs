@@ -1,5 +1,33 @@
+{-
+    Copyright 2015 Markus Ongyerth, Stephan Guenther
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.MPD
+Description : Allows to query information from an mpd server
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module creates a persistant connection to an mpd server and allows to query
+information or react to events waited for with MPDs idle
+-}
 module Monky.MPD
 (MPDSocket, State(..), TagCollection(..), SongInfo(..), Status(..),
  getMPDStatus, getMPDSong, getMPDSocket, closeMPDSocket, getMPDFd,
@@ -31,10 +59,17 @@ import Control.Applicative ((<$>))
 #endif
 
 type MPDSock = Socket
+-- |A type safe socket for this module, basically a handle
 data MPDSocket = MPDSocket MPDSock
 
-data State = Playing | Stopped | Paused deriving (Show,Eq)
+-- |The current state of the MPD player submodule
+data State 
+  = Playing -- ^Playing
+  | Stopped -- ^Stopped
+  | Paused  -- ^Paused
+  deriving (Show,Eq) -- If it wasn't obvious
 
+-- |Collection of tags MPD supports
 data TagCollection = TagCollection
   {
     tagArtist          :: Maybe String
@@ -59,6 +94,7 @@ data TagCollection = TagCollection
   , tagMReleaseTrackid :: Maybe String
   } deriving (Show, Eq)
 
+-- |Information about an song
 data SongInfo = SongInfo
   {
     songFile     :: String
@@ -72,6 +108,7 @@ data SongInfo = SongInfo
   , songPriority :: Maybe Int
   } deriving (Show, Eq)
 
+-- |Haskell type for the data returned by MPDs status command
 data Status = Status
   {  -- We get those values every time with current versions (maybe for outdated mpd)
     volume         :: Int
@@ -110,6 +147,7 @@ trySExcpt l f = rethrow =<< (liftIO $try f)
   where rethrow (Left x) = rethrowSExcpt l x
         rethrow (Right x) = return x
 
+-- |Close the 'MPDSocket' when it is no longer required
 closeMPDSocket :: MPDSocket -> IO ()
 closeMPDSocket (MPDSocket sock) = close sock
 
@@ -138,7 +176,7 @@ doMPDConnInit s = fmap join $timeout 500000 $do
     else return Nothing
 
 
--- |Open one 'MPDSock' connected to a host specified by one of the 'MPDInfo'
+-- |Open one MPDSock connected to a host specified by one of the 'MPDInfo'
 -- or throw an exception (either ran out of hosts or something underlying failed)
 openMPDSocket :: [AddrInfo] -> ExceptT String IO MPDSock
 openMPDSocket [] = throwE "Could not open connection"
@@ -152,12 +190,17 @@ openMPDSocket ys@(x:xs) = do
   where openSocket y = socket (addrFamily y) (addrSocketType y) (addrProtocol y)
 
 
-getMPDSocket :: String -> String -> IO (Either String MPDSocket)
+-- |Get a new 'MPDSocket'
+getMPDSocket 
+  :: String -- ^The host the server is on
+  -> String -- ^The port the server listens on
+  -> IO (Either String MPDSocket)
 getMPDSocket host port = do
   xs <- getAddrInfo (Just $defaultHints {addrFlags = [AI_V4MAPPED]}) (Just host) (Just port)
   sock <- runExceptT $openMPDSocket xs
   return $fmap MPDSocket sock
 
+-- |Get the raw 'Fd' from the 'MPDSocket' for eventing api
 getMPDFd :: MPDSocket -> IO Fd
 getMPDFd (MPDSocket s) = return . Fd $fdSocket s
 
@@ -169,10 +212,17 @@ sendMessage :: MPDSock -> String -> ExceptT String IO ()
 sendMessage sock message =
   trySExcpt "send" (sendAll sock $BS.pack message) >> return ()
 
+{- |Send a query to the MPD server and return a list of answers (line by line)
+
+This does not filter out errors, error checking has to be done by the user.
+This does filter out the last OK though
+-}
+
 doQuery :: MPDSocket -> String -> ExceptT String IO [String]
 doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> (f <$> recvMessage s)
   where f = filter (/= "OK")
 
+-- |Get the OK sent by mpd after idle out of the pipe
 readOk :: MPDSocket -> IO (Either String ())
 readOk (MPDSocket s) = runExceptT $ do
   resp <- recvMessage s
@@ -180,7 +230,13 @@ readOk (MPDSocket s) = runExceptT $ do
     then return ()
     else throwE $concat resp
 
-goIdle :: MPDSocket -> String -> IO (Either String ())
+{- |Go into MPDs 'idle' mode, this does return, but MPD wont time us out and
+will notify us if something happens
+-}
+goIdle 
+  :: MPDSocket 
+  -> String -- ^The string that should be send with idle (list of subsystems)
+  -> IO (Either String ())
 goIdle (MPDSocket s) xs = runExceptT (sendMessage s ("idle" ++ xs ++ "\n") >> return ())
 
 
@@ -278,12 +334,11 @@ parseStatus xs@(x:_) = if "ACK" `isPrefixOf` x
   then error x
   else parseStatusRec M.empty xs
 
+-- |Get the current status or an error from the MPD server
 getMPDStatus :: MPDSocket -> IO (Either String Status)
 getMPDStatus s = do
   resp <- runExceptT $doQuery s "status"
   return $fmap parseStatus resp
-
-
 
 parseSongInfo :: [String] -> SongInfo
 parseSongInfo [] = error "Called parseSongInfo with []"
@@ -291,6 +346,7 @@ parseSongInfo xs@(x:_) = if "ACK" `isPrefixOf` x
   then error x
   else parseSongInfoRec M.empty xs
 
+-- |Get the information about the song currently beeing player from the MPD server
 getMPDSong :: MPDSocket -> IO (Either String SongInfo)
 getMPDSong s = do
   resp <- runExceptT $doQuery s "currentsong"

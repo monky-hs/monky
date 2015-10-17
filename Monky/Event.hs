@@ -1,4 +1,31 @@
+{-
+    Copyright 2015 Markus Ongyerth, Stephan Guenther
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.Event
+Description : Abstraction over event system for monky
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module provides a simple api to wait for one of many events in a loop
+-}
 module Monky.Event
 (startEventLoop)
 where
@@ -59,6 +86,11 @@ startSTMEvents xs = do
     then return ()
     else stmLoop $foldr1 ((<|>)) events
 
+{- | Start the event loop
 
+This starts an event loop around the functions given in the list.
+Every time one of the fds becomes readable, the associated function will be
+called with that fd as argument.
+-}
 startEventLoop :: [(Fd -> IO (), [Fd])] -> IO ()
 startEventLoop xs = forkIO (startSTMEvents xs) >> return ()
