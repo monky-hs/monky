@@ -2,6 +2,8 @@
 
 Monky is an application to feed status bars (like dzen2) with a lines to display.
 
+If you have any more questions or suggestions, come and join us (or rather me) on freenode at #monky.
+
 # Install
  * Clone this repo
  * Run `cabal install`. This installs a **monky** executable in *~/.cabal/bin*.
