@@ -180,8 +180,8 @@ readOk (MPDSocket s) = runExceptT $ do
     then return ()
     else throwE $concat resp
 
-goIdle :: MPDSocket -> IO (Either String ())
-goIdle (MPDSocket s) = runExceptT (sendMessage s "idle player\n" >> return ())
+goIdle :: MPDSocket -> String -> IO (Either String ())
+goIdle (MPDSocket s) xs = runExceptT (sendMessage s ("idle" ++ xs ++ "\n") >> return ())
 
 
 getAudioTuple :: String -> (Int,Int,Int)

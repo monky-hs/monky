@@ -41,13 +41,13 @@ getEvent :: MPDSocket -> IO String
 getEvent s = do
   _ <- readOk s
   t <- getSongTitle s
-  _ <- goIdle s
+  _ <- goIdle s "player"
   return t
 
 getFd :: MPDSocket -> IO [Fd]
 getFd s = do
   fd <- getMPDFd s
-  _ <- goIdle s
+  _ <- goIdle s "player"
   return [fd]
 
 instance Module MPDHandle where
