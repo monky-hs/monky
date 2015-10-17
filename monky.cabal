@@ -47,9 +47,6 @@ build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
-Flag with-mpd
-  Description: Include the MPD example
-  Default: False
 
 executable monky
   -- .hs or .lhs file containing the Main module.
@@ -83,12 +80,12 @@ library
   other-modules: Monky.Template Monky.Event Monky.VersionTH
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers, stm
+
+  if impl(ghc >= 7.8)
+    exposed-modules: Monky.MPD Monky.Examples.MPD
+    build-depends: bytestring, socket
   if impl(ghc < 7.10)
     build-depends: transformers-compat
-
-  if flag(with-mpd)
-    exposed-modules: Monky.Examples.MPD
-    build-depends: libmpd
 
   ghc-options:         -Wall -O2 -fno-warn-orphans
 

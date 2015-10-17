@@ -1,57 +1,73 @@
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 module Monky.Examples.MPD
-(MPDHandle, getMPDHandle)
+--(MPDHandle, getMPDHandle, getMPDHandle')
 where
 
 
-import Control.Monad (join)
 import Data.Maybe (fromMaybe)
+import Monky.MPD
 import Monky.Modules
-import qualified Data.Map as M
-import qualified Network.MPD as MPD
+import System.Posix.Types (Fd)
 
 
-deriving instance Show MPD.ACKType
-
-getPlayingSong :: MPD.State -> MPD.MPD (Maybe MPD.Song)
-getPlayingSong MPD.Playing = MPD.currentSong
-getPlayingSong _ = return Nothing
-
-
-extractTitle :: MPD.Song -> Maybe String
-extractTitle (MPD.Song _ tags _ _ _ _) = 
-  fmap (MPD.toString . head) $M.lookup MPD.Title tags
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 
-getSong :: MPD.MPD (Maybe MPD.Song)
-getSong = do
-  stat <- MPD.status
-  getPlayingSong (MPD.stState stat)
+getPlayingSong :: State -> MPDSocket -> IO (Either String SongInfo)
+getPlayingSong Playing s = getMPDSong s
+getPlayingSong _ _ = return (Left "Not playing")
 
 
-getRes :: Either MPD.MPDError a -> (a -> String) -> String
-getRes (Left  MPD.NoMPD) _= "MPD not responding"
-getRes (Left (MPD.ConnectionError _)) _ = "Connection Error"
-getRes (Left (MPD.Unexpected x)) _ = x
-getRes (Left (MPD.Custom x)) _ = x
-getRes (Left (MPD.ACK y x)) _ = show y ++ ": " ++ x
-getRes (Right x) f = f x
+extractTitle :: SongInfo -> Maybe String
+extractTitle = tagTitle . songTags
 
 
-getCurrentPlaying :: MPDHandle -> IO String
-getCurrentPlaying (MPDHandle h p) = do
-  song <- MPD.withMPD_ (Just h) (Just p) getSong
-  let title = getRes song (fromMaybe "Not Playing" . join . fmap extractTitle)
-  return title
+getSongTitle :: MPDSocket -> IO String
+getSongTitle sock = getMPDStatus sock >>= getSong
+  where getSong (Left x) = return x
+        getSong (Right status) = getTitle <$> getPlayingSong (state status) sock
+        getTitle (Left x) = x
+        getTitle (Right x) = fromMaybe "No Title" $extractTitle x
 
 
-data MPDHandle = MPDHandle String String
+data MPDHandle = MPDHandle MPDSocket
+
+-- TODO ignoring errors is never a good idea
+getEvent :: MPDSocket -> IO String
+getEvent s = do
+  _ <- readOk s
+  t <- getSongTitle s
+  _ <- goIdle s "player"
+  return t
+
+getFd :: MPDSocket -> IO [Fd]
+getFd s = do
+  fd <- getMPDFd s
+  _ <- goIdle s "player"
+  return [fd]
 
 instance Module MPDHandle where
-  getText _ = getCurrentPlaying
+  getText _ (MPDHandle s) = getSongTitle s
+  getEventText _ _ (MPDHandle s) = getEvent s
+  getFDs (MPDHandle s) = getFd s
 
 getMPDHandle
   :: String -- ^The host to connect to
  -> String  -- ^The port to connect to
- -> IO MPDHandle
-getMPDHandle h p = return $MPDHandle h p
+ -> IO (Either String MPDHandle)
+getMPDHandle h p = getHandle <$> getMPDSocket h p
+  where getHandle (Right x) = (Right (MPDHandle x))
+        getHandle (Left x) = (Left x)
+
+-- |Same as 'getMPDHandle' but throws an error instead of returning the error as 'String'
+getMPDHandle'
+  :: String
+  -> String
+  -> IO MPDHandle
+getMPDHandle' h p = getHandle <$> getMPDHandle h p
+  where getHandle (Right x) = x
+        getHandle (Left x) = error x
