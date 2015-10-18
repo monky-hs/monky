@@ -42,3 +42,12 @@ is hosted in the awesome wiki because the original source disappeared).
 Copy them into `~/.monky/xbm/`.
 
 For the fancy clock example you will also need the `.xbm` files in this repo.
+
+
+## Examples:
+
+![Ongy-PC](http://i.imgur.com/Jvdx4jy.png?1)
+[Config](http://lpaste.net/143261)
+
+![Ongy-Laptop](http://i.imgur.com/EzHD3re.png?1)
+[config](http://lpaste.net/143262)
