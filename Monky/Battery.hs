@@ -28,11 +28,11 @@ This module allows to read information about a battery connected to the system.
 This module does not support every setup yet.
 The files in /sys/ used by this module are driver dependend.
 If it crashes monky for you setup please make a bug report with an
-`ls /sys/class/power_supply/BAT0/` attached.
+`ls /sys/class/power_supply/" ++ e ++ "/` attached.
 -}
 
 module Monky.Battery
-(getBatteryHandle, getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading, BatteryState(..))
+(getBatteryHandle, getBatteryHandle', getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading, BatteryState(..))
 where
 
 import Data.IORef
@@ -53,22 +53,22 @@ data FilesArray = PowerNow File File File File |
 -- |Datatype to represent battery state
 data BatteryState = BatFull | BatLoading | BatDraining
 
-pnowPath :: String
-pnowPath   = "/sys/class/power_supply/BAT0/power_now"
-enowPath :: String
-enowPath   = "/sys/class/power_supply/BAT0/energy_now"
-efullPath :: String
-efullPath  = "/sys/class/power_supply/BAT0/energy_full"
-vnowPath :: String
-vnowPath   = "/sys/class/power_supply/BAT0/voltage_now"
-cnowPath :: String
-cnowPath   = "/sys/class/power_supply/BAT0/current_now"
-cavgPath :: String
-cavgPath   = "/sys/class/power_supply/BAT0/current_avg"
-chnowPath :: String
-chnowPath  = "/sys/class/power_supply/BAT0/charge_now"
-chfullPath :: String
-chfullPath = "/sys/class/power_supply/BAT0/charge_full"
+pnowPath :: String -> String
+pnowPath e  = "/sys/class/power_supply/" ++ e ++ "/power_now"
+enowPath :: String -> String
+enowPath e  = "/sys/class/power_supply/" ++ e ++ "/energy_now"
+efullPath :: String -> String
+efullPath e = "/sys/class/power_supply/" ++ e ++ "/energy_full"
+vnowPath :: String -> String
+vnowPath e  = "/sys/class/power_supply/" ++ e ++ "/voltage_now"
+cnowPath :: String -> String
+cnowPath e  = "/sys/class/power_supply/" ++ e ++ "/current_now"
+cavgPath :: String -> String
+cavgPath e  = "/sys/class/power_supply/" ++ e ++ "/current_avg"
+chnowPath :: String -> String
+chnowPath e = "/sys/class/power_supply/" ++ e ++ "/charge_now"
+chfullPath :: String -> String
+chfullPath e = "/sys/class/power_supply/" ++ e ++ "/charge_full"
 adpPath :: String -> String
 adpPath e  = "/sys/class/power_supply/"++ e ++"/online"
 
@@ -142,32 +142,38 @@ getTimeLeft (BatH (ChargeNow _ _ cavg chnow chfull adp) s)= do
 
 
 -- |Create a power handle that uses the power_now file
-createPowerNowHandle :: String -> IO BatteryHandle
-createPowerNowHandle e = do
-  power_now <- fopen pnowPath
-  energy_now <- fopen enowPath
-  energy_full <- fopen efullPath
-  adp_online <- fopen $adpPath e
+createPowerNowHandle :: String -> String -> IO BatteryHandle
+createPowerNowHandle e b = do
+  power_now <- fopen $ pnowPath b
+  energy_now <- fopen $ enowPath b
+  energy_full <- fopen $ efullPath b
+  adp_online <- fopen $ adpPath e
   ref <- newIORef (0 :: Int)
   return $BatH (PowerNow power_now energy_now energy_full adp_online) ref
 
 -- |Create a power handle that uses the charge_now file
-createChargeNowHandle :: String -> IO BatteryHandle
-createChargeNowHandle e = do
-  voltage_now <- fopen vnowPath
-  current_now <- fopen cnowPath
-  current_avg <- fopen cavgPath
-  charge_now <- fopen chnowPath
-  charge_full <- fopen chfullPath
-  adp_online <- fopen $adpPath e
+createChargeNowHandle :: String -> String -> IO BatteryHandle
+createChargeNowHandle e b = do
+  voltage_now <- fopen $ vnowPath b
+  current_now <- fopen $ cnowPath b
+  current_avg <- fopen $ cavgPath b
+  charge_now <- fopen $ chnowPath b
+  charge_full <- fopen $ chfullPath b
+  adp_online <- fopen $ adpPath e
   ref <- newIORef (0 :: Int)
   return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
 
+
 -- |Create a 'BatteryHandle'
-getBatteryHandle :: String  -- ^The name of the wall socket adapter used by the battery
+getBatteryHandle' :: String  -- ^The name of the wall socket adapter used by the battery
+                 -> String -- ^The name of the battery
                  -> IO BatteryHandle
-getBatteryHandle e = do
-  exists <- doesFileExist "/sys/class/power_supply/BAT0/power_now"
+getBatteryHandle' e b = do
+  exists <- doesFileExist $ "/sys/class/power_supply/" ++ b ++ "/power_now"
   if exists
-    then createPowerNowHandle e
-    else createChargeNowHandle e
+    then createPowerNowHandle e b
+    else createChargeNowHandle e b
+
+
+getBatteryHandle :: String -> IO BatteryHandle
+getBatteryHandle = getBatteryHandle' "BAT0"
