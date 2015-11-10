@@ -35,6 +35,7 @@ module Monky.Battery
 (getBatteryHandle, getBatteryHandle', getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading, BatteryState(..))
 where
 
+import Data.Maybe (fromMaybe)
 import Data.IORef
 import System.Directory
 import Monky.Utility
@@ -48,7 +49,7 @@ data BatteryHandle = BatH FilesArray (IORef Int)
 --PowerNow will use: power_now energy_now energy_full
 --ChargeNow will use: voltage_now current_now current_avg charge_now charge_full
 data FilesArray = PowerNow File File File File |
-  ChargeNow File File File File File File deriving(Show)
+  ChargeNow File File (Maybe File) File File File deriving(Show)
 
 -- |Datatype to represent battery state
 data BatteryState = BatFull | BatLoading | BatDraining
@@ -135,9 +136,9 @@ getTimeLeft (BatH (PowerNow pnow enow efull adp) s)= do
   (t, n) <- getTimeLeftInt enow pnow efull c adp
   writeIORef s n
   return t
-getTimeLeft (BatH (ChargeNow _ _ cavg chnow chfull adp) s)= do
+getTimeLeft (BatH (ChargeNow _ cnow cavg chnow chfull adp) s)= do
   c <- readIORef s
-  (t, _) <- getTimeLeftInt chnow cavg chfull c adp
+  (t, _) <- getTimeLeftInt chnow (fromMaybe cnow cavg) chfull c adp
   return t
 
 
@@ -156,7 +157,8 @@ createChargeNowHandle :: String -> String -> IO BatteryHandle
 createChargeNowHandle e b = do
   voltage_now <- fopen $ vnowPath b
   current_now <- fopen $ cnowPath b
-  current_avg <- fopen $ cavgPath b
+  exists <- doesFileExist $cavgPath e
+  current_avg <- if exists then Just <$> fopen (cavgPath b) else return Nothing
   charge_now <- fopen $ chnowPath b
   charge_full <- fopen $ chfullPath b
   adp_online <- fopen $ adpPath e
@@ -169,11 +171,11 @@ getBatteryHandle' :: String  -- ^The name of the wall socket adapter used by the
                  -> String -- ^The name of the battery
                  -> IO BatteryHandle
 getBatteryHandle' e b = do
-  exists <- doesFileExist $ "/sys/class/power_supply/" ++ b ++ "/power_now"
+  exists <- doesFileExist $ pnowPath b
   if exists
     then createPowerNowHandle e b
     else createChargeNowHandle e b
 
 
 getBatteryHandle :: String -> IO BatteryHandle
-getBatteryHandle = getBatteryHandle' "BAT0"
+getBatteryHandle = flip getBatteryHandle' "BAT0"
