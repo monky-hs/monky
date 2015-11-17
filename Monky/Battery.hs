@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Battery
 Description : Allows access to information about a battery connected to the system
@@ -34,6 +35,11 @@ If it crashes monky for you setup please make a bug report with an
 module Monky.Battery
 (getBatteryHandle, getBatteryHandle', getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading, BatteryState(..))
 where
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 import Data.Maybe (fromMaybe)
 import Data.IORef
