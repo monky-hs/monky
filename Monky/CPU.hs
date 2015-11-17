@@ -26,8 +26,14 @@ Portability : Linux
 
 -}
 module Monky.CPU
-(CPUHandle, getCPUHandle, getCPUPercent, getCPUTemp, getCPUMaxScalingFreq,
-ScalingType(..))
+  ( CPUHandle
+  , getCPUHandle
+  , getCPUHandle'
+  , getCPUPercent
+  , getCPUTemp
+  , getCPUMaxScalingFreq
+  , ScalingType(..)
+  )
 where
 
 import Monky.Utility (fopen, readValue, readContent, File)
