@@ -44,6 +44,7 @@ where
 
 import Control.Monad (when)
 import Data.List (isSuffixOf)
+import Data.Map (Map)
 import Monky.Version (getVersion)
 import System.Directory (getDirectoryContents, createDirectoryIfMissing, setCurrentDirectory, getModificationTime, getHomeDirectory, removeFile)
 import System.Environment (getArgs)
@@ -52,11 +53,20 @@ import System.IO (withFile, IOMode(..), hPutStr, hGetLine)
 import System.Posix.Process (executeFile)
 import System.Process (system)
 
+import qualified Data.Map as M
 
 #if MIN_VERSION_base(4,8,0)
 #else
 import Control.Applicative ((<$>))
 #endif
+
+data Action
+  = Create
+  | Recompile
+  | CheckRecompile
+  | Execute
+  | PrintUsage
+  deriving (Ord, Show, Eq)
 
 monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
@@ -89,6 +99,11 @@ createExample :: IO ()
 createExample = withFile "monky.hs" WriteMode (`hPutStr` exampleFile)
 
 
+createExampleIfMissing :: IO ()
+createExampleIfMissing = do
+  files <- getDirectoryContents "."
+  when ("monky.hs" `notElem` files) createExample
+
 createVersionFile :: ExitCode -> IO ()
 createVersionFile (ExitFailure _) = putStrLn "Compiliation failed" >> exitFailure
 createVersionFile ExitSuccess = withFile ".version" WriteMode (\file ->
@@ -108,6 +123,7 @@ hasMonkyUpdated files =
       let (newH, newh, newm, _) = getVersion
       return (oldH < newH || oldh < newh || oldm < newm))
     else return True
+
 
 needsRecompilation :: IO Bool
 needsRecompilation = do
@@ -137,21 +153,50 @@ forceRecomp = do
   compile
   where isCompiled s = isSuffixOf ".hi" s || isSuffixOf ".o" s
 
+parseArgs :: [String] -> Map Action Bool -> Map Action Bool
+parseArgs (("--recompile"):xs) m =
+  parseArgs xs $ M.insert CheckRecompile False $M.insert Recompile True m
+parseArgs (("-r"):xs) m = parseArgs ("--recompile":xs) m
+parseArgs (("--no-recompile"):xs) m =
+  parseArgs xs $ M.insert CheckRecompile False m
+parseArgs (("-n"):xs) m = parseArgs ("--no-recompile":xs) m
+parseArgs (("--no-exec":xs)) m = parseArgs xs $ M.insert Execute False m
+parseArgs [] m = m
+parseArgs _ _ = M.insert PrintUsage True M.empty
 
-parseArgs :: String -> IO ()
-parseArgs "--recompile" = forceRecomp
-parseArgs "-r" = parseArgs "--recompile"
-parseArgs _ = printUsage >> exitFailure
 
+defaultActions :: Map Action Bool
+defaultActions = M.fromList [(Create, True), (CheckRecompile, True), (Execute, True)]
+
+
+getActionList :: [(Action, Bool)] -> [IO ()]
+getActionList [] = []
+getActionList ((_, False):xs) = getActionList xs
+getActionList ((Recompile, True):xs) = forceRecomp:getActionList xs
+getActionList ((CheckRecompile, True):xs) = compileIfUpdated:getActionList xs
+getActionList ((Execute, True):xs) = executeMonky : getActionList xs
+getActionList ((Create, True):xs) = createExampleIfMissing : getActionList xs
+getActionList ((PrintUsage, True):xs) = printUsage : getActionList xs
+
+
+getActions :: IO [IO ()]
+getActions = do
+  args <- getArgs
+  let m = parseArgs args defaultActions
+  return $getActionList $M.toAscList m
 
 printUsage :: IO ()
-printUsage = putStrLn "Call with no argument for normal mode, or with \"--recompile\" to force recompilation"
+printUsage = do
+  putStrLn "Default: Create example if needed, compile if needed and run monky\n"
+  putStrLn "--recompile/-r:     Force recompilation"
+  putStrLn "--no-recompile/-n:  Don't recompile"
+  putStrLn "--no-exec:          Don't execute main executable"
+
+executeMonky :: IO ()
+executeMonky = executeFile "./monky" False [] Nothing
 
 main :: IO ()
 main = do
   changeDir
-  args <- getArgs
-  if null args
-    then compileIfUpdated
-    else mapM_ parseArgs args
-  executeFile "./monky" False [] Nothing
+  acts <- getActions
+  sequence_ acts
