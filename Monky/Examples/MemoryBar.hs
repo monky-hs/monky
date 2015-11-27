@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Examples.MemoryBar
 Description : An example module instance for the memory module displaying a bar
@@ -14,6 +15,10 @@ import Text.Printf (printf)
 
 import Monky.Modules
 import Monky.Memory
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 
 -- Will return (used, used+)
