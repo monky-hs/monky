@@ -25,8 +25,13 @@ Portability : Linux
 
 -}
 module Monky.Memory 
-(MemoryHandle, getMemoryAvailable, getMemoryHandle, getMemoryTotal,
-getMemoryUsed)
+  ( MemoryHandle
+  , getMemoryAvailable
+  , getMemoryHandle
+  , getMemoryTotal
+  , getMemoryUsed
+  , getMemoryFree
+  )
 where
 
 import Monky.Utility (fopen, readContent, File, findLine)
@@ -54,12 +59,20 @@ getMemoryTotal (MemoryH f) = do
   contents <- readContent f
   return $getVal $fromMaybe "a 0" $findLine "MemTotal" contents
 
+
+-- |Get the amount of memory rported as free by the kernel
+getMemoryFree :: MemoryHandle -> IO Int
+getMemoryFree (MemoryH f) = do
+  contents <- readContent f
+  return . getVal . fromMaybe "a 0" . findLine "MemFree" $contents
+
 -- |Get the amount of memory used by the kernel and processes
 getMemoryUsed :: MemoryHandle -> IO Int
 getMemoryUsed h = do
   total <- getMemoryTotal h
   available <- getMemoryAvailable h
   return (total - available)
+
 
 -- |Get a memory handle
 getMemoryHandle :: IO MemoryHandle

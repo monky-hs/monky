@@ -10,7 +10,8 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.3.1.1
+version:             1.3.2.0
+
 -- The ABOVE LINE has to stay AS IS (except for version changes) for the
 -- template to work properly
 
@@ -61,7 +62,7 @@ executable monky
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6.0.1 && <5, directory, process, unix, template-haskell
+  build-depends:       base >=4.6.0.1 && <5, directory, process, unix, template-haskell, containers
 
   -- Directories containing source files.
   -- hs-source-dirs:
@@ -75,11 +76,14 @@ library
   exposed-modules: Monky.Disk Monky.Modules Monky.SSID Monky.Time Monky.CPU Monky.Memory Monky.Network Monky.Utility Monky.Alsa Monky.Battery Monky
   exposed-modules: Monky.Examples.Alsa Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory
   exposed-modules: Monky.Examples.TimeFancy Monky.Examples.CPUNoTemp
+  exposed-modules: Monky.Examples.MemoryBar
 
   exposed-modules: Monky.Version
   other-modules: Monky.Template Monky.Event Monky.VersionTH
 
-  build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array, text, unix, network, ioctl, mtl, transformers, template-haskell, containers, stm
+  build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array
+  build-depends:       text, unix, network, ioctl, mtl, transformers
+  build-depends:       template-haskell, containers, stm, netlink >= 1.0
 
   if impl(ghc >= 7.8)
     exposed-modules: Monky.MPD Monky.Examples.MPD
