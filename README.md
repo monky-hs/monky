@@ -47,7 +47,11 @@ For the fancy clock example you will also need the `.xbm` files in this repo.
 ## Examples:
 
 ![Ongy-PC](http://i.imgur.com/Jvdx4jy.png?1)
-[Config](http://lpaste.net/143261)
+[config](http://lpaste.net/143261)
+
+![Ongy-PC-NEW](http://i.imgur.com/oWzP924.png?1)
+[config](http://lpaste.net/146044)
 
 ![Ongy-Laptop](http://i.imgur.com/EzHD3re.png?1)
 [config](http://lpaste.net/143262)
+
