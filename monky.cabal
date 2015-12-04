@@ -82,6 +82,7 @@ library
   exposed-modules: Monky.Examples.MemoryBar Monky.Disk.Btrfs Monky.Disk.Device
   exposed-modules: Monky.Prepend Monky.Examples.CPUMany Monky.Connectivity
   exposed-modules: Monky.Examples.Connectivity Monky.Examples.File
+  exposed-modules: Monky.Wifi Monky.Examples.Wifi
 
   exposed-modules: Monky.Version
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid
@@ -90,7 +91,7 @@ library
   build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array
   build-depends:       text, unix, network, ioctl, mtl, transformers, text
   build-depends:       template-haskell, containers, stm, statvfs, split
-  build-depends:       bytestring
+  build-depends:       bytestring, netlink
 
   if impl(ghc >= 7.8)
     exposed-modules: Monky.MPD Monky.Examples.MPD
