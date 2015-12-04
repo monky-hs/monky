@@ -26,67 +26,71 @@ Portability : Linux
 This module allows for some support for btrfs devices.
 This may be renamed in the future when a general block-device module appears.
 -}
-module Monky.Disk (DiskHandle, getDiskReadWrite, getDiskFree, getDiskHandle)
+module Monky.Disk
+  ( DiskHandle
+  , getDiskReadWrite
+  , getDiskFree
+  , getDiskHandle
+  )
 where
 
+import Monky.Utility
 import Data.Time.Clock.POSIX
 import Data.IORef
 
--- |The handle exported by this module
-data DiskHandle = BTRFSH String Int Int (IORef Int) (IORef Int) (IORef POSIXTime) | Empty
+import Monky.Disk.Common
+import Monky.Disk.Btrfs
 
-path :: String
-path = "/proc/diskstats"
+-- |The handle xported by this module
+-- A disk may have multiple physical devices so we use lists for them
+data DiskHandle = DiskH FSI [File] [IORef Int] [IORef Int] (IORef POSIXTime)
+
 
 basePath :: String
-basePath = "/sys/block/"
-
-fsBasePath :: String
-fsBasePath = "/sys/fs/btrfs/"
-
-fsUUID :: String
-fsUUID = "cb592ffc-c82e-4e14-b513-45358e7d4b93"
+basePath = "/sys/class/block/"
 
 sectorSize :: Int
 sectorSize = 512
 
+
 -- |Get the read write rates from the disk (in bytes/s)
 getDiskReadWrite :: DiskHandle -> IO (Int, Int)
-getDiskReadWrite Empty = return (0, 0)
-getDiskReadWrite (BTRFSH _ _ _ readref writeref timeref) = do
-  content <- readFile path
+getDiskReadWrite (DiskH _ fs readrefs writerefs timeref) = do
+  contents <- mapM readValues fs
   time <- getPOSIXTime
-  let values = map read . drop 1 . head . filter (\l -> head l == "dm-0") . map (drop 2 . words) $ lines content :: [Int]
-  let nread = (values !! 2) * sectorSize
-  let write = (values !! 6) * sectorSize
-  oread <- readIORef readref
-  owrite <- readIORef writeref
+  let nreads = map (\c -> (c !! 2) * sectorSize) contents
+  let writes = map (\c -> (c !! 6) * sectorSize) contents
+  oreads <- mapM readIORef readrefs
+  owrites <- mapM readIORef writerefs
   otime <- readIORef timeref
-  let cread = nread - oread
-  let cwrite = write - owrite
+  let creads = zipWith (-) nreads oreads
+  let cwrites = zipWith (-) writes owrites
   let ctime = time - otime
-  writeIORef readref nread
-  writeIORef writeref write
+  _ <- sequence $zipWith writeIORef readrefs nreads
+  _ <- sequence $zipWith writeIORef writerefs writes
   writeIORef timeref time
-  return (div cread (round ctime), div cwrite (round ctime))
+  return (sum $map (`div` round ctime) creads, sum $map (`div` round ctime) cwrites)
+
 
 -- |Get the space left on the disk
 getDiskFree :: DiskHandle -> IO Int
-getDiskFree Empty = return 0
-getDiskFree (BTRFSH _ _ size _ _ _) = do
-  dused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/data/bytes_used")
-  mused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/metadata/bytes_used")
-  sused <- readFile (fsBasePath ++ fsUUID ++ "/allocation/system/bytes_used")
-  let dfree = size - (read dused :: Int) - (read mused :: Int) - (read sused :: Int)
-  return $div dfree 1000000000
+getDiskFree (DiskH (FSI h) _ _ _ _) = getFsFree h
+
+getBtrfsDH :: (BtrfsHandle, [String]) -> IO DiskHandle
+getBtrfsDH (h, devs) = do
+  -- Open the stat file for each physical device
+  fs <- mapM (\dev -> fopen (basePath ++ dev ++ "/stat")) devs
+  -- this gets the right number of IORefs without number hacking
+  wfs <- mapM (\_ -> newIORef 0) devs
+  rfs <- mapM (\_ -> newIORef 0) devs
+  t <- newIORef 0
+  return (DiskH (FSI h) fs wfs rfs t)
 
 -- |Get the disk handle
-getDiskHandle :: String -> Int -> IO DiskHandle
-getDiskHandle "" 0 = return Empty
-getDiskHandle dev part = do
-  content <- readFile (basePath ++ dev ++ "/" ++ dev ++ show part ++ "/size")
-  let size = (read content :: Int) * sectorSize
-  readref <- newIORef (0 :: Int)
-  writeref <- newIORef (0 :: Int)
-  timeref <- newIORef (0 :: POSIXTime)
-  return $BTRFSH dev part size readref writeref timeref
+getDiskHandle :: String -> IO DiskHandle
+getDiskHandle uuid = do
+-- First try btrfs file systems
+  btrfs <- getBtrfsHandle uuid
+  case btrfs of
+    (Just x) -> getBtrfsDH x
+    Nothing -> error "Disk only supports btrfs for now"
