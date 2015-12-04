@@ -69,7 +69,10 @@ getDiskReadWrite (DiskH _ fs readrefs writerefs timeref) = do
   _ <- sequence $zipWith writeIORef readrefs nreads
   _ <- sequence $zipWith writeIORef writerefs writes
   writeIORef timeref time
-  return (sum $map (`div` round ctime) creads, sum $map (`div` round ctime) cwrites)
+  return (sum $map (`sdiv` round ctime) creads, sum $map (`sdiv` round ctime) cwrites)
+  where
+    sdiv x 0 = x
+    sdiv x y = x `div` y
 
 
 -- |Get the space left on the disk

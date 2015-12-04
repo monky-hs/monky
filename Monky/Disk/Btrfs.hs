@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Disk.Btrfs
 Description : Allows access to information about a btrfs pool
@@ -35,6 +36,12 @@ import Monky.Utility
 import System.Directory (getDirectoryContents, doesDirectoryExist)
 
 import Monky.Disk.Common
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
 
 -- Size data metadata system
 data BtrfsHandle = BtrfsH Int File File File
@@ -65,13 +72,16 @@ getUsed (BtrfsH _ d m s) = do
 
 getBtrfsHandle' :: String -> IO (BtrfsHandle, [String])
 getBtrfsHandle' fs = do
-  devices <- getDirectoryContents (fsBasePath ++ fs ++ "devices")
-  sizes <- mapM (fmap read . readFile) devices
+  let devP = fsBasePath ++ fs ++ "/devices/"
+  devices <- filterDirs <$> getDirectoryContents devP
+  sizes <- mapM (\dev -> fmap read $readFile (devP ++ dev ++ "/size")) devices
   let size = foldl (+) 0 sizes
-  d <- fopen (fsBasePath ++ fs ++ "allocation/data/bytes_used")
-  m <- fopen (fsBasePath ++ fs ++ "allocation/metadata/bytes_used")
-  s <- fopen (fsBasePath ++ fs ++ "allocation/system/bytes_used")
+  d <- fopen (fsBasePath ++ fs ++ "/allocation/data/bytes_used")
+  m <- fopen (fsBasePath ++ fs ++ "/allocation/metadata/bytes_used")
+  s <- fopen (fsBasePath ++ fs ++ "/allocation/system/bytes_used")
   return (BtrfsH (size*sectorSize) d m s, devices)
+  where
+    filterDirs = filter (\f -> f /= "." && f /= "..")
 
 getBtrfsHandle :: String -> IO (Maybe (BtrfsHandle, [String]))
 getBtrfsHandle fs = do
