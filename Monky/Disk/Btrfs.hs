@@ -67,7 +67,7 @@ getUsed (BtrfsH _ d m s) = do
   dv <- readValue d
   mv <- readValue m
   sm <- readValue s
-  return $div (dv + mv + sm) 1000000000
+  return $dv + mv + sm
 
 
 getBtrfsHandle' :: String -> IO (BtrfsHandle, [String])
