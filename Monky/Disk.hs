@@ -40,6 +40,7 @@ import Data.IORef
 
 import Monky.Disk.Common
 import Monky.Disk.Btrfs
+import Monky.Disk.Device
 
 -- |The handle xported by this module
 -- A disk may have multiple physical devices so we use lists for them
@@ -79,6 +80,7 @@ getDiskReadWrite (DiskH _ fs readrefs writerefs timeref) = do
 getDiskFree :: DiskHandle -> IO Int
 getDiskFree (DiskH (FSI h) _ _ _ _) = getFsFree h
 
+
 getBtrfsDH :: (BtrfsHandle, [String]) -> IO DiskHandle
 getBtrfsDH (h, devs) = do
   -- Open the stat file for each physical device
@@ -89,6 +91,16 @@ getBtrfsDH (h, devs) = do
   t <- newIORef 0
   return (DiskH (FSI h) fs wfs rfs t)
 
+
+getBlockDH :: (BlockHandle, String) -> IO DiskHandle
+getBlockDH (h, dev) = do
+  f <- fopen (basePath ++ dev ++ "/stat")
+  wf <- newIORef 0
+  rf <- newIORef 0
+  t <- newIORef 0
+  return (DiskH (FSI h) [f] [wf] [rf] t)
+
+
 -- |Get the disk handle
 getDiskHandle :: String -> IO DiskHandle
 getDiskHandle uuid = do
@@ -96,4 +108,8 @@ getDiskHandle uuid = do
   btrfs <- getBtrfsHandle uuid
   case btrfs of
     (Just x) -> getBtrfsDH x
-    Nothing -> error "Disk only supports btrfs for now"
+    Nothing -> do
+      block <- getBlockHandle uuid
+      case block of
+        Just x -> getBlockDH x
+        Nothing -> error "Disk currently does not support your setup"

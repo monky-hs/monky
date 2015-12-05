@@ -56,24 +56,30 @@ importLib "LibBlkid" "libblkid.so"
   ]
 
 
-evaluateTag' :: String -> String -> LibBlkid -> IO String
+evaluateTag' :: String -> String -> LibBlkid -> IO (Maybe String)
 evaluateTag' t v l = do
   ptr <- withCString t (\ct -> withCString v (\cv -> c_evt l ct cv nullPtr))
-  ret <- peekCString ptr
-  free ptr
-  return ret
+  if ptr == nullPtr
+    then return Nothing
+    else do
+      ret <- peekCString ptr
+      free ptr
+      return (Just ret)
 
-evaluateSpec' :: String -> LibBlkid -> IO String
+evaluateSpec' :: String -> LibBlkid -> IO (Maybe String)
 evaluateSpec' s l = do
   ptr <- withCString s (\cs -> c_evs l cs nullPtr)
-  ret <- peekCString ptr
-  free ptr
-  return ret
+  if ptr == nullPtr
+    then return Nothing
+    else do
+      ret <- peekCString ptr
+      free ptr
+      return (Just ret)
 
-evaluateTag :: String -> String -> IO String
+evaluateTag :: String -> String -> IO (Maybe String)
 evaluateTag t v = withLibBlkid $ evaluateTag' t v
 
-evaluateSpec :: String -> IO String
+evaluateSpec :: String -> IO (Maybe String)
 evaluateSpec = withLibBlkid . evaluateSpec'
 
 withLibBlkid :: (LibBlkid -> IO a) -> IO a
