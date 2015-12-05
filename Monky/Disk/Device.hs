@@ -104,7 +104,7 @@ getSize (BlockH path) = do
 getFree :: BlockHandle -> IO Int
 getFree (BlockH path) = do
   fstat <- statVFS path
-  return $fromIntegral (fromIntegral (statVFS_bfree fstat) * statVFS_bsize fstat)
+  return $fromIntegral (fromIntegral (statVFS_bavail fstat) * statVFS_frsize fstat)
 
 
 getBlockHandle' :: String -> IO (Maybe (BlockHandle, String))
