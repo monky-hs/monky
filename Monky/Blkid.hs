@@ -17,6 +17,8 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-|
 Module      : Monky.Blkid
 Description : Minimal access to liblkid
@@ -26,35 +28,57 @@ Portability : Linux
 
 This module allows access to libblkid functionality
 
-For now we will just dyniamically link against it.
-If there are systems that do not provide liblkid this will change.
+Since the library does not have to exist on every system we link
+against it on runtime when needed.
+We don't have a handle or something cool like that, so we will just
+load it when needed und unload again after
 -}
-module Monky.Blkid 
+module Monky.Blkid
   ( evaluateTag
   , evaluateSpec
+  , evaluateTag'
+  , evaluateSpec'
+  , withLibBlkid
   )
 where
+
+import Monky.Template
 
 import Foreign.Ptr
 import Foreign.C.String
 import Foreign.Marshal.Alloc
 
-data Null
+data Cache
 
-foreign import ccall "blkid_evaluate_tag" c_evt :: CString -> CString -> Ptr Null -> IO CString
-foreign import ccall "blkid_evaluate_spec" c_evs :: CString -> Ptr Null -> IO CString
+importLib "LibBlkid" "libblkid.so"
+  [ ( "c_evt", "blkid_evaluate_tag", "CString -> CString -> Ptr Cache -> IO CString")
+  , ( "c_evs", "blkid_evaluate_spec", "CString -> Ptr Cache -> IO CString")
+  ]
+
+
+evaluateTag' :: String -> String -> LibBlkid -> IO String
+evaluateTag' t v l = do
+  ptr <- withCString t (\ct -> withCString v (\cv -> c_evt l ct cv nullPtr))
+  ret <- peekCString ptr
+  free ptr
+  return ret
+
+evaluateSpec' :: String -> LibBlkid -> IO String
+evaluateSpec' s l = do
+  ptr <- withCString s (\cs -> c_evs l cs nullPtr)
+  ret <- peekCString ptr
+  free ptr
+  return ret
 
 evaluateTag :: String -> String -> IO String
-evaluateTag t v = do
-  ptr <- withCString t (\ct -> withCString v (\cv -> c_evt ct cv nullPtr))
-  ret <- peekCString ptr
-  free ptr
-  return ret
+evaluateTag t v = withLibBlkid $ evaluateTag' t v
 
 evaluateSpec :: String -> IO String
-evaluateSpec s = do
-  ptr <- withCString s (\cs -> c_evs cs nullPtr)
-  ret <- peekCString ptr
-  free ptr
-  return ret
+evaluateSpec = withLibBlkid . evaluateSpec'
 
+withLibBlkid :: (LibBlkid -> IO a) -> IO a
+withLibBlkid a = do
+  l <- getLibBlkid
+  ret <- a l
+  destroyLibBlkid l
+  return ret

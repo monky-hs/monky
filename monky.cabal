@@ -93,5 +93,5 @@ library
     build-depends: transformers-compat
 
   ghc-options:         -Wall -O2 -fno-warn-orphans
-  extra-libraries:     blkid
+  extra-libraries:     
   default-language:    Haskell2010

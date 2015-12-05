@@ -55,7 +55,7 @@ import Data.List (nub)
 import Foreign.Ptr (Ptr, FunPtr, castFunPtr)
 import Language.Haskell.TH
 import Monky.Utility
-import System.Posix.DynamicLinker (dlopen, dlsym, RTLDFlags(RTLD_LAZY))
+import System.Posix.DynamicLinker (DL, dlclose, dlopen, dlsym, RTLDFlags(RTLD_LAZY))
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -143,11 +143,11 @@ getFun handle (alias, name, typeString) = do
 
 
 -- Create the return statement, this applies the constructor
-mkRet :: Name -> [String] -> Q Stmt
-mkRet hname xs = do
+mkRet :: Name -> [String] -> Name -> Exp -> Q Stmt
+mkRet hname xs rawN raw= do
   let funs = map (\x -> (mkName x, VarE (mkName (x ++ "_")))) xs
   ret <- getVName "return"
-  let con = RecConE hname funs
+  let con = RecConE hname ((rawN,raw):funs)
   return $ NoBindS (AppE (VarE ret) con)
 
 
@@ -161,13 +161,13 @@ mkGetHandle h libname = do
 
 
 -- Create the get<LibName> function
-mkGetFun :: String -> String -> Name -> [(String, String,String)] -> Q [Dec]
-mkGetFun lname name hname funs = do
+mkGetFun :: String -> String -> Name -> [(String, String, String)] -> Name -> Q [Dec]
+mkGetFun lname name hname funs raw = do
   let funName = mkName ("get" ++ name)
   let handle = mkName "handle"
   ghandle <- mkGetHandle handle lname
   funStmts <- mapM (getFun (VarE handle)) funs
-  ret <- mkRet hname (map (\(x,_,_) -> x) funs)
+  ret <- mkRet hname (map (\(x,_,_) -> x) funs) raw (VarE handle)
   let fun = FunD funName [Clause [] (NormalB $ DoE (ghandle:funStmts ++ [ret])) []]
   io <- getName "IO"
   let libT = mkName name
@@ -185,6 +185,21 @@ mkTransformer f = do
   return $ ForeignD $ ImportF CCall Safe "dynamic" name ftype
 
 
+mkDestroyFun :: String -> Name -> Q [Dec]
+mkDestroyFun name raw = do
+  destroy <- getVName "dlclose"
+  io <- getName "IO"
+  let libT = mkName name
+  let hname = mkName "handle"
+  let funName = mkName ("destroy" ++ name)
+  let body = AppE (VarE destroy) (AppE (VarE raw) (VarE hname))
+
+  let funType = AppT (AppT ArrowT (ConT libT)) (AppT (ConT io) (TupleT 0))
+  let sig = SigD funName funType
+
+  return [sig ,FunD funName [Clause [VarP hname] (NormalB body) []]]
+
+
 -- |Import a library
 importLib
   :: String -- ^The name of the library data type
@@ -195,6 +210,10 @@ importLib hname lname xs = do
   let name = mkName hname
   funs <- mapM (mkFunDesc . (\(x,_,y) -> (x,y))) xs
   transformers <- mapM mkTransformer $ nub $ map (\(_,_,x) -> x) xs
-  let dhandle = DataD [] name [] [RecC (mkName hname) funs] []
-  fun <- mkGetFun lname hname name xs
-  return (dhandle:transformers ++ fun)
+  rawN <- getName "DL"
+  let rawRN = mkName "rawDL"
+  let raw = (rawRN, NotStrict, ConT rawN)
+  let dhandle = DataD [] name [] [RecC (mkName hname) (raw:funs)] []
+  fun <- mkGetFun lname hname name xs rawRN
+  dest <- mkDestroyFun hname rawRN
+  return (dhandle:dest ++ transformers ++ fun)

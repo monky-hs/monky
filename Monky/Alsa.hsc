@@ -31,8 +31,16 @@ audio system.
 This MAY work with pulse, but will report useless/inaccurate values.
 -}
 module Monky.Alsa
-(VOLHandle, getMute, getVolumeRaw, getVolumePercent, updateVOLH, getVOLHandle,
-isLoaded, getPollFDs)
+  ( VOLHandle
+  , destroyVOLHandle
+  , getMute
+  , getVolumeRaw
+  , getVolumePercent
+  , updateVOLH
+  , getVOLHandle
+  , isLoaded
+  , getPollFDs
+  )
 where
 
 import Control.Monad.Trans
@@ -271,6 +279,15 @@ isLoaded _ = True
 getPollFDs :: VOLHandle -> IO [Fd]
 getPollFDs (VOLH l h _ _ _ _ _) = map (\x -> Fd x) <$> (getPollDescs h l)
 getPollFDs Err =return []
+
+{- |This is rather incomplete, it doesn't clean up the alsa handles
+but only unloads libalsa
+
+TODO Fix this
+-}
+destroyVOLHandle :: VOLHandle -> IO ()
+destroyVOLHandle Err = return ()
+destroyVOLHandle (VOLH a _ _ _ _ _ _) = destroyLibAlsa a
 
 {- |Create an 'VOLHandle'
 
