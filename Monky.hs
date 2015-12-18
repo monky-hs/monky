@@ -16,7 +16,6 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
-{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky
 Description : The main module for monky
@@ -48,11 +47,6 @@ import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
 import Text.Printf (printf)
 
-
-#if MIN_VERSION_base(4,8,0)
-#else
-import Control.Applicative ((<$>))
-#endif
 
 -- |The module wrapper used to buffer output strings
 data ModuleWrapper = MWrapper Modules (IORef String) (IORef Bool)
