@@ -9,10 +9,13 @@ Portability : Linux
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE CPP #-}
 module Monky.Examples.MPD
-(MPDHandle, getMPDHandle, getMPDHandle')
+  ( MPDHandle
+  , getMPDHandle
+  )
 where
 
 
+import Data.IORef
 import Data.Maybe (fromMaybe)
 import Monky.MPD
 import Monky.Modules
@@ -23,6 +26,12 @@ import System.Posix.Types (Fd)
 #else
 import Control.Applicative ((<$>))
 #endif
+
+ioInM :: (a -> IO b) -> Maybe a -> IO (Maybe b)
+ioInM _ Nothing = return Nothing
+ioInM act (Just x) = do
+  ret <- act x
+  return (Just ret)
 
 
 getPlayingSong :: State -> MPDSocket -> IO (Either String SongInfo)
@@ -43,7 +52,8 @@ getSongTitle sock = getMPDStatus sock >>= getSong
 
 
 -- |The handle for this example
-data MPDHandle = MPDHandle MPDSocket
+data MPDHandle = MPDHandle String String (IORef (Maybe MPDSocket))
+
 
 -- TODO ignoring errors is never a good idea
 getEvent :: MPDSocket -> IO String
@@ -53,31 +63,63 @@ getEvent s = do
   _ <- goIdle s " player"
   return t
 
+
 getFd :: MPDSocket -> IO [Fd]
 getFd s = do
   fd <- getMPDFd s
   _ <- goIdle s " player"
   return [fd]
 
-instance Module MPDHandle where
-  getText _ (MPDHandle s) = getSongTitle s
-  getEventText _ _ (MPDHandle s) = getEvent s
-  getFDs (MPDHandle s) = getFd s
 
--- |Get the 'MPDHandle' or an error
+instance Module MPDHandle where
+-- The unfailable ones aren't called if failable is defined explicitly
+  getEventText _ _ _ = return ""
+  getText _ _ = return ""
+  getTextFailable _ (MPDHandle _ _ s) = do
+    r <- readIORef s
+    ioInM getSongTitle r
+  getEventTextFailable _ _ (MPDHandle _ _ s) =  do
+    r <- readIORef s
+    ioInM getEvent r
+  setupModule (MPDHandle h p r) = do
+    s <- getMPDSocket h p
+    case s of
+      (Right x) -> writeIORef r (Just x) >> (return True)
+      (Left _) -> return False
+  recoverModule (MPDHandle h p r) = do
+    s <- getMPDSocket h p
+    case s of
+      (Right x) -> writeIORef r (Just x) >> return True
+      (Left _) -> return False
+  getFDs (MPDHandle _ _ s) = do
+    r <- readIORef s
+    case r of
+      Nothing -> return []
+      Just x -> getFd x
+
+
 getMPDHandle
   :: String -- ^The host to connect to
  -> String  -- ^The port to connect to
- -> IO (Either String MPDHandle)
-getMPDHandle h p = getHandle <$> getMPDSocket h p
-  where getHandle (Right x) = (Right (MPDHandle x))
-        getHandle (Left x) = (Left x)
+ -> IO MPDHandle
+getMPDHandle h p = (\r -> MPDHandle h p r) <$> newIORef Nothing
 
--- |Same as 'getMPDHandle' but throws an error instead of returning the error as 'String'
-getMPDHandle'
-  :: String
-  -> String
-  -> IO MPDHandle
-getMPDHandle' h p = getHandle <$> getMPDHandle h p
-  where getHandle (Right x) = x
-        getHandle (Left x) = error x
+--
+---- |Get the 'MPDHandle' or an error
+--getMPDHandle
+--  :: String -- ^The host to connect to
+-- -> String  -- ^The port to connect to
+-- -> IO (Either String MPDHandle)
+--getMPDHandle h p = getHandle <$> getMPDSocket h p
+--  where getHandle (Right x) = (Right (MPDHandle x))
+--        getHandle (Left x) = (Left x)
+--
+--
+---- |Same as 'getMPDHandle' but throws an error instead of returning the error as 'String'
+--getMPDHandle'
+--  :: String
+--  -> String
+--  -> IO MPDHandle
+--getMPDHandle' h p = getHandle <$> getMPDHandle h p
+--  where getHandle (Right x) = x
+--        getHandle (Left x) = error x

@@ -53,6 +53,30 @@ class Module a where
                  -> IO String -- ^The text segment that should be displayed
     getEventText _ = getText
 
+    {- |This is supposed to set up the module
+       This is only needed, if the module may fail
+       so doing nothing should be ok for all *normal* modules
+
+       The module should return 'True' if the setup was successful (is usable)
+       or 'False' if it failed to enter the broken state right at startup
+    -}
+    setupModule :: a -> IO Bool
+    setupModule _ = return True
+
+    {- |This function is a wrapper around 'getText' that allows
+        modules to report a fail and go into a failed state -}
+    getTextFailable :: String -> a -> IO (Maybe String)
+    getTextFailable u h = Just <$> getText u h
+    {- |This function is a wrapper around 'getEventText' that allows
+        modules to report a fail and go into a failed state -}
+    getEventTextFailable :: Fd -> String -> a -> IO (Maybe String)
+    getEventTextFailable f u h = Just <$> getEventText f u h
+
+    {- |If a module failed earlier this will be called in periodicly
+       until the module returns true to indicate a successful recovery -}
+    recoverModule :: a -> IO Bool
+    recoverModule _ = return True
+
 -- |Function to make packaging modules easier
 pack :: Module a
      => Int -- ^The refresh rate for this module
