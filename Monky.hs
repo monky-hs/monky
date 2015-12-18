@@ -42,6 +42,7 @@ import Control.Concurrent (threadDelay)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Monky.Event
 import Monky.Modules
+import Control.Monad (when)
 import System.IO (hFlush, stdout)
 import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
@@ -54,22 +55,20 @@ import Control.Applicative ((<$>))
 #endif
 
 -- |The module wrapper used to buffer output strings
-data ModuleWrapper = MWrapper Modules (IORef String)
+data ModuleWrapper = MWrapper Modules (IORef String) (IORef Bool)
 
 {- Wrapper logic -}
 -- |Get the text from a module wrapper
 --
 -- This function updates the string buffer if needed and reeturns its contents
 getWrapperText :: Int -> String -> ModuleWrapper -> IO String
-getWrapperText tick u (MWrapper (MW m i) r)
+getWrapperText tick u (MWrapper (MW m i) r _)
   | i <= 0 = readIORef r
-  | i > 0 =
-  if tick `mod` i == 0
-    then do
+  | i > 0 = do
+    when (tick `mod` i == 0) $do
       s <- getText u m
       writeIORef r s
-      return s
-    else readIORef r
+    readIORef r
 getWrapperText _ _ _ = return "Something borked"
 
 -- |print out one line
@@ -87,29 +86,66 @@ printMonkyLine i u (x:xs) = do
 {- Polling logic -}
 -- |Update the IORef buffereing the modules section
 updateText :: ModuleWrapper -> String -> IO ()
-updateText (MWrapper (MW m _) r) u = do
-  s <- getText u m
-  writeIORef r s
+updateText (MWrapper (MW m _) r b) u = do
+  rec <- readIORef b
+  if rec
+    then recoverModule m >>= (\v -> when v (writeIORef b False >> doUpdate))
+    else doUpdate
+  where
+    doUpdate = do
+      ret <- getTextFailable u m 
+      case ret of
+        Just s -> writeIORef r s
+        Nothing -> writeIORef b True >> writeIORef r "Broken"
 
-updateText' :: ModuleWrapper -> String -> Fd -> IO ()
-updateText' (MWrapper (MW m _) r) u fd = do
-  s <- getEventText fd u m
-  writeIORef r s
+{- |Update the IORef of a modules from an event
+
+This function returns False if the module entered a broken state and should
+not be called from the fd events anymore but should be called in a recovery loop
+-}
+updateText' :: ModuleWrapper -> String -> Fd -> IO Bool
+updateText' (MWrapper (MW m _) r b) u fd = do
+  rec <- readIORef b
+  if rec
+    then do
+      recd <- recoverModule m
+      if recd
+        then writeIORef b False >> doUpdate
+        else return False
+    else doUpdate
+  where
+    doUpdate = do
+      ret <- getEventTextFailable fd u m
+      case ret of
+        Just s -> writeIORef r s >> return True
+        Nothing -> writeIORef b True >> writeIORef r "Broken" >> return False
+
 
 -- |The main loop which waits for events and updates the wrappers
-mainLoop :: Int -> String -> [(ModuleWrapper, [Fd])] -> [ModuleWrapper] -> IO()
-mainLoop i u f m = do
+mainLoop :: Int -> String  -> [ModuleWrapper] -> IO()
+mainLoop i u m = do
   printMonkyLine i u m
   hFlush stdout
   threadDelay 1000000
-  mainLoop (i+1) u f m
+  mainLoop (i+1) u m
 
 
 -- |Packs a module into a wrapper with an IORef for cached output
 packMod :: Modules -> IO ModuleWrapper
 packMod x = do
-  ref <- newIORef ("" :: String)
-  return (MWrapper x ref)
+  sref <- newIORef ("" :: String)
+  bref <- newIORef (True :: Bool)
+  return (MWrapper x sref bref)
+
+initModule :: ModuleWrapper -> IO ()
+initModule (MWrapper (MW m _) sref bref) = do
+  ret <- setupModule m
+  if ret
+    then return ()
+    else do
+      writeIORef sref "Init failed"
+      writeIORef bref True
+      return ()
 
 {- |Starts the main loop for monky
 
@@ -122,14 +158,9 @@ startLoop mods = do
   m <- sequence mods
   l <- mapM packMod m
   mapM_ (flip updateText u) l
-  f <- rmEmpty <$> mapM getFDList l
-  startEventLoop (map (\(x,y) -> (updateText' x u, y)) f)
-  mainLoop 0 u f l
+  let f = rmEmpty l
+  mapM_ initModule f
+  startEventLoop (map (\y@(MWrapper x _ _) -> (updateText' y u, x)) f)
+  mainLoop 0 u l
   where
-    getFDList (MWrapper (MW mw i) ref) = if i <= 0
-               then do
-                 fds <- getFDs mw
-                 return (MWrapper (MW mw i) ref, fds)
-               else return (MWrapper (MW mw i) ref, [])
-    rmEmpty = filter (\(_, xs) -> xs /= [])
-
+    rmEmpty = filter (\(MWrapper (MW _ i) _ _) -> i <= 0)
