@@ -17,6 +17,7 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Modules
 Description : The module definition used by 'startLoop'
@@ -30,6 +31,12 @@ compatible module.
 module Monky.Modules
 (Modules(..), Module(..), pack)
 where
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
 
 import System.Posix.Types (Fd)
 
