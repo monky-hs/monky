@@ -145,7 +145,7 @@ getTimeLeft (BatH (PowerNow pnow enow efull adp) s)= do
 getTimeLeft (BatH (ChargeNow _ cnow cavg chnow chfull adp) s)= do
   c <- readIORef s
   (t, _) <- getTimeLeftInt chnow (fromMaybe cnow cavg) chfull c adp
-  return t
+  return $(floor . sqrt $(fromIntegral t :: Float)) * 60
 
 
 -- |Create a power handle that uses the power_now file
