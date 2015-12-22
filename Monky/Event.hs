@@ -21,7 +21,7 @@
 Module      : Monky.Event
 Description : Abstraction over event system for monky
 Maintainer  : ongy
-Stability   : testing
+Stability   : internal
 Portability : Linux
 
 This module provides a simple api to wait for one of many events in a loop
@@ -31,6 +31,8 @@ module Monky.Event
 where
 
 
+--import Text.Printf (printf)
+--import System.IO
 import System.Timeout (timeout)
 import Data.Time.Clock.POSIX
 import System.Posix.Types (Fd)
@@ -100,8 +102,8 @@ getSTMEventEs (x@(i, _, _):xs) = do
 recover :: [MonkyEvent] -> IO ([LoopEvt], [MonkyEvent])
 recover [] = return ([], [])
 recover (x@(i, _, (MW m _)):xs) = do
+  --hPutStrLn stderr "Trying to recover someone"
   (ys, zs) <- recover xs
-  putStrLn "Trying to recover module"
   rec <- recoverModule m
   if rec
     then do
@@ -123,6 +125,7 @@ stmLoopE [] ys _ = do
   stmLoopE xs zs  t
 -- The main body of the event list
 stmLoopE xs ys t = do
+  --hPutStrLn stderr (printf "Looping looping looping :) %d %d" (length xs) (length ys))
   t' <- getPOSIXTime
   if (t' - t) > 5
     then do

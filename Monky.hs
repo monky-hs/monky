@@ -98,21 +98,11 @@ This function returns False if the module entered a broken state and should
 not be called from the fd events anymore but should be called in a recovery loop
 -}
 updateText' :: ModuleWrapper -> String -> Fd -> IO Bool
-updateText' (MWrapper (MW m _) r b) u fd = do
-  rec <- readIORef b
-  if rec
-    then do
-      recd <- recoverModule m
-      if recd
-        then writeIORef b False >> doUpdate
-        else return False
-    else doUpdate
-  where
-    doUpdate = do
-      ret <- getEventTextFailable fd u m
-      case ret of
-        Just s -> writeIORef r s >> return True
-        Nothing -> writeIORef b True >> writeIORef r "Broken" >> return False
+updateText' (MWrapper (MW m _) r _) u fd = do
+  ret <- getEventTextFailable fd u m
+  case ret of
+    Just s -> writeIORef r s >> return True
+    Nothing -> writeIORef r "Broken" >> return False
 
 
 -- |The main loop which waits for events and updates the wrappers
