@@ -1,7 +1,15 @@
+{-# LANGUAGE CPP #-}
 module Monky.Examples.IBus
   ( getIBusH
   )
 where
+
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
 
 import Monky.Modules
 import System.Posix.IO
