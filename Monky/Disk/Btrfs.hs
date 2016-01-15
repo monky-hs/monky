@@ -94,8 +94,8 @@ mapperToDev (x:xs) = do
 getBtrfsHandle' :: String -> IO (BtrfsHandle, [String])
 getBtrfsHandle' fs = do
   let devP = fsBasePath ++ fs ++ "/devices/"
-  devices <- mapperToDev =<< filterDirs <$> getDirectoryContents devP
-  sizes <- mapM (\dev -> fmap read $readFile (devP ++ dev ++ "/size")) devices
+  devices <- filterDirs <$> getDirectoryContents devP
+  sizes <- mapM (\dev -> fmap read $readFile (blBasePath ++ dev ++ "/size")) devices
   let size = foldl (+) 0 sizes
   d <- fopen (fsBasePath ++ fs ++ "/allocation/data/bytes_used")
   m <- fopen (fsBasePath ++ fs ++ "/allocation/metadata/bytes_used")
