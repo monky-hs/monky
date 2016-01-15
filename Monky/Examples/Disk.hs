@@ -21,7 +21,7 @@ formatDiskText user dr dw df =
   printf "%s %s" eins zwei
   where
     eins :: String
-    eins = printf ("^i(/home/" ++ user ++ "/.monky/xbm/diskette.xbm) %sG") (convertUnit df "B" "k" "M" "G")
+    eins = printf ("^i(/home/" ++ user ++ "/.monky/xbm/diskette.xbm) %s") (convertUnit df "B" "k" "M" "G")
     zwei :: String
     zwei = printf "%s %s" (convertUnit dr  "B" "k" "M" "G") (convertUnit dw "B" "k" "M" "G")
 
