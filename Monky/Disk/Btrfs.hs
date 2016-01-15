@@ -51,9 +51,12 @@ instance FsInfo BtrfsHandle where
   getFsUsed = getUsed
 
 
+blBasePath :: String
+blBasePath = "/sys/block/"
 
 fsBasePath :: String
 fsBasePath = "/sys/fs/btrfs/"
+
 
 sectorSize :: Int
 sectorSize = 512
@@ -61,6 +64,7 @@ sectorSize = 512
 
 getSize :: BtrfsHandle -> Int
 getSize (BtrfsH s _ _ _) = s
+
 
 getUsed :: BtrfsHandle -> IO Int
 getUsed (BtrfsH _ d m s) = do
@@ -70,18 +74,34 @@ getUsed (BtrfsH _ d m s) = do
   return $dv + mv + sm
 
 
+-- Filter out the . and .. directory when listing files
+filterDirs :: [String] -> [String]
+filterDirs = filter (\f -> f /= "." && f /= "..")
+
+
+mapperToDev :: [String] -> IO [String]
+mapperToDev [] = return []
+mapperToDev (x:xs) = do
+  let path = (blBasePath ++ x ++ "/slaves/")
+  tl <- mapperToDev xs
+  e <- doesDirectoryExist path
+  hd <- if e
+    then filterDirs <$> getDirectoryContents path
+    else return [x]
+  return (hd ++ tl)
+
+
 getBtrfsHandle' :: String -> IO (BtrfsHandle, [String])
 getBtrfsHandle' fs = do
   let devP = fsBasePath ++ fs ++ "/devices/"
-  devices <- filterDirs <$> getDirectoryContents devP
+  devices <- mapperToDev =<< filterDirs <$> getDirectoryContents devP
   sizes <- mapM (\dev -> fmap read $readFile (devP ++ dev ++ "/size")) devices
   let size = foldl (+) 0 sizes
   d <- fopen (fsBasePath ++ fs ++ "/allocation/data/bytes_used")
   m <- fopen (fsBasePath ++ fs ++ "/allocation/metadata/bytes_used")
   s <- fopen (fsBasePath ++ fs ++ "/allocation/system/bytes_used")
   return (BtrfsH (size*sectorSize) d m s, devices)
-  where
-    filterDirs = filter (\f -> f /= "." && f /= "..")
+
 
 getBtrfsHandle :: String -> IO (Maybe (BtrfsHandle, [String]))
 getBtrfsHandle fs = do
