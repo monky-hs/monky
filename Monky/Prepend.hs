@@ -1,9 +1,30 @@
+{-
+    Copyright 2016 Markus Ongyerth
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
+{-# LANGUAGE CPP #-}
 {-|
 Module : Monky.Prepend
 Description: Prepend something to a module
 Maintainer: ongy
 Stability: testing
 Portability: linux
+
+use with: packPrepend <Prep> instead of normal pack
 -}
 
 module Monky.Prepend
@@ -11,6 +32,11 @@ module Monky.Prepend
   , packPrepend
   )
 where
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 import Monky.Modules
 
@@ -30,9 +56,10 @@ instance Module PrepHandle where
     return ((++) x <$> ret)
   recoverModule (Prep _ (MW a _)) = recoverModule a
 
+
 packPrepend :: Module a
             => String -- ^The String to prepend
             -> Int -- ^The refresh rate for this module
             -> IO a -- ^The function to get the module
             -> IO Modules -- ^The returned handle
-packPrepend x i m = pack i (Prep x <$> pack 0 m)
+packPrepend x i m = pack i (Prep x <$> pack i m)
