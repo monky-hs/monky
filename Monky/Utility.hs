@@ -26,7 +26,18 @@ Portability : Linux
 This module provides utility functions used in monky modules
 -}
 module Monky.Utility
-(readValue, readValues, fopen, File, readLine, readContent, convertUnit, findLine, splitAtEvery)
+ ( readValue
+ , readValues
+ , fopen
+ , File
+ , readLine
+ , readContent
+ , convertUnit
+ , convertUnitB
+ , convertUnitSI
+ , findLine
+ , splitAtEvery
+ )
 where
 
 import System.IO
@@ -72,25 +83,49 @@ readLineByLine h ls = do
       l <- hGetLine h
       readLineByLine h (ls ++ [l])
 
+
 -- |Rewind the file descriptor and read the complete file as lines
 readContent :: File -> IO [String]
 readContent h = do
   hSeek h AbsoluteSeek 0
   readLineByLine h []
 
+
 -- |Convert a number into a reasonable scale for SI units
-convertUnit :: Int -> String -> String -> String ->String -> String
-convertUnit rate u1 u2 u3 u4
-  | rate < 1000 = printf "%4d%s" rate u1
-  | rate < 10000 = printf "%4.2f%s" ((fromIntegral rate :: Float)/1000) u2
-  | rate < 100000 = printf "%4.1f%s" ((fromIntegral rate :: Float)/1000) u2
-  | rate < 1000000 = printf "%4d%s" (div rate 1000) u2
-  | rate < 10000000 = printf "%4.2f%s" ((fromIntegral rate :: Float)/1000000) u3
-  | rate < 100000000 = printf "%4.1f%s" ((fromIntegral rate :: Float)/1000000) u3
-  | rate < 1000000000 = printf "%4d%s" (div rate 1000000) u3
-  | rate < 10000000000 = printf "%4.2f%s" ((fromIntegral rate :: Float) / 1000000000) u4
-  | rate < 100000000000 = printf "%4.1f%s" ((fromIntegral rate :: Float)/1000000000) u4
-  | otherwise = printf "%4d%s" (div rate 1000000000) u4
+convertUnit :: Int -> String -> String -> String -> String -> String
+convertUnit = flip convertUnitI 1000 . fromIntegral
+
+
+-- |Convert a number into a reasonable scale for binary units
+convertUnitB :: Int -> String -> String
+convertUnitB rate b = convertUnitI (fromIntegral rate) 1024 (' ':b) "ki" "Mi" "Gi"
+
+
+convertUnitSI :: Int -> String -> String
+convertUnitSI rate b = convertUnitI (fromIntegral rate) 1000 b "k" "M" "G"
+
+
+convertUnitI :: Float -> Float -> String -> String -> String -> String -> String
+convertUnitI rate step bs ks ms gs
+  | rate < kf = printf "%fd%s" rate bs
+  | rate < kf * 10 = printf "%4.2f%s" kv ks
+  | rate < kf * 100 = printf "%4.1f%s" kv ks
+  | rate < kf * 1000 = printf "%4.0f%s" kv ks
+  | rate < mf * 10 = printf "%4.2f%s" mv ms
+  | rate < mf * 100 = printf "%4.1f%s" mv ms
+  | rate < mf * 1000 = printf "%4.0f%s" mv ms
+  | rate < gf * 10 = printf "%4.2f%s" gv gs
+  | rate < gf * 100 = printf "%4.1f%s" gv gs
+  | rate < gf * 1000 = printf "%4.0f%s" gv gs
+  | otherwise = printf "%4.0f%s" gv gs
+  where
+    kf = step
+    mf = step * step
+    gf = step * step * step
+    kv = rate / kf
+    mv = rate / mf
+    gv = rate / gf
+
 
 -- |open a file read only
 fopen :: String -> IO File

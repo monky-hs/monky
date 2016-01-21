@@ -19,7 +19,7 @@ import Monky.Memory
 getMemoryText :: String -> MemoryHandle -> IO String
 getMemoryText user mh = do
   mp <- getMemoryAvailable mh
-  return (printf ("^i(/home/" ++ user ++ "/.monky/xbm/mem.xbm) %s") (convertUnit (mp * 1000) "B" "K" "M" "G") :: String)
+  return $printf ("^i(/home/" ++ user ++ "/.monky/xbm/mem.xbm) %s") (convertUnitB (mp * 1024) "B" :: String)
 
 
 -- |Example instance for memory module
