@@ -77,6 +77,7 @@ library
   exposed-modules: Monky.Examples.Alsa Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory
   exposed-modules: Monky.Examples.TimeFancy Monky.Examples.CPUNoTemp
   exposed-modules: Monky.Examples.MemoryBar Monky.Disk.Btrfs Monky.Disk.Device
+  exposed-modules: Monky.Prepend
 
   exposed-modules: Monky.Version
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid
