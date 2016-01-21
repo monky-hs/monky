@@ -107,7 +107,7 @@ convertUnitSI rate b = convertUnitI (fromIntegral rate) 1000 b "k" "M" "G"
 
 convertUnitI :: Float -> Float -> String -> String -> String -> String -> String
 convertUnitI rate step bs ks ms gs
-  | rate < kf = printf "%fd%s" rate bs
+  | rate < kf = printf "%4.0f%s" rate bs
   | rate < kf * 10 = printf "%4.2f%s" kv ks
   | rate < kf * 100 = printf "%4.1f%s" kv ks
   | rate < kf * 1000 = printf "%4.0f%s" kv ks
