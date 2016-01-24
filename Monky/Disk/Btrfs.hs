@@ -52,7 +52,7 @@ instance FsInfo BtrfsHandle where
 
 
 blBasePath :: String
-blBasePath = "/sys/block/"
+blBasePath = "/sys/class/block/"
 
 fsBasePath :: String
 fsBasePath = "/sys/fs/btrfs/"
