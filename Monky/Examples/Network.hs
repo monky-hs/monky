@@ -6,28 +6,37 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Monky.Examples.Network ()
+module Monky.Examples.Network 
+  ( getNetworkHandles'
+  )
 where
 
-import Text.Printf(printf)
 
 import Monky.Utility
 import Monky.Modules
 import Monky.Network
 
-{- Network Module -}
-formatNetworkText :: Maybe (Int, Int) -> String
-formatNetworkText Nothing =
-  printf "Network: off" :: String
-formatNetworkText (Just (r, w)) =
-  printf "%s %s" (convertUnit r  "B" "k" "M" "G") (convertUnit w "B" "k" "M" "G") :: String
+data NetworkHandles' = NH' String NetworkHandles
 
-getNetworkText :: String -> NetworkHandles -> IO String
-getNetworkText _ nh = do
+instance Module NetworkHandles' where
+  getText u (NH' e h) = getNetworkText e u h
+
+getNetworkHandles' :: String -> [String] -> IO NetworkHandles'
+getNetworkHandles' e = fmap (NH' e) . getNetworkHandles
+
+{- Network Module -}
+formatNetworkText :: String -> Maybe (Int, Int) -> String
+formatNetworkText e Nothing = e
+formatNetworkText _ (Just (r, w)) =
+  (convertUnit r  "B" "k" "M" "G") ++ ' ':(convertUnit w "B" "k" "M" "G")
+
+
+getNetworkText :: String -> String -> NetworkHandles -> IO String
+getNetworkText e _ nh = do
   nv <- getReadWriteMulti nh
-  return (formatNetworkText nv)
+  return (formatNetworkText e nv)
 
 
 -- |Example instance for network module
 instance Module NetworkHandles where
-  getText = getNetworkText
+  getText = getNetworkText "Network Off"
