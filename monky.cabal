@@ -50,7 +50,7 @@ cabal-version:       >=1.10
 
 Flag ibus
   Description: enable ibus example
-  Default: True
+  Default: False
 
 executable monky
   -- .hs or .lhs file containing the Main module.
