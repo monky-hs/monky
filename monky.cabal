@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.3.4.0
+version:             1.3.4.1
 
 -- The ABOVE LINE has to stay AS IS (except for version changes) for the
 -- template to work properly
@@ -98,7 +98,7 @@ library
 
 
   if flag(ibus)
-    build-depends: ibus-hs
+    build-depends: ibus-hs, dbus
     exposed-modules: Monky.Examples.IBus
 
   ghc-options:         -Wall -O2 -fno-warn-orphans

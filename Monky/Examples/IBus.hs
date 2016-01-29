@@ -10,6 +10,8 @@ where
 import Control.Applicative ((<$>))
 #endif
 
+import DBus.Client (clientErrorMessage)
+import Control.Exception (try)
 
 import Monky.Modules
 import System.Posix.IO
@@ -45,8 +47,10 @@ remapEngine ((l,r):xs) x = if l == x
 
 getText' :: String -> IBusH -> IO String
 getText' _ (IBusH h m) = do
-  engine <- engineName <$> getIBusEngine h
-  return $remapEngine m engine
+  engine <- try $engineName <$> getIBusEngine h
+  case engine of
+    (Left e) -> return (clientErrorMessage e)
+    (Right x) -> return $remapEngine m x
 
 getEventText' :: Fd -> String -> IBusH -> IO String
 getEventText' fd _ (IBusH _ m) = do
