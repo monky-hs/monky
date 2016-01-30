@@ -39,7 +39,7 @@ where
 import System.IO.Error
 import GHC.IO.Exception
 import Control.Exception (try)
-import Control.Monad (join)
+import Control.Monad (join, void, unless)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Data.Char (isSpace)
@@ -143,7 +143,7 @@ rethrowSExcpt xs e = throwE (xs ++ ": " ++ show e)
 
 
 trySExcpt :: String -> IO a -> ExceptT String IO a
-trySExcpt l f = rethrow =<< (liftIO $try f)
+trySExcpt l f = liftIO (try f) >>= rethrow
   where rethrow (Left x) = rethrowSExcpt l x
         rethrow (Right x) = return x
 
@@ -169,11 +169,13 @@ tryConnect (x:xs) sock =
 
 
 doMPDConnInit :: MPDSock -> IO (Maybe String)
-doMPDConnInit s = fmap join $timeout 500000 $do
-  v <- BS.unpack <$> recv s 64
-  if "OK MPD " `isPrefixOf` v
-    then return . Just $drop 7 v
-    else return Nothing
+doMPDConnInit s = join <$> timeout 500000 doInit
+  where 
+    doInit = do
+      v <- BS.unpack <$> recv s 64
+      if "OK MPD " `isPrefixOf` v
+        then return . Just $drop 7 v
+        else return Nothing
 
 
 -- |Open one MPDSock connected to a host specified by one of the 'MPDInfo'
@@ -209,8 +211,8 @@ recvMessage sock =
   trySExcpt "receive" $lines . BS.unpack <$> recv sock 4096
 
 sendMessage :: MPDSock -> String -> ExceptT String IO ()
-sendMessage sock message =
-  trySExcpt "send" (sendAll sock $BS.pack message) >> return ()
+sendMessage sock message = void $
+  trySExcpt "send" (sendAll sock $BS.pack message)
 
 {- |Send a query to the MPD server and return a list of answers (line by line)
 
@@ -226,9 +228,7 @@ doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> (f <$> recvMessage s)
 readOk :: MPDSocket -> IO (Either String ())
 readOk (MPDSocket s) = runExceptT $ do
   resp <- recvMessage s
-  if resp == ["OK"]
-    then return ()
-    else throwE $concat resp
+  unless (resp == ["OK"]) (throwE $concat resp)
 
 {- |Go into MPDs 'idle' mode, this does return, but MPD wont time us out and
 will notify us if something happens
@@ -237,7 +237,7 @@ goIdle
   :: MPDSocket 
   -> String -- ^The string that should be send with idle (list of subsystems)
   -> IO (Either String ())
-goIdle (MPDSocket s) xs = runExceptT (sendMessage s ("idle" ++ xs ++ "\n") >> return ())
+goIdle (MPDSocket s) xs = runExceptT $ void $ sendMessage s ("idle" ++ xs ++ "\n")
 
 
 getAudioTuple :: String -> (Int,Int,Int)
@@ -265,7 +265,7 @@ parseStatusRec m [] = Status
   , nextSong = getInt "nextsong"
   , nextSongId = getInt "nextsongid"
   , time = fmap (read . takeWhile (/= ':')) $getVal "time"
-  , elapsed = fmap read $M.lookup "elapsed" m
+  , elapsed = read <$> M.lookup "elapsed" m
   , duration = getInt "duration"
   , bitrate = getInt "bitrate"
   , xfade = getInt "xfade"
@@ -311,20 +311,23 @@ parseSongInfoRec m [] = let tags = TagCollection {
   } in
     SongInfo {
       songFile = fromJust $M.lookup "file" m
-    , songRange = fmap (readT . split '-') $M.lookup "Range" m
+    , songRange = readT . split '-' <$> M.lookup "Range" m
     , songMTime = M.lookup "Last-Modified" m
-    , songTime = fmap read $M.lookup "Time" m
-    , songDuration = fmap read $M.lookup "duration" m
+    , songTime = mRead "Time"
+    , songDuration = read <$> M.lookup "duration" m
     , songTags = tags
-    , songPos = fmap read $M.lookup "Pos" m
-    , songInfoId = fmap read $M.lookup "Id" m
-    , songPriority = fmap read $M.lookup "Prio" m
+    , songPos = mRead "Pos"
+    , songInfoId = mRead "Id"
+    , songPriority = mRead "Prio"
     }
   where split x xs = (takeWhile (/=x) xs, tail $dropWhile (/=x) xs)
         readT (x,y) = (read x, read y)
+        mRead = fmap read . flip M.lookup m
+
+
 -- use init to drop the ':' for keys
 -- use break instead of words because of comment or artist
-parseSongInfoRec m (x:xs) = let (key,' ':value) = break (isSpace) x in
+parseSongInfoRec m (x:xs) = let (key,' ':value) = break isSpace x in
   parseSongInfoRec (M.insert (init key) value m) xs
 
 

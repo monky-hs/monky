@@ -84,7 +84,7 @@ instance Module MPDHandle where
   setupModule (MPDHandle h p r) = do
     s <- getMPDSocket h p
     case s of
-      (Right x) -> writeIORef r (Just x) >> (return True)
+      (Right x) -> writeIORef r (Just x) >> return True
       (Left _) -> return False
   recoverModule (MPDHandle h p r) = do
     s <- getMPDSocket h p
@@ -102,7 +102,7 @@ getMPDHandle
   :: String -- ^The host to connect to
  -> String  -- ^The port to connect to
  -> IO MPDHandle
-getMPDHandle h p = (\r -> MPDHandle h p r) <$> newIORef Nothing
+getMPDHandle h p = MPDHandle h p <$> newIORef Nothing
 
 --
 ---- |Get the 'MPDHandle' or an error

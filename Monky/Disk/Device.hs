@@ -38,7 +38,7 @@ where
 
 import System.Posix.StatVFS
 import Data.Maybe (listToMaybe, catMaybes)
-import Data.List (isPrefixOf)
+import Data.List (isSuffixOf)
 import System.Directory (getDirectoryContents)
 import System.Posix.Files (readSymbolicLink)
 
@@ -56,7 +56,7 @@ devToMount dev = do
   mounts <- map (take 2 . words) . lines <$> readFile "/proc/mounts"
   return . listToMaybe . map (!! 1) $filter isDev mounts
   where
-    isDev = isPrefixOf (reverse ('/':dev)) . reverse . head
+    isDev = isSuffixOf ('/':dev) . head
 
 
 getMapperDevs :: IO [(String, String)]

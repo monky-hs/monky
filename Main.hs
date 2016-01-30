@@ -154,13 +154,13 @@ forceRecomp = do
   where isCompiled s = isSuffixOf ".hi" s || isSuffixOf ".o" s
 
 parseArgs :: [String] -> Map Action Bool -> Map Action Bool
-parseArgs (("--recompile"):xs) m =
+parseArgs ("--recompile":xs) m =
   parseArgs xs $ M.insert CheckRecompile False $M.insert Recompile True m
-parseArgs (("-r"):xs) m = parseArgs ("--recompile":xs) m
-parseArgs (("--no-recompile"):xs) m =
+parseArgs ("-r":xs) m = parseArgs ("--recompile":xs) m
+parseArgs ("--no-recompile":xs) m =
   parseArgs xs $ M.insert CheckRecompile False m
-parseArgs (("-n"):xs) m = parseArgs ("--no-recompile":xs) m
-parseArgs (("--no-exec":xs)) m = parseArgs xs $ M.insert Execute False m
+parseArgs ("-n":xs) m = parseArgs ("--no-recompile":xs) m
+parseArgs ("--no-exec":xs) m = parseArgs xs $ M.insert Execute False m
 parseArgs [] m = m
 parseArgs _ _ = M.insert PrintUsage True M.empty
 

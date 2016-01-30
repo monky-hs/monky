@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.3.3.5
+version:             1.3.4.1
 
 -- The ABOVE LINE has to stay AS IS (except for version changes) for the
 -- template to work properly
@@ -48,6 +48,9 @@ build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
+Flag ibus
+  Description: enable ibus example
+  Default: False
 
 executable monky
   -- .hs or .lhs file containing the Main module.
@@ -92,6 +95,11 @@ library
     build-depends: bytestring, socket
   if impl(ghc < 7.10)
     build-depends: transformers-compat
+
+
+  if flag(ibus)
+    build-depends: ibus-hs, dbus
+    exposed-modules: Monky.Examples.IBus
 
   ghc-options:         -Wall -O2 -fno-warn-orphans
   extra-libraries:     

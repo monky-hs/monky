@@ -142,7 +142,7 @@ getNumberOfCores f = do
 
 maybeOpenFile :: Maybe String -> IO (Maybe File)
 maybeOpenFile Nothing = return Nothing
-maybeOpenFile (Just x) = fopen x >>= return . Just
+maybeOpenFile (Just x) = Just <$> fopen x
 
 
 getCPUHandle' :: ScalingType -> Maybe String -> IO CPUHandle

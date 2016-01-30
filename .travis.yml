@@ -5,5 +5,6 @@ ghc:
   - 7.8
   - 7.6
 
+#Explicitly install ibus-hs since we want to test optional stuff aswell
 #Overwrite the test script, since we don't have any tests
-script: cabal install --only-dependencies && cabal configure && cabal build
+script: cabal install --only-dependencies && cabal install ibus-hs && cabal configure -f ibus && cabal build
