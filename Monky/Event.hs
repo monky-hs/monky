@@ -37,7 +37,7 @@ import System.Timeout (timeout)
 import Data.Time.Clock.POSIX
 import System.Posix.Types (Fd)
 import Control.Applicative ((<|>))
-import Control.Monad (void)
+import Control.Monad (void, unless)
 
 import Control.Concurrent
 import Control.Concurrent.STM.TVar
@@ -70,18 +70,17 @@ threadWaitReadSTME :: Fd -> IO (STM(), Fd, IO ())
 threadWaitReadSTME fd = do
   m <- newTVarIO False
   let rearm = armEvent m fd
-  let waitAction = do b <- readTVar m
-                      if b then return () else retry
+  let waitAction = flip unless retry =<< readTVar m
   rearm -- start it once
   return (waitAction, fd, rearm)
 
 
 getSTMEventE :: MonkyEvent -> IO (Maybe EvtSTM)
-getSTMEventE evt@(_, _, (MW m _)) = do
+getSTMEventE evt@(_, _, MW m _) = do
   events <- mapM threadWaitReadSTME =<< getFDs m
   if null events
     then return Nothing
-    else return . Just . foldr1 ((<|>)) . map createEvent $events
+    else return . Just . foldr1 (<|>) . map createEvent $events
   where
     createEvent :: (STM (), Fd, IO ()) -> STM (MonkyEvent, Fd, IO ())
     createEvent (event, fd, rearm) = do
@@ -101,7 +100,7 @@ getSTMEventEs (x@(i, _, _):xs) = do
 
 recover :: [MonkyEvent] -> IO ([LoopEvt], [MonkyEvent])
 recover [] = return ([], [])
-recover (x@(i, _, (MW m _)):xs) = do
+recover (x@(i, _, MW m _):xs) = do
   --hPutStrLn stderr "Trying to recover someone"
   (ys, zs) <- recover xs
   rec <- recoverModule m
@@ -136,7 +135,7 @@ stmLoopE xs ys t = do
     -- The event system should not wake up to often
     -- The only reason this exists is, that we want to be able to recover
     -- modules even if no other has any action
-      ret <- timeout (30 * 1000 * 1000) $atomically . foldr1 ((<|>)) . map getEvt $xs
+      ret <- timeout (30 * 1000 * 1000) $atomically . foldr1 (<|>) . map getEvt $xs
       case ret of
       -- Nothing means we timed out, so we just restart the loop
         Nothing -> stmLoopE xs ys t
@@ -181,4 +180,4 @@ If this is called with an empty list, nothing will be done.
 -}
 startEventLoop :: [(Fd -> IO Bool, Modules)] -> IO ()
 startEventLoop [] = return ()
-startEventLoop xs = forkIO (startLoopE $createMonkyEvents xs) >> return ()
+startEventLoop xs = void . startLoopE $createMonkyEvents xs

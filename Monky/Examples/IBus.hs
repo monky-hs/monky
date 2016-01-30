@@ -12,6 +12,7 @@ import Control.Applicative ((<$>))
 
 import DBus.Client (clientErrorMessage)
 import Control.Exception (try)
+import Control.Monad (void)
 
 import Monky.Modules
 import System.Posix.IO
@@ -29,14 +30,14 @@ instance Module IBusH where
   getEventText = getEventText'
 
 getIBusH :: [(String, String)] -> IO IBusH
-getIBusH m = fmap (\h -> IBusH h m) iBusConnect 
+getIBusH m = fmap (`IBusH` m) iBusConnect 
 
 getFD :: IBusH -> IO [Fd]
 getFD (IBusH h _) = do
   (r, w) <- createPipe
   _ <- subscribeToEngine
     h
-    (\xs -> fdWrite w (head xs ++ "\n") >> return ())
+    (\xs -> void $ fdWrite w (head xs ++ "\n"))
   return [r]
 
 remapEngine :: [(String, String)] -> String -> String

@@ -19,6 +19,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Blkid
 Description : Minimal access to liblkid
@@ -48,6 +49,12 @@ import Foreign.Ptr
 import Foreign.C.String
 import Foreign.Marshal.Alloc
 
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
+
 data Cache
 
 importLib "LibBlkid" "libblkid.so"
@@ -55,26 +62,26 @@ importLib "LibBlkid" "libblkid.so"
   , ( "c_evs", "blkid_evaluate_spec", "CString -> Ptr Cache -> IO CString")
   ]
 
+getAndFreeString :: CString -> IO String
+getAndFreeString ptr = do
+  ret <- peekCString ptr
+  free ptr
+  return ret
+
+maybeGetString :: CString -> IO (Maybe String)
+maybeGetString ptr = if ptr == nullPtr
+    then return Nothing
+    else Just <$> getAndFreeString ptr
 
 evaluateTag' :: String -> String -> LibBlkid -> IO (Maybe String)
 evaluateTag' t v l = do
   ptr <- withCString t (\ct -> withCString v (\cv -> c_evt l ct cv nullPtr))
-  if ptr == nullPtr
-    then return Nothing
-    else do
-      ret <- peekCString ptr
-      free ptr
-      return (Just ret)
+  maybeGetString ptr
 
 evaluateSpec' :: String -> LibBlkid -> IO (Maybe String)
 evaluateSpec' s l = do
   ptr <- withCString s (\cs -> c_evs l cs nullPtr)
-  if ptr == nullPtr
-    then return Nothing
-    else do
-      ret <- peekCString ptr
-      free ptr
-      return (Just ret)
+  maybeGetString ptr
 
 evaluateTag :: String -> String -> IO (Maybe String)
 evaluateTag t v = withLibBlkid $ evaluateTag' t v

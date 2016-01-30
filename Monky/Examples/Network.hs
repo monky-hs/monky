@@ -28,7 +28,7 @@ getNetworkHandles' e = fmap (NH' e) . getNetworkHandles
 formatNetworkText :: String -> Maybe (Int, Int) -> String
 formatNetworkText e Nothing = e
 formatNetworkText _ (Just (r, w)) =
-  (convertUnit r  "B" "k" "M" "G") ++ ' ':(convertUnit w "B" "k" "M" "G")
+  convertUnit r "B" "k" "M" "G" ++ ' ':convertUnit w "B" "k" "M" "G"
 
 
 getNetworkText :: String -> String -> NetworkHandles -> IO String
