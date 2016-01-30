@@ -98,6 +98,7 @@ instance Module MPDHandle where
       Just x -> getFd x
 
 
+-- |Get an 'MPDHandle' (server has to be running when this is executed)
 getMPDHandle
   :: String -- ^The host to connect to
  -> String  -- ^The port to connect to

@@ -91,7 +91,7 @@ readContent h = do
   readLineByLine h []
 
 
--- |Convert a number into a reasonable scale for SI units
+-- |Convert a number into a fixed length strings
 convertUnit :: Int -> String -> String -> String -> String -> String
 convertUnit = flip convertUnitI 1000 . fromIntegral
 
@@ -101,6 +101,7 @@ convertUnitB :: Int -> String -> String
 convertUnitB rate b = convertUnitI (fromIntegral rate) 1024 (' ':b) "ki" "Mi" "Gi"
 
 
+-- |Convert a number into a reasonable scale for SI units
 convertUnitSI :: Int -> String -> String
 convertUnitSI rate b = convertUnitI (fromIntegral rate) 1000 b "k" "M" "G"
 

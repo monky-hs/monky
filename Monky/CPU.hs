@@ -145,7 +145,11 @@ maybeOpenFile Nothing = return Nothing
 maybeOpenFile (Just x) = Just <$> fopen x
 
 
-getCPUHandle' :: ScalingType -> Maybe String -> IO CPUHandle
+-- |Create an 'CPUHandle'
+getCPUHandle' 
+  :: ScalingType -- ^The scaling type, either "ScalingMax" or "ScalingCur"
+  -> Maybe String -- ^The thermal zone to use or Nothing if there isn't any
+  -> IO CPUHandle
 getCPUHandle' t xs = do
   workref <- newIORef ([0] :: [Int])
   allref <- newIORef ([0] :: [Int])
@@ -156,6 +160,6 @@ getCPUHandle' t xs = do
   return $CPUH stat temp files allref workref
 
 
--- |Create an 'CPUhandle'
+-- |Version for getCPUHandle' that defaults to thermal zone "thermal_zone0"
 getCPUHandle :: ScalingType -> IO CPUHandle
 getCPUHandle = flip getCPUHandle' (Just "thermal_zone0")

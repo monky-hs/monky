@@ -73,22 +73,27 @@ maybeGetString ptr = if ptr == nullPtr
     then return Nothing
     else Just <$> getAndFreeString ptr
 
+-- |Version to reuse the LibBlkid
 evaluateTag' :: String -> String -> LibBlkid -> IO (Maybe String)
 evaluateTag' t v l = do
   ptr <- withCString t (\ct -> withCString v (\cv -> c_evt l ct cv nullPtr))
   maybeGetString ptr
 
+-- |version to reuse the LibBlkid
 evaluateSpec' :: String -> LibBlkid -> IO (Maybe String)
 evaluateSpec' s l = do
   ptr <- withCString s (\cs -> c_evs l cs nullPtr)
   maybeGetString ptr
 
+-- |Evaluate a tag
 evaluateTag :: String -> String -> IO (Maybe String)
 evaluateTag t v = withLibBlkid $ evaluateTag' t v
 
+-- |Evaluate a spec
 evaluateSpec :: String -> IO (Maybe String)
 evaluateSpec = withLibBlkid . evaluateSpec'
 
+-- |Execute an IO action with an instance of LibBlkid
 withLibBlkid :: (LibBlkid -> IO a) -> IO a
 withLibBlkid a = do
   l <- getLibBlkid

@@ -29,7 +29,8 @@ This may be renamed in the future when a general block-device module appears.
 -}
 module Monky.Disk.Btrfs
   ( BtrfsHandle
-  , getBtrfsHandle )
+  , getBtrfsHandle
+  )
 where
 
 import Monky.Utility
@@ -44,6 +45,7 @@ import Control.Applicative ((<$>))
 
 
 -- Size data metadata system
+-- |The FsInfo exported by this module
 data BtrfsHandle = BtrfsH Int File File File
 
 instance FsInfo BtrfsHandle where
@@ -102,8 +104,21 @@ getBtrfsHandle' fs = do
   s <- fopen (fsBasePath ++ fs ++ "/allocation/system/bytes_used")
   return (BtrfsH (size*sectorSize) d m s, devices)
 
+{-| Try to create a btfshanlde given the UUID
 
-getBtrfsHandle :: String -> IO (Maybe (BtrfsHandle, [String]))
+This will create a 'BtrfsHandle' which is an instance of FsInfo and
+a list of block devices that are slaves of our file system.
+
+This allows the upper layer to monitor the read/write rates of all
+block devices that belong to our file system and report them as
+read/write rate for the file system.
+
+Due to compression and encryption the read/write rate on the block
+device may be quite different to the one that application see.
+-}
+getBtrfsHandle 
+  :: String -- ^The UUID of the file system to monitor
+  -> IO (Maybe (BtrfsHandle, [String]))
 getBtrfsHandle fs = do
   e <- doesDirectoryExist (fsBasePath ++ fs)
   if e

@@ -183,5 +183,6 @@ getBatteryHandle' e b = do
     else createChargeNowHandle e b
 
 
+-- |Version which defaults to "BAT0"
 getBatteryHandle :: String -> IO BatteryHandle
 getBatteryHandle = flip getBatteryHandle' "BAT0"

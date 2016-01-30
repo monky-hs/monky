@@ -35,6 +35,15 @@ module Monky.Disk.Common
 where
 
 
+{-| Type class that should be instanciated by file system handlers
+
+The Monky.Disk module is designed to work with different handlers
+specialized for different file systems and a generic block device
+handler.
+
+This typeclass gives the interface a file system handler has to
+implement to be usable.
+-}
 class FsInfo a where
   -- |Get the bytes free on the file system
   getFsFree :: a -> IO Int
@@ -63,7 +72,9 @@ class FsInfo a where
     u <- getFsUsed h
     return (s, f, u)
 
+-- |Existential datatype to wrap 'FsInfo' instances
 data FSI = forall a. FsInfo a => FSI a
 
+-- |Wrap a 'FsInfo' into an 'FSI'
 fsToFSI :: FsInfo a => a -> FSI
 fsToFSI = FSI

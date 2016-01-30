@@ -40,6 +40,7 @@ import Control.Applicative ((<$>))
 
 import Monky.Modules
 
+-- |The handle used by this module, contains underlying module and string
 data PrepHandle = Prep String Modules
 
 
@@ -57,6 +58,13 @@ instance Module PrepHandle where
   recoverModule (Prep _ (MW a _)) = recoverModule a
 
 
+{-| Create a module that should be prepended with some string
+
+This allows you to prepend an instance of a module with a fixed
+String.
+
+For usage look at 'pack'.
+-}
 packPrepend :: Module a
             => String -- ^The String to prepend
             -> Int -- ^The refresh rate for this module

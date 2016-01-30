@@ -1,4 +1,22 @@
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.Examples.IBus
+Description : An example of how to use the ibus-hs package
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module provides an example of how to use the ibus-hs package.
+
+This is only usefull if you have ibus installed and active on your 
+system.
+
+This module will display the current global engine and provides
+event driven updates.
+For better usability the names returned by ibus can be remapped
+to something more readable by the mapping given to the creation
+function.
+-}
 module Monky.Examples.IBus
   ( getIBusH
   )
@@ -29,8 +47,11 @@ instance Module IBusH where
   getFDs = getFD
   getEventText = getEventText'
 
-getIBusH :: [(String, String)] -> IO IBusH
-getIBusH m = fmap (`IBusH` m) iBusConnect 
+-- |Get an IBusH used by this module
+getIBusH
+  :: [(String, String)] -- ^A mapping from engine names to display names for those engines
+  -> IO IBusH -- ^The handle that can be given to 'pack'
+getIBusH m = fmap (`IBusH` m) iBusConnect
 
 getFD :: IBusH -> IO [Fd]
 getFD (IBusH h _) = do

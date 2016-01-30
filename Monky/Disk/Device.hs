@@ -88,6 +88,7 @@ devToMountM dev = do
 
 
 -- Size data metadata system
+-- |The FsInfo handle exported by this module
 data BlockHandle = BlockH FilePath
 
 instance FsInfo BlockHandle where
@@ -114,6 +115,14 @@ getBlockHandle' dev = do
     Just x -> return $Just (BlockH x, dev)
     Nothing -> return Nothing
 
+{- |Get a fs handle for 'normal' devices
+
+This uses fsStat to get file system information.
+
+fsStat takes the mount point of the file system, so we need to find the mount point.
+
+In case of mapper devices, this is done by going through the chain of slaves.
+-}
 getBlockHandle :: String -> IO (Maybe (BlockHandle, String))
 getBlockHandle fs = do
   dev <- evaluateTag "UUID" fs

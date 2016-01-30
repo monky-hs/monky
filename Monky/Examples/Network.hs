@@ -21,7 +21,11 @@ data NetworkHandles' = NH' String NetworkHandles
 instance Module NetworkHandles' where
   getText u (NH' e h) = getNetworkText e u h
 
-getNetworkHandles' :: String -> [String] -> IO NetworkHandles'
+-- |Actually get the network handle
+getNetworkHandles'
+  :: String -- ^The string to use when the network is disconnected
+  -> [String] -- ^The Network adapters to monitor
+  -> IO NetworkHandles'
 getNetworkHandles' e = fmap (NH' e) . getNetworkHandles
 
 {- Network Module -}
