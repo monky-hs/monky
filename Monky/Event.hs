@@ -180,4 +180,4 @@ If this is called with an empty list, nothing will be done.
 -}
 startEventLoop :: [(Fd -> IO Bool, Modules)] -> IO ()
 startEventLoop [] = return ()
-startEventLoop xs = void . startLoopE $createMonkyEvents xs
+startEventLoop xs = void . forkIO . startLoopE $createMonkyEvents xs
