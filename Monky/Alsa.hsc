@@ -115,6 +115,8 @@ importLib "LibAlsa" "libasound.so"
   , ("mixer_handle_events", "snd_mixer_handle_events", "MixerHandle -> IO ()")
   , ("get_pdescs", "snd_mixer_poll_descriptors", "MixerHandle -> PollFDPtr -> CInt -> IO CInt")
   , ("get_pdescc", "snd_mixer_poll_descriptors_count", "MixerHandle -> IO CInt")
+
+  , ("mixer_close", "snd_mixer_close", "MixerHandle -> IO Int")
   ]
 
 
@@ -280,14 +282,11 @@ getPollFDs :: VOLHandle -> IO [Fd]
 getPollFDs (VOLH l h _ _ _ _ _) = map (\x -> Fd x) <$> (getPollDescs h l)
 getPollFDs Err =return []
 
-{- |This is rather incomplete, it doesn't clean up the alsa handles
-but only unloads libalsa
-
-TODO Fix this
--}
+-- | Close the mixer handle and unload alsa library
 destroyVOLHandle :: VOLHandle -> IO ()
 destroyVOLHandle Err = return ()
-destroyVOLHandle (VOLH a _ _ _ _ _ _) = destroyLibAlsa a
+destroyVOLHandle (VOLH a m _ _ _ _ _) =
+  mixer_close a m >> destroyLibAlsa a
 
 {- |Create an 'VOLHandle'
 
