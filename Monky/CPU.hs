@@ -36,10 +36,12 @@ module Monky.CPU
   )
 where
 
+import System.IO.Unsafe (unsafePerformIO)
+import System.Directory (getDirectoryContents)
 import Monky.Utility (fopen, readValue, readContent, File)
 import Data.Char (isSpace)
 import Data.List (isPrefixOf, findIndex)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.IORef
 import Text.Printf (printf)
 import Control.Monad (liftM2)
@@ -87,6 +89,22 @@ getCPUFreqsCur i = liftM2 (:) (fopen (pathCurScaling (i - 1))) (getCPUFreqsCur (
 getCPUFreqsMax :: Int -> IO [File]
 getCPUFreqsMax 0 = return []
 getCPUFreqsMax i = liftM2 (:) (fopen (pathMaxScaling (i - 1))) (getCPUFreqsMax (i - 1))
+
+thermalBaseP :: String
+thermalBaseP = "/sys/class/thermal/"
+
+-- |Check if thermal zone is x86_pkg_temp
+isX86PkgTemp :: String -> Bool
+isX86PkgTemp xs = unsafePerformIO $do
+  str <- readFile (thermalBaseP ++ xs ++ "/type")
+  return (str == "x86_pkg_temp\n")
+
+-- |Tries to guess the thermal zone based on type
+guessThermalZone :: IO (Maybe String)
+guessThermalZone = do
+  zones <- filter isX86PkgTemp . filter ("thermal_zone" `isPrefixOf`) <$> tzones
+  return $listToMaybe zones
+  where tzones = getDirectoryContents thermalBaseP
 
 -- |Get the cpu usage in percent for each (virtual) cpu
 getCPUPercent :: CPUHandle -> IO [Int]
@@ -162,4 +180,4 @@ getCPUHandle' t xs = do
 
 -- |Version for getCPUHandle' that defaults to thermal zone "thermal_zone0"
 getCPUHandle :: ScalingType -> IO CPUHandle
-getCPUHandle = flip getCPUHandle' (Just "thermal_zone0")
+getCPUHandle s = getCPUHandle' s =<< guessThermalZone
