@@ -72,7 +72,7 @@ monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
 
 compilerFlags :: String
-compilerFlags = "--make -fno-warn-orphans"
+compilerFlags = "--make -fno-warn-orphans -odir build -hidir build"
 
 changeDir :: IO ()
 changeDir = do
