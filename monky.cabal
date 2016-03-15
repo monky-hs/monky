@@ -82,7 +82,7 @@ library
   exposed-modules: Monky.Examples.MemoryBar Monky.Disk.Btrfs Monky.Disk.Device
   exposed-modules: Monky.Prepend Monky.Examples.CPUMany Monky.Connectivity
   exposed-modules: Monky.Examples.Connectivity Monky.Examples.File
-  exposed-modules: Monky.Wifi Monky.Examples.Wifi
+  exposed-modules: Monky.Wifi Monky.Examples.Wifi Monky.NewNetwork
 
   exposed-modules: Monky.Version
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid

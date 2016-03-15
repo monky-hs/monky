@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-|
 Module      : Monky.Examples.Network
 Description : An example module instance for the network module
@@ -15,6 +17,8 @@ where
 import Monky.Utility
 import Monky.Modules
 import Monky.Network
+
+import qualified Monky.NewNetwork as N
 
 data NetworkHandles' = NH' String NetworkHandles
 
@@ -44,3 +48,13 @@ getNetworkText e _ nh = do
 -- |Example instance for network module
 instance Module NetworkHandles where
   getText = getNetworkText "Network Off"
+
+
+getNNetworkText :: String -> String -> N.Handles -> IO String
+getNNetworkText e _ nh = do
+  nv <- N.getMultiReadWrite nh
+  return (formatNetworkText e nv)
+
+
+instance Module N.Handles where
+  getText = getNNetworkText "Netowrk Off"

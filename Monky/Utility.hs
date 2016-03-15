@@ -30,6 +30,7 @@ module Monky.Utility
  ( readValue
  , readValues
  , fopen
+ , fclose
  , File
  , readLine
  , readContent
@@ -175,6 +176,9 @@ convertUnitI rate step bs ks ms gs
 fopen :: String -> IO File
 fopen = fmap File . flip openFile ReadMode
 
+
+fclose :: File -> IO ()
+fclose = hClose
 
 -- |Split ys at every occurence of xs
 splitAtEvery :: String -> String -> [String]
