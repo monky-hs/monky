@@ -92,4 +92,3 @@ getDNetworkText :: String -> String -> D.Handles -> IO String
 getDNetworkText e _ nh = do
   nv <- D.getMultiReadWrite nh
   return $ formatNetworkText e nv
-
