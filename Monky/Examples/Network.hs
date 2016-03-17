@@ -13,6 +13,7 @@ module Monky.Examples.Network
   )
 where
 
+import Data.IORef (readIORef)
 
 import Monky.Utility
 import Monky.Modules
@@ -58,3 +59,7 @@ getNNetworkText e _ nh = do
 
 instance Module N.Handles where
   getText = getNNetworkText "Netowrk Off"
+
+instance Module N.UHandles where
+  getText u h = getNNetworkText "Network Off" u =<< readIORef (fst h)
+    

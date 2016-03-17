@@ -1,21 +1,35 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Monky.NewNetwork
 where
 
-import Data.List (isPrefixOf)
+import Data.Bits ((.|.))
+import System.IO.Error (catchIOError)
+import System.IO (hPutStrLn, stderr)
+import Control.Concurrent (forkIO, threadWaitRead)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
-import System.Directory (getDirectoryContents)
+import qualified Data.Map as M
 import Data.Time.Clock.POSIX
 import Monky.Utility
 import Data.IORef
 
-data NetState = Down | Up
+import qualified Data.ByteString.Char8 as BS
+
+import System.Linux.Netlink
+import System.Linux.Netlink.Constants
+import System.Linux.Netlink.Route
+
+data NetState = Down | Up | Unknown
 
 data NetworkHandle = NetH File File File (IORef Int) (IORef Int) (IORef POSIXTime)
 
 type NetHandle = (String, NetworkHandle)
 
 type Handles = IntMap NetHandle
+
+type UHandles = (IORef Handles, (String -> Bool))
 
 basePath :: String
 basePath = "/sys/class/net/"
@@ -29,6 +43,8 @@ writePath = "/statistics/tx_bytes"
 statePath :: String
 statePath = "/operstate"
 
+instance {-# OVERLAPPING #-} Show NetHandle where
+  show (x, _) = x
 
 getReadWrite :: NetworkHandle -> IO (Int, Int)
 getReadWrite (NetH readf writef _ readr writer timer) = do
@@ -52,12 +68,13 @@ getReadWrite (NetH readf writef _ readr writer timer) = do
 
 getState :: NetworkHandle -> IO NetState
 getState (NetH _ _ statef _ _ _) = do
-  state <- readLine statef
-  if state == "down"
-    then return Down
-    else if state == "up"
-      then return Up
-      else error ("Don't know the network state \"" ++ state ++ "\" yet")
+-- the read can thro an exception if the interace disapperad, we just consider it down
+  state <- catchIOError (readLine statef) (\_ -> return "down")
+  return $ case state of
+    "up" -> Up
+    "down" -> Down
+    "unknown" -> Unknown
+    _ -> error ("Don't know the network state \"" ++ state ++ "\" yet")
 
 
 getReadWriteM :: NetworkHandle -> IO (Maybe (Int, Int))
@@ -66,6 +83,7 @@ getReadWriteM h = do
   case state of
     Up -> Just <$> getReadWrite h
     Down -> return Nothing
+    Unknown -> Just <$> getReadWrite h
 
 
 foldF :: NetworkHandle -> IO (Maybe (Int, Int)) -> IO (Maybe (Int, Int))
@@ -81,8 +99,9 @@ foldF h o = do
 
 
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
-getMultiReadWrite =
-  foldr (\(_, v) -> foldF v) (return start)
+getMultiReadWrite h = do
+  hPutStrLn stderr $IM.showTree h
+  foldr (\(_, v) -> foldF v) (return start) h
   where start = Just (0, 0)
 
 
@@ -107,11 +126,13 @@ gotNew :: Int -> String -> Handles -> IO Handles
 gotNew index name m = do
   case IM.lookup index m of
     Nothing -> do
+      hPutStrLn stderr ("Creating new interface: " ++ name)
       h <- getNetworkHandle name
       return $IM.insert index (name, h) m
     Just (x, v) -> if x == name
       then return m
       else do
+        hPutStrLn stderr ("Replacing " ++ x ++ " with " ++ name)
         h <- getNetworkHandle name
         closeNetworkHandle v
         return $IM.adjust (\_ -> (name, h)) index m
@@ -124,17 +145,84 @@ lostOld index m = case IM.lookup index m of
     closeNetworkHandle h >>
     return (IM.delete index m) -- TOOD close handle
 
-buildMap :: [NetHandle] -> Int -> Handles -> Handles
-buildMap [] _ m = m
-buildMap (x:xs) i m = buildMap xs (i + 1) (IM.insert i x m)
+
+requestPacket :: RoutePacket
+requestPacket =
+  let flags = fNLM_F_REQUEST .|. fNLM_F_MATCH .|. fNLM_F_ROOT
+      header = Header eRTM_GETLINK flags 42 0
+      msg = NLinkMsg 0 0 0 in
+    Packet header msg M.empty
+
+
+readInterface :: RoutePacket -> (Int, String)
+readInterface (Packet _ msg attrs) =
+  let (Just name) = M.lookup eIFLA_IFNAME attrs
+      names = init $BS.unpack name
+      index = interfaceIndex msg in
+    (fromIntegral index, names)
+readInterface x = error ("Something went wrong while getting interfaces: " ++ show x)
+
+
+getCurrentDevs :: IO [(Int, String)]
+getCurrentDevs = do
+  sock <- makeSocket
+  ifs <- query sock requestPacket
+  return $map readInterface ifs
+
 
 getNetworkHandles :: (String -> Bool) -> IO Handles
 getNetworkHandles f = do
-  interfaces <- filter (\s -> f s && noHidden s) <$> getDirectoryContents basePath
-  handles <- mapM getH interfaces
-  return $buildMap handles 0 IM.empty
-  where getH dev = do
-          h <- getNetworkHandle dev
-          return (dev, h)
-        -- Hiddens will be the . and .., nothing else
-        noHidden = not . isPrefixOf "."
+  interfaces <- filter (f . snd) <$> getCurrentDevs
+  foldr build (return IM.empty) interfaces
+  where build (index, dev) m =
+          gotNew index dev =<< m
+
+
+doUpdate :: UHandles -> RoutePacket -> IO ()
+doUpdate (mr, f) (Packet hdr msg attrs)
+-- for now we will assume that we want the interface
+  | messageType hdr == eRTM_NEWLINK = do
+    let (Just name) = M.lookup eIFLA_IFNAME attrs
+    let names = init $BS.unpack name
+    hPutStrLn stderr (names ++ " appeared")
+    if f names
+      then do
+        let index = interfaceIndex msg
+        m <- readIORef mr
+        nm <- gotNew (fromIntegral index) names m
+        writeIORef mr nm
+      else return ()
+  | messageType hdr == eRTM_DELLINK = do
+    let (Just name) = M.lookup eIFLA_IFNAME attrs
+    let names = init $BS.unpack name
+    hPutStrLn stderr (names ++ " disappeared")
+    let index = interfaceIndex msg
+    m <- readIORef mr
+    nm <- lostOld (fromIntegral index) m
+    writeIORef mr nm
+  | otherwise = return ()
+-- Ignore everything else
+doUpdate _ _ = return ()
+
+
+updaterLoop :: NetlinkSocket -> UHandles -> IO ()
+updaterLoop sock mr = do
+  threadWaitRead (getNetlinkFd sock)
+  packet <- (recvOne sock :: IO [RoutePacket])
+  mapM_ (doUpdate mr) packet
+  updaterLoop sock mr
+
+
+updater :: UHandles -> IO ()
+updater h = do
+  sock <- makeSocket
+  joinMulticastGroup sock 1
+  updaterLoop sock h
+
+
+getUHandles :: (String -> Bool) -> IO UHandles
+getUHandles f = do
+  handle <- getNetworkHandles f
+  ref <- newIORef handle
+  _ <- forkIO (updater (ref, f))
+  return (ref, f)

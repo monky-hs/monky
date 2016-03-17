@@ -65,7 +65,13 @@ executable monky
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6.0.1 && <5, directory, process, unix, template-haskell, containers, bytestring
+  build-depends: base >=4.6.0.1 && <5,
+                 directory,
+                 process,
+                 unix,
+                 template-haskell,
+                 containers,
+                 bytestring
 
   -- Directories containing source files.
   -- hs-source-dirs:
