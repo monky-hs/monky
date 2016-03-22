@@ -66,6 +66,8 @@ class Module a where
 
        The module should return 'True' if the setup was successful (is usable)
        or 'False' if it failed to enter the broken state right at startup
+
+       Do to the current inner working of monky, recoverModule will be called before setupModule can be called, which will make this unnecessary for most modules
     -}
     setupModule :: a -> IO Bool
     setupModule _ = return True

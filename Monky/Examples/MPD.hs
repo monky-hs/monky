@@ -81,11 +81,11 @@ instance Module MPDHandle where
   getEventTextFailable _ _ (MPDHandle _ _ s) =  do
     r <- readIORef s
     ioInM getEvent r
-  setupModule (MPDHandle h p r) = do
-    s <- getMPDSocket h p
-    case s of
-      (Right x) -> writeIORef r (Just x) >> return True
-      (Left _) -> return False
+--  setupModule (MPDHandle h p r) = do
+--    s <- getMPDSocket h p
+--    case s of
+--      (Right x) -> writeIORef r (Just x) >> return True
+--      (Left _) -> return False
   recoverModule (MPDHandle h p r) = do
     s <- getMPDSocket h p
     case s of

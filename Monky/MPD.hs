@@ -29,11 +29,20 @@ This module creates a persistant connection to an mpd server and allows to query
 information or react to events waited for with MPDs idle
 -}
 module Monky.MPD
-(MPDSocket, State(..), TagCollection(..), SongInfo(..), Status(..),
- getMPDStatus, getMPDSong, getMPDSocket, closeMPDSocket, getMPDFd,
- readOk, goIdle,
- doQuery -- This might not stay
- )
+  ( MPDSocket
+  , State(..)
+  , TagCollection(..)
+  , SongInfo(..)
+  , Status(..)
+  , getMPDStatus
+  , getMPDSong
+  , getMPDSocket
+  , closeMPDSocket
+  , getMPDFd
+  , readOk
+  , goIdle
+  , doQuery -- This might not stay
+  )
 where
 
 import System.IO.Error
@@ -60,14 +69,14 @@ import Control.Applicative ((<$>))
 
 type MPDSock = Socket
 -- |A type safe socket for this module, basically a handle
-data MPDSocket = MPDSocket MPDSock
+newtype MPDSocket = MPDSocket MPDSock
 
 -- |The current state of the MPD player submodule
-data State 
+data State
   = Playing -- ^Playing
   | Stopped -- ^Stopped
   | Paused  -- ^Paused
-  deriving (Show,Eq) -- If it wasn't obvious
+  deriving (Show, Eq) -- If it wasn't obvious
 
 -- |Collection of tags MPD supports
 data TagCollection = TagCollection
@@ -169,8 +178,8 @@ tryConnect (x:xs) sock =
 
 
 doMPDConnInit :: MPDSock -> IO (Maybe String)
-doMPDConnInit s = join <$> timeout 500000 doInit
-  where 
+doMPDConnInit s = join <$> timeout (500 * 1000) doInit
+  where
     doInit = do
       v <- BS.unpack <$> recv s 64
       if "OK MPD " `isPrefixOf` v
@@ -193,7 +202,7 @@ openMPDSocket ys@(x:xs) = do
 
 
 -- |Get a new 'MPDSocket'
-getMPDSocket 
+getMPDSocket
   :: String -- ^The host the server is on
   -> String -- ^The port the server listens on
   -> IO (Either String MPDSocket)
@@ -207,7 +216,7 @@ getMPDFd :: MPDSocket -> IO Fd
 getMPDFd (MPDSocket s) = return . Fd $fdSocket s
 
 recvMessage :: MPDSock -> ExceptT String IO [String]
-recvMessage sock = 
+recvMessage sock =
   trySExcpt "receive" $lines . BS.unpack <$> recv sock 4096
 
 sendMessage :: MPDSock -> String -> ExceptT String IO ()
@@ -249,6 +258,7 @@ getState "play"  = Playing
 getState "stop"  = Stopped
 getState "pause" = Paused
 getState _ = error "Got unknown state"
+
 
 parseStatusRec :: M.Map String String -> [String] -> Status
 parseStatusRec m [] = Status
