@@ -27,12 +27,11 @@ Portability : Linux
 This module provides a simple api to wait for one of many events in a loop
 -}
 module Monky.Event
-(startEventLoop)
+  ( startEventLoop
+  )
 where
 
 
---import Text.Printf (printf)
---import System.IO
 import System.Timeout (timeout)
 import Data.Time.Clock.POSIX
 import System.Posix.Types (Fd)
@@ -46,26 +45,30 @@ import Monky.Modules
 import Control.Monad.STM
 
 
+-- |The event wrapper that carries all we need
 type MonkyEvent = (Int, Fd -> IO Bool, Modules)
+-- |The STM we wait on for the main eventing, has all we need for updating
 type EvtSTM = STM (MonkyEvent, Fd, IO ())
 
 -- The return value will be the MonkyEvent (so we can recreate it if we need to)
 -- and the IO action to rearm the specific event
 data LoopEvt = LoopEvt Int EvtSTM
+
 instance Eq LoopEvt where
   (==) (LoopEvt i _) (LoopEvt j _) = i == j
 
 
+-- |Grab the event out of loop event
 getEvt :: LoopEvt -> EvtSTM
 getEvt (LoopEvt _ x) = x
 
-
+-- |Rearm the event so we can wait on it
 armEvent :: TVar Bool -> Fd -> IO ()
 armEvent m fd = do
     atomically $writeTVar m False
     void $forkIO (threadWaitRead fd >> atomically (writeTVar m True))
 
-
+-- |Our own version of threadWaitRead we need for rearm
 threadWaitReadSTME :: Fd -> IO (STM(), Fd, IO ())
 threadWaitReadSTME fd = do
   m <- newTVarIO False
@@ -75,6 +78,7 @@ threadWaitReadSTME fd = do
   return (waitAction, fd, rearm)
 
 
+-- |Build a STM event around a MonkyEvent
 getSTMEventE :: MonkyEvent -> IO (Maybe EvtSTM)
 getSTMEventE evt@(_, _, MW m _) = do
   events <- mapM threadWaitReadSTME =<< getFDs m
@@ -87,7 +91,7 @@ getSTMEventE evt@(_, _, MW m _) = do
       event
       return (evt, fd, rearm)
 
-
+-- |Build Events for main loop, Second value is failed activations
 getSTMEventEs :: [MonkyEvent] -> IO ([LoopEvt], [MonkyEvent])
 getSTMEventEs [] = return ([], [])
 getSTMEventEs (x@(i, _, _):xs) = do
@@ -98,22 +102,21 @@ getSTMEventEs (x@(i, _, _):xs) = do
     Nothing -> return (ys, x:zs)
 
 
+-- |Recover events after they failed
 recover :: [MonkyEvent] -> IO ([LoopEvt], [MonkyEvent])
 recover [] = return ([], [])
-recover (x@(i, _, MW m _):xs) = do
-  --hPutStrLn stderr "Trying to recover someone"
+recover (x@(i, act, MW m _):xs) = do
   (ys, zs) <- recover xs
   rec <- recoverModule m
   if rec
     then do
-      putStrLn "Recoverd module"
       (Just evt) <- getSTMEventE x
       return (LoopEvt i evt:ys,zs)
     else return (ys, x:zs)
 
 
 stmLoopE :: [LoopEvt] -> [MonkyEvent] -> POSIXTime -> IO ()
--- This hould not happen
+-- This should not happen
 stmLoopE [] [] _ = return ()
 -- If we have no event we could wait on, why wait?
 -- Plus the main implementation could not handle an empty list
@@ -124,7 +127,6 @@ stmLoopE [] ys _ = do
   stmLoopE xs zs  t
 -- The main body of the event list
 stmLoopE xs ys t = do
-  --hPutStrLn stderr (printf "Looping looping looping :) %d %d" (length xs) (length ys))
   t' <- getPOSIXTime
   if (t' - t) > 5
     then do
