@@ -6,6 +6,7 @@ module Monky.Connectivity
   )
 where
 
+import Data.Bits ((.|.))
 import Data.List.Split (splitOn)
 import Control.Concurrent (threadWaitWrite, threadDelay, forkIO)
 import Data.Word (Word32,Word16)
@@ -22,8 +23,12 @@ import Data.IORef (IORef, newIORef, writeIORef)
 #include <sys/socket.h>
 #include <netinet/ip.h>
 
-data Sockaddr = Socka Int Word16 Word32 deriving (Eq, Show)
+-- |The Haskell type for the C struct sockaddr
+newtype Port = Port Word16 deriving (Eq, Show)
+newtype IP4 = IP4 Word32 deriving (Eq, Show)
+data Sockaddr = Socka Int Port IP4 deriving (Eq, Show)
 
+-- |Raw socket calls, we node those
 foreign import ccall "socket" c_socket :: CInt -> CInt -> CInt -> IO CInt
 foreign import ccall "close" c_close :: CInt -> IO ()
 foreign import ccall "connect" c_connect :: CInt -> Ptr Sockaddr -> CInt -> IO CInt
@@ -38,31 +43,30 @@ instance Storable Sockaddr where
     fam <- #{peek struct sockaddr_in, sin_family} p
     port <- #{peek struct sockaddr_in, sin_port} p
     ip <- #{peek struct sockaddr_in, sin_addr} p
-    return (Socka fam port ip)
-  poke p (Socka fam port ip) = do
+    return (Socka fam (Port port) (IP4 ip))
+  poke p (Socka fam (Port port) (IP4 ip)) = do
     #{poke struct sockaddr_in, sin_family} p fam
     #{poke struct sockaddr_in, sin_port} p port
     #{poke struct sockaddr_in, sin_addr} p ip
 
-parseIP :: String -> Word32
+parseIP :: String -> IP4
 parseIP xs = let
   -- Read stinrg to numbers
   -- Build IP in host byte order
     [a,b,c,d] = map read $ splitOn "." xs
     ip = a * 16777216 + b * 65536 + c * 256 + d * 1 in
-  htonl ip
+  IP4 $htonl ip
 
 -- TODO maybe create an echo service so we don't have to do the socket call all the time
--- TODO use constants insted of this hardcoded numbers
 tryConn :: String -> Int -> IO Bool
 tryConn ip port = do
-  socket <- c_socket 2 2049 0
+  socket <- c_socket #{const AF_INET} (#{const SOCK_STREAM} .|. #{const SOCK_NONBLOCK}) 0
   -- This will always be -1 because of how unblocking sockets work
-  _ <- with (Socka 2 (htons $fromIntegral port) (parseIP ip))
+  _ <- with (Socka #{const AF_INET} (Port . htons $fromIntegral port) (parseIP ip))
        (\ptr ->c_connect socket ptr (fromIntegral $sizeOf (undefined :: Sockaddr)))
   (Errno con) <- getErrno
   ret <- if (Errno con) == eINPROGRESS
-    then timeout (500*1000) (threadWaitWrite (Fd socket)) >>=
+    then timeout (500 * 1000) (threadWaitWrite (Fd socket)) >>=
       \case
         Nothing -> return True
         Just _ -> return False
