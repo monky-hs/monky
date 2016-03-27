@@ -105,7 +105,7 @@ getSTMEventEs (x@(i, _, _):xs) = do
 -- |Recover events after they failed
 recover :: [MonkyEvent] -> IO ([LoopEvt], [MonkyEvent])
 recover [] = return ([], [])
-recover (x@(i, act, MW m _):xs) = do
+recover (x@(i, _, MW m _):xs) = do
   (ys, zs) <- recover xs
   rec <- recoverModule m
   if rec

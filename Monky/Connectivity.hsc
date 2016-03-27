@@ -79,7 +79,7 @@ showIPIO ip = allocaBytes #{const INET_ADDRSTRLEN} (\str ->
 -- All sideeffects are contained in the IO action and it is deterministic, so we can drop the IO
 showIP :: IP4 -> String
 showIP ip = unsafePerformIO (showIPIO ip)
-
+{-# NOINLINE showIP #-}
 
 parseIPIO :: String -> IO IP4
 parseIPIO xs =
@@ -89,6 +89,7 @@ parseIPIO xs =
 -- All sideeffects are contained in the IO action and it is deterministic, so we can drop the IO
 parseIP :: String -> IP4
 parseIP str = unsafePerformIO (parseIPIO str)
+{-# NOINLINE parseIP #-}
 
 
 -- TODO maybe create an echo service so we don't have to do the socket call all the time
