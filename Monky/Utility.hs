@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE FlexibleInstances #-}
 {-|
 Module      : Monky.Utility
 Description : Provides utility functions
@@ -37,6 +38,8 @@ module Monky.Utility
  , convertUnitSI
  , findLine
  , splitAtEvery
+ , maybeOpenFile
+ , sdiv
  )
 where
 
@@ -141,3 +144,16 @@ splitAtEvery s str = splitAtEvery' s str []
           then zs:splitAtEvery' xs (cut ys) []
           else splitAtEvery' xs ys (zs ++ [y])
           where cut = drop (length xs -1)
+
+-- |fmap fopen would give Maybe (IO File), this fixes that
+maybeOpenFile :: Maybe String -> IO (Maybe File)
+maybeOpenFile Nothing = return Nothing
+maybeOpenFile (Just x) = Just <$> fopen x
+
+sdiv :: (Integral a, Bounded a) => a -> a -> a
+sdiv x 0 = x
+sdiv x y = x `div` y
+
+--sdiv :: Integral a => a -> a -> a
+--sdiv x 0 = x -- TODO add bounded and use max?
+--sdiv x y = x `div` y

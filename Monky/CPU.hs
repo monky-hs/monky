@@ -27,24 +27,27 @@ Portability : Linux
 -}
 module Monky.CPU
   ( CPUHandle
+  , Numa(..)
+  , NumaHandle(..)
   , getCPUHandle
   , getCPUHandle'
   , getCPUPercent
+  , getNumaPercent
   , getCPUTemp
   , getCPUMaxScalingFreq
   , ScalingType(..)
+  , getNumaHandles
   )
 where
 
+import Data.Char (isDigit)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Directory (getDirectoryContents)
-import Monky.Utility (fopen, readValue, readContent, File)
-import Data.Char (isSpace)
-import Data.List (isPrefixOf, findIndex)
-import Data.Maybe (fromMaybe, listToMaybe)
+import Monky.Utility
+import Data.List (isPrefixOf)
+import Data.Maybe (listToMaybe)
 import Data.IORef
 import Text.Printf (printf)
-import Control.Monad (liftM2)
 
 
 #if MIN_VERSION_base(4,8,0)
@@ -58,40 +61,55 @@ import Control.Applicative ((<$>))
 -- |The handle exported by this module
 data CPUHandle = CPUH File (Maybe File) [File] (IORef [Int]) (IORef [Int])
 
+-- Wrapper around numa nodes for stat reading
+data NumaHandle = NumaHandle
+  { numaCpus :: [String]
+  , numaHandle :: CPUHandle
+  }
+
+{- Handles used for numa aware version -}
+-- |Handle used for by numa aware version
+newtype Numa = Numa [NumaHandle]
+
 -- |Which values should be returned by getCPUFreq
-data ScalingType 
+data ScalingType
   = ScalingMax -- ^Use the maximum frequencie allowed
   | ScalingCur -- ^Use the current frequencie used
+
 
 pathStat :: String
 pathStat = "/proc/stat"
 
-pathTemp :: String -> String
-pathTemp = printf "/sys/class/thermal/%s/temp"
-
-pathMaxScalingT :: String
-pathMaxScalingT = "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_max_freq"
-
-pathMaxScaling :: Int -> String
-pathMaxScaling = printf pathMaxScalingT
-
-pathCurScalingT :: String
-pathCurScalingT = "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq"
-
-pathCurScaling :: Int -> String
-pathCurScaling = printf pathCurScalingT
-
-getCPUFreqsCur :: Int -> IO [File]
-getCPUFreqsCur 0 = return []
-getCPUFreqsCur i = liftM2 (:) (fopen (pathCurScaling (i - 1))) (getCPUFreqsCur (i - 1))
-
-
-getCPUFreqsMax :: Int -> IO [File]
-getCPUFreqsMax 0 = return []
-getCPUFreqsMax i = liftM2 (:) (fopen (pathMaxScaling (i - 1))) (getCPUFreqsMax (i - 1))
+pathCPUBase :: String
+pathCPUBase = "/sys/devices/system/cpu"
 
 thermalBaseP :: String
 thermalBaseP = "/sys/class/thermal/"
+
+pathTemp :: String -> String
+pathTemp zone = thermalBaseP ++ zone ++ "/temp"
+
+pathMaxScalingT :: String
+pathMaxScalingT = "/sys/devices/system/cpu/%s/cpufreq/scaling_max_freq"
+
+pathMaxScaling :: String -> String
+pathMaxScaling = printf pathMaxScalingT
+
+pathCurScalingT :: String
+pathCurScalingT = "/sys/devices/system/cpu/%s/cpufreq/scaling_cur_freq"
+
+pathCurScaling :: String -> String
+pathCurScaling = printf pathCurScalingT
+
+pathNumaBase :: String
+pathNumaBase = "/sys/devices/system/node/"
+
+getCPUFreqsCur :: [String] -> IO [File]
+getCPUFreqsCur = mapM (fopen . pathCurScaling)
+
+getCPUFreqsMax :: [String] -> IO [File]
+getCPUFreqsMax = mapM (fopen . pathMaxScaling)
+
 
 -- |Check if thermal zone is x86_pkg_temp
 isX86PkgTemp :: String -> Bool
@@ -99,19 +117,25 @@ isX86PkgTemp xs = unsafePerformIO $do
   str <- readFile (thermalBaseP ++ xs ++ "/type")
   return (str == "x86_pkg_temp\n")
 
--- |Tries to guess the thermal zone based on type
-guessThermalZone :: IO (Maybe String)
-guessThermalZone = do
-  zones <- filter isX86PkgTemp . filter ("thermal_zone" `isPrefixOf`) <$> tzones
-  return $listToMaybe zones
+-- |Try to guess the thermal zones
+guessThermalZones :: IO [String]
+guessThermalZones = do
+  filter isX86PkgTemp . filter ("thermal_zone" `isPrefixOf`) <$> tzones
   where tzones = getDirectoryContents thermalBaseP
 
--- |Get the cpu usage in percent for each (virtual) cpu
-getCPUPercent :: CPUHandle -> IO [Int]
-getCPUPercent (CPUH f _ _ aref wref) = do
-  content <- readContent f
-  let d = foldr fold [] content
+-- |Tries to guess the thermal zone based on type
+guessThermalZone :: IO (Maybe String)
+guessThermalZone = fmap listToMaybe guessThermalZones
+
+
+getPercent :: ([String] -> Bool) -> CPUHandle -> IO [Int]
+getPercent f (CPUH file _ _ aref wref) = do
+  content <- map words <$> readContent file
+  let cpus = filter f content
+  let d = map readVals cpus
+  -- The amount of time passed (jiffies on cpu)
   let sall = map sum d
+  -- The amount of actual work done (jiffies on cpu)
   let work = map (sum . take 3) d
   a <- readIORef aref
   w <- readIORef wref
@@ -121,19 +145,24 @@ getCPUPercent (CPUH f _ _ aref wref) = do
   writeIORef aref sall
   return $zipWith (sdiv . (* 100)) cwork call
   where
-    isCPU l = isPrefixOf "cpu" l && ((>3) . fromMaybe 0 $findIndex isSpace l)
-    readVals = (map read . tail) . words
-    fold x xs = if isCPU x then (readVals x :: [Int]):xs else xs
-    sdiv x 0 = x
-    sdiv x y = x `div` y
+    readVals = map read . tail
+
+-- |Get the cpu usage in percent for each (virtual) cpu
+getCPUPercent :: CPUHandle -> IO [Int]
+getCPUPercent = getPercent (\(x:_) -> "cpu" `isPrefixOf` x && length x > 3)
+
+-- |Read node information
+getNumaPercent :: NumaHandle -> IO [Int]
+getNumaPercent (NumaHandle cpus h) =
+  getPercent (\xs -> head xs `elem` cpus) h
+
 
 -- |get current CPU temperature
 getCPUTemp :: CPUHandle -> IO Int
-getCPUTemp (CPUH _ mf _ _ _) = case mf of
-  Nothing -> error "Tried to get cpu temp while Nothing was given as zone"
-  (Just f) -> do
-    temp <- readValue f
-    return (temp `div` 1000)
+getCPUTemp (CPUH _ Nothing _ _ _) = return (-1)
+getCPUTemp (CPUH _ (Just f) _ _ _) = do
+  temp <- readValue f
+  return (temp `div` 1000)
 
 
 {- |this function returns a frequency according th the 'ScalingType' of the
@@ -147,37 +176,58 @@ getCPUMaxScalingFreq (CPUH _ _ files _ _) = do
   return (fromIntegral (maximum vals) / 1000000)
 
 
-getCPUFreqs :: ScalingType -> Int -> IO [File]
+-- open the files to read the frequency from
+getCPUFreqs :: ScalingType -> [String] -> IO [File]
 getCPUFreqs ScalingMax = getCPUFreqsMax
 getCPUFreqs ScalingCur = getCPUFreqsCur
 
 
-{- -1 at the end, because there is also the cpu line which sums over all -}
-getNumberOfCores :: File -> IO Int
-getNumberOfCores f = do
-  stats <- readContent f
-  return $length (filter (isPrefixOf "cpu") stats) - 1
-
-maybeOpenFile :: Maybe String -> IO (Maybe File)
-maybeOpenFile Nothing = return Nothing
-maybeOpenFile (Just x) = Just <$> fopen x
-
+getHandle :: String -> ScalingType -> Maybe String -> IO NumaHandle
+getHandle path t xs = do
+  cpus <- filter isCPU <$> getDirectoryContents path
+  workref <- newIORef ([0] :: [Int])
+  allref <- newIORef ([0] :: [Int])
+  stat <- fopen pathStat
+  temp <- maybeOpenFile $pathTemp <$> xs
+  files <- getCPUFreqs t cpus
+  return $ NumaHandle cpus (CPUH stat temp files allref workref)
+  where isCPU ys = "cpu" `isPrefixOf` ys && all isDigit (drop 3 ys)
 
 -- |Create an 'CPUHandle'
 getCPUHandle' 
   :: ScalingType -- ^The scaling type, either "ScalingMax" or "ScalingCur"
   -> Maybe String -- ^The thermal zone to use or Nothing if there isn't any
   -> IO CPUHandle
-getCPUHandle' t xs = do
-  workref <- newIORef ([0] :: [Int])
-  allref <- newIORef ([0] :: [Int])
-  stat <- fopen pathStat
-  temp <- maybeOpenFile $pathTemp <$> xs
-  num <- getNumberOfCores stat
-  files <- getCPUFreqs t num
-  return $CPUH stat temp files allref workref
+getCPUHandle' xs ys = numaHandle <$> getHandle pathCPUBase xs ys
 
 
 -- |Version for getCPUHandle' that defaults to thermal zone "thermal_zone0"
 getCPUHandle :: ScalingType -> IO CPUHandle
 getCPUHandle s = getCPUHandle' s =<< guessThermalZone
+
+-- |Version for NumaAvare handles
+getNumaHandle
+  :: String -- ^The Node name
+  -> ScalingType -- ^'ScalingType' as for getCPUHandle
+  -> Maybe String -- ^thermal zone as for getCPUHandle
+  -> IO NumaHandle -- ^A single numa node
+getNumaHandle xs = getHandle (pathNumaBase ++ xs)
+
+  -- |Get the Numa aware handle
+getNumaHandles'
+  :: ScalingType
+  -> [Maybe String] -- ^A list of thermal zones for our numa handles
+  -> IO Numa
+getNumaHandles' t xs = do
+  nodes <- filter isNode <$> getDirectoryContents pathNumaBase
+  handles <- sequence $ zipWith openNode nodes xs
+  return $ Numa handles
+  where isNode = ("node" `isPrefixOf`)
+        openNode node thermal = getNumaHandle node t thermal
+
+-- |getnumaHandles' but try to guess the thermal zones
+getNumaHandles :: ScalingType -> IO Numa
+getNumaHandles t = do
+  zones <- guessThermalZones
+  let tzones = map Just zones ++ repeat Nothing
+  getNumaHandles' t tzones

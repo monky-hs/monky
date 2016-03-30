@@ -10,11 +10,13 @@ module Monky.Examples.CPUMany ()
 where
 
 import Text.Printf (printf)
+import Data.List (intercalate)
 
 import Monky.Modules
 import Monky.CPU
 
-{- CPU Module -}
+-- TODO refactor all of this into a CPUCommon?
+{- CPUMany (use average and max) Module -}
 cpuColor :: Int -> String
 cpuColor p
   | p < 15 = "#009900"
@@ -22,22 +24,43 @@ cpuColor p
   | p < 90 = "#ff6600"
   | otherwise = "#ff0000"
 
-formatCPUText :: String -> [Int] -> Int -> Float -> String
-formatCPUText user cp ct cf =
-  let bars = map printbars cp :: [String] in
-  (freq ++ concat bars ++ printf " %d°C" ct)
-  where 
-    printbars pc = printf "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()" (cpuColor pc) (16- div (16 * pc) 100) :: String
-    freq = printf ("^i(/home/" ++ user ++ "/.monky/xbm/cpu.xbm) %.1fG ^p(-3)") cf :: String
+barTemplate :: String
+barTemplate = "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()"
 
-getCPUText :: String -> CPUHandle -> IO String
-getCPUText user ch = do
+printBar :: Int -> String
+printBar pc = printf barTemplate (cpuColor pc) (16- div (16 * pc) 100)
+
+printXbm :: String -> String
+printXbm u = "^i(/home/" ++ u ++ "/.monky/xbm/cpu.xbm)"
+
+printFrequency :: Float -> String
+printFrequency = printf " %1.fG ^p(-3)"
+
+printThemp :: Int -> String
+printThemp = printf " %d°C"
+
+formatCPUText :: [Int] -> Int -> Float -> String
+formatCPUText cp ct cf = printFrequency cf ++ concatMap printBar cp ++ printThemp ct
+
+getCPUText :: CPUHandle -> IO String
+getCPUText ch = do
   cp <- getCPUPercent ch
   ct <- getCPUTemp ch
   cf <- getCPUMaxScalingFreq ch
-  return (formatCPUText user [maximum cp, sum cp `div` length cp] ct cf)
+  return (formatCPUText [maximum cp, sum cp `div` length cp] ct cf)
 
 -- |Example instance for CPU module
 instance Module CPUHandle where
-  getText = getCPUText
+  getText u = fmap (printXbm u ++) . getCPUText
 
+getNumaText :: NumaHandle -> IO String
+getNumaText ch = do
+  cp <- getNumaPercent ch
+  ct <- getCPUTemp (numaHandle ch)
+  cf <- getCPUMaxScalingFreq (numaHandle ch)
+  return (formatCPUText [maximum cp, sum cp `div` length cp] ct cf)
+
+instance Module Numa where
+  getText u (Numa handles) = do
+    nodes <- mapM getNumaText handles
+    return (printXbm u ++ (intercalate " - " nodes))
