@@ -1,8 +1,40 @@
+{-
+    Copyright 2016 Markus Ongyerth
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE LambdaCase #-}
+{-|
+Module      : Monky.Connectivity
+Description : Allows the user to get a connected state
+Maintainer  : ongy
+Stability   : experimental
+Portability : Linux
+
+This module checks periodically if the current system
+can establish a network connection (TCP) to a given host
+on a given port. It does not care about reject, it is
+intended to test whether a firewall drops packages or
+a (tethered) connection is stable.
+-}
 module Monky.Connectivity
-  ( ConnHandle(..)
+  ( ConnHandle
   , getConnH
+  , hasConn
   )
 where
 
@@ -19,7 +51,7 @@ import Foreign.C.Types (CChar)
 import Foreign.Storable (Storable(..))
 import System.Posix.Types (Fd(..))
 import System.Timeout (timeout)
-import Data.IORef (IORef, newIORef, writeIORef)
+import Data.IORef (IORef, newIORef, writeIORef, readIORef)
 
 
 import System.IO.Unsafe (unsafePerformIO)
@@ -109,9 +141,13 @@ tryConn ip port = do
   c_close socket
   return ret
 
-
+-- |The handle exposed by this module
 data ConnHandle = ConnH String Int (IORef Bool)
 
+
+-- |Get the current connected state from the handle
+hasConn :: ConnHandle -> IO Bool
+hasConn (ConnH _ _ r) = readIORef r
 
 updateLoop :: ConnHandle -> IO ()
 updateLoop h@(ConnH ip port ref) = do
@@ -121,7 +157,11 @@ updateLoop h@(ConnH ip port ref) = do
   updateLoop h
 
 
-getConnH :: String -> Int -> IO ConnHandle
+-- |Get a handle to check for connectivity
+getConnH
+  :: String -- ^The Host to use for connectivity probing
+  -> Int -- ^Which port to use for connecivity probing (drop is bad)
+  -> IO ConnHandle
 getConnH ip port = do
   ref <- newIORef False
   let h = ConnH ip port ref

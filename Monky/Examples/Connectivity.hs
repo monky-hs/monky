@@ -1,3 +1,11 @@
+{-|
+Module      : Monky.Examples.Connectivity
+Description : Simple Connectivity example
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+-}
 module Monky.Examples.Connectivity
   (
   )
@@ -5,9 +13,10 @@ where
 
 import Monky.Modules
 import Monky.Connectivity
-import Data.IORef (readIORef)
+
+showCon :: Bool -> String
+showCon False = "Unconnected"
+showCon True  = "  Connected"
 
 instance Module ConnHandle where
-  getText _ (ConnH _ _ ref)= do
-    con <- readIORef ref
-    return $show con
+  getText _ = fmap showCon . hasConn

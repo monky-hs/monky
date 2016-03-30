@@ -62,6 +62,7 @@ import Control.Applicative ((<$>))
 data CPUHandle = CPUH File (Maybe File) [File] (IORef [Int]) (IORef [Int])
 
 -- Wrapper around numa nodes for stat reading
+-- |Numa aware version of 'CPUHandle'
 data NumaHandle = NumaHandle
   { numaCpus :: [String]
   , numaHandle :: CPUHandle
@@ -213,7 +214,7 @@ getNumaHandle
   -> IO NumaHandle -- ^A single numa node
 getNumaHandle xs = getHandle (pathNumaBase ++ xs)
 
-  -- |Get the Numa aware handle
+-- |Get the Numa aware handle
 getNumaHandles'
   :: ScalingType
   -> [Maybe String] -- ^A list of thermal zones for our numa handles

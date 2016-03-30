@@ -151,13 +151,12 @@ maybeOpenFile :: Maybe String -> IO (Maybe File)
 maybeOpenFile Nothing = return Nothing
 maybeOpenFile (Just x) = fmap Just . fopen $ x
 
+-- |0 save divide, uses maxbound for default value
 sdivBound :: (Integral a, Bounded a) => a -> a -> a
-sdivBound x 0 = x
+sdivBound _ 0 = maxBound
 sdivBound x y = x `div` y
 
+-- |0 save divide, uses default value
 sdivUBound :: Integral a => a -> a -> a -> a
 sdivUBound _ 0 d = d
 sdivUBound x y _ = x `div` y
---sdiv :: Integral a => a -> a -> a
---sdiv x 0 = x -- TODO add bounded and use max?
---sdiv x y = x `div` y
