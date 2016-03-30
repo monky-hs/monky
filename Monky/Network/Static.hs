@@ -91,7 +91,6 @@ getReadWriteReal (NetH readf writef _ readref writeref timeref) = do
   return ((cread * 8) `sdivBound` round ctime,
     (cwrite * 8) `sdivBound` round ctime)
 
-
 getReadWrite :: NetworkHandle -> IO (Maybe (Int, Int))
 getReadWrite (NetH readf writef statef readref writeref timeref) = do
   state <- readLine statef
