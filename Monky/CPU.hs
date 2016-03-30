@@ -143,7 +143,7 @@ getPercent f (CPUH file _ _ aref wref) = do
   let call = zipWith (-) sall a
   writeIORef wref work
   writeIORef aref sall
-  return $zipWith (sdiv . (* 100)) cwork call
+  return $zipWith (sdivBound . (* 100)) cwork call
   where
     readVals = map read . tail
 

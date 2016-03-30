@@ -33,7 +33,7 @@ printXbm :: String -> String
 printXbm u = "^i(/home/" ++ u ++ "/.monky/xbm/cpu.xbm)"
 
 printFrequency :: Float -> String
-printFrequency = printf " %1.fG ^p(-3)"
+printFrequency = printf " %.1fG ^p(-3)"
 
 printThemp :: Int -> String
 printThemp = printf " %d°C"

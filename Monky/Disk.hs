@@ -50,6 +50,7 @@ data DiskHandle = DiskH FSI [File] [IORef Int] [IORef Int] (IORef POSIXTime)
 basePath :: String
 basePath = "/sys/class/block/"
 
+
 sectorSize :: Int
 sectorSize = 512
 
@@ -70,7 +71,7 @@ getDiskReadWrite (DiskH _ fs readrefs writerefs timeref) = do
   _ <- sequence $zipWith writeIORef readrefs nreads
   _ <- sequence $zipWith writeIORef writerefs writes
   writeIORef timeref time
-  return (sum $map (`sdiv` round ctime) creads, sum $map (`sdiv` round ctime) cwrites)
+  return (sum $map (`sdivBound` round ctime) creads, sum $map (`sdivBound` round ctime) cwrites)
 
 
 -- |Get the space left on the disk
