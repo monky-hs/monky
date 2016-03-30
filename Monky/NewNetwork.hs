@@ -6,7 +6,6 @@ where
 
 import Data.Bits ((.|.))
 import System.IO.Error (catchIOError)
-import System.IO (hPutStrLn, stderr)
 import Control.Concurrent (forkIO, threadWaitRead)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
@@ -21,7 +20,7 @@ import System.Linux.Netlink
 import System.Linux.Netlink.Constants
 import System.Linux.Netlink.Route
 
-data NetState = Down | Up | Unknown
+data NetState = Down | Up | Unknown | Dormant
 
 data NetworkHandle = NetH File File File (IORef Int) (IORef Int) (IORef POSIXTime)
 
@@ -74,6 +73,7 @@ getState (NetH _ _ statef _ _ _) = do
     "up" -> Up
     "down" -> Down
     "unknown" -> Unknown
+    "dormant" -> Dormant
     _ -> error ("Don't know the network state \"" ++ state ++ "\" yet")
 
 
@@ -84,6 +84,7 @@ getReadWriteM h = do
     Up -> Just <$> getReadWrite h
     Down -> return Nothing
     Unknown -> Just <$> getReadWrite h
+    Dormant -> return Nothing
 
 
 foldF :: NetworkHandle -> IO (Maybe (Int, Int)) -> IO (Maybe (Int, Int))
@@ -100,7 +101,6 @@ foldF h o = do
 
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite h = do
-  hPutStrLn stderr $IM.showTree h
   foldr (\(_, v) -> foldF v) (return start) h
   where start = Just (0, 0)
 
@@ -126,13 +126,11 @@ gotNew :: Int -> String -> Handles -> IO Handles
 gotNew index name m = do
   case IM.lookup index m of
     Nothing -> do
-      hPutStrLn stderr ("Creating new interface: " ++ name)
       h <- getNetworkHandle name
       return $IM.insert index (name, h) m
     Just (x, v) -> if x == name
       then return m
       else do
-        hPutStrLn stderr ("Replacing " ++ x ++ " with " ++ name)
         h <- getNetworkHandle name
         closeNetworkHandle v
         return $IM.adjust (\_ -> (name, h)) index m
@@ -184,7 +182,6 @@ doUpdate (mr, f) (Packet hdr msg attrs)
   | messageType hdr == eRTM_NEWLINK = do
     let (Just name) = M.lookup eIFLA_IFNAME attrs
     let names = init $BS.unpack name
-    hPutStrLn stderr (names ++ " appeared")
     if f names
       then do
         let index = interfaceIndex msg
@@ -195,7 +192,6 @@ doUpdate (mr, f) (Packet hdr msg attrs)
   | messageType hdr == eRTM_DELLINK = do
     let (Just name) = M.lookup eIFLA_IFNAME attrs
     let names = init $BS.unpack name
-    hPutStrLn stderr (names ++ " disappeared")
     let index = interfaceIndex msg
     m <- readIORef mr
     nm <- lostOld (fromIntegral index) m
