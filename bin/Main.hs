@@ -68,11 +68,18 @@ data Action
   | PrintUsage
   deriving (Ord, Show, Eq)
 
+
+exeName :: String
+exeName = "monky.exe"
+
+
 monkyPath :: IO String
 monkyPath = flip (++) "/.monky" <$> getHomeDirectory
 
+
 compilerFlags :: String
 compilerFlags = "--make -fno-warn-orphans -odir build -hidir build -O"
+
 
 changeDir :: IO ()
 changeDir = do
@@ -104,6 +111,7 @@ createExampleIfMissing = do
   files <- getDirectoryContents "."
   when ("monky.hs" `notElem` files) createExample
 
+
 createVersionFile :: ExitCode -> IO ()
 createVersionFile (ExitFailure _) = putStrLn "Compiliation failed" >> exitFailure
 createVersionFile ExitSuccess = withFile ".version" WriteMode (\file ->
@@ -111,7 +119,7 @@ createVersionFile ExitSuccess = withFile ".version" WriteMode (\file ->
 
 
 compile :: IO ()
-compile = system ("ghc " ++ compilerFlags ++ " monky.hs -o monky") >>= createVersionFile
+compile = system ("ghc " ++ compilerFlags ++ " monky.hs -o" ++ exeName) >>= createVersionFile
 
 
 hasMonkyUpdated :: [FilePath] -> IO Bool
@@ -153,6 +161,7 @@ forceRecomp = do
   compile
   where isCompiled s = isSuffixOf ".hi" s || isSuffixOf ".o" s
 
+
 parseArgs :: [String] -> Map Action Bool -> Map Action Bool
 parseArgs ("--recompile":xs) m =
   parseArgs xs $ M.insert CheckRecompile False $M.insert Recompile True m
@@ -185,6 +194,7 @@ getActions = do
   let m = parseArgs args defaultActions
   return $getActionList $M.toAscList m
 
+
 printUsage :: IO ()
 printUsage = do
   putStrLn "Default: Create example if needed, compile if needed and run monky\n"
@@ -192,8 +202,10 @@ printUsage = do
   putStrLn "--no-recompile/-n:  Don't recompile"
   putStrLn "--no-exec:          Don't execute main executable"
 
+
 executeMonky :: IO ()
-executeMonky = executeFile "./monky" False [] Nothing
+executeMonky = executeFile ("./" ++ exeName) False [] Nothing
+
 
 main :: IO ()
 main = do

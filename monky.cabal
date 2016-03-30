@@ -55,6 +55,7 @@ Flag ibus
 executable monky
   -- .hs or .lhs file containing the Main module.
   main-is:             Main.hs
+  hs-source-dirs:      bin
 
   -- Modules included in this executable, other than Main.
   -- other-modules:
@@ -65,14 +66,7 @@ executable monky
   -- other-extensions:
 
   -- Other library packages from which modules are imported.
-  build-depends: base >=4.6.0.1 && <5,
-                 directory,
-                 process,
-                 unix,
-                 template-haskell,
-                 containers,
-                 bytestring,
-                 text, formatting
+  build-depends:       base >=4.6.0.1 && <5, directory, process, unix, containers, monky
 
   -- Directories containing source files.
   -- hs-source-dirs:
