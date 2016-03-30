@@ -31,10 +31,10 @@ printBar :: Int -> String
 printBar pc = printf barTemplate (cpuColor pc) (16- div (16 * pc) 100)
 
 printXbm :: String -> String
-printXbm u = "^i(/home/" ++ u ++ "/.monky/xbm/cpu.xbm)"
+printXbm u = "^i(/home/" ++ u ++ "/.monky/xbm/cpu.xbm) "
 
 printFrequency :: Float -> String
-printFrequency = printf " %.1fG ^p(-3)"
+printFrequency = printf "%.1fG ^p(-3)"
 
 printThemp :: Int -> String
 printThemp = printf " %d°C"

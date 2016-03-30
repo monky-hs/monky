@@ -34,10 +34,10 @@ printBar pc = let height = (16 - div (16 * pc) 100) in
   printf barTemplate (cpuColor pc) height
 
 printXbm :: String -> String
-printXbm u = "^i(/home/" ++ u ++ "/.monky/xbm/cpu.xbm)"
+printXbm u = "^i(/home/" ++ u ++ "/.monky/xbm/cpu.xbm) "
 
 printFrequency :: Float -> String
-printFrequency = printf " %.1fG ^p(-3)"
+printFrequency = printf "%.1fG ^p(-3)"
 
 printThemp :: Int -> String
 printThemp = printf " %d°C"
