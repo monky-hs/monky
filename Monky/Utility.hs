@@ -148,7 +148,7 @@ splitAtEvery s str = splitAtEvery' s str []
 -- |fmap fopen would give Maybe (IO File), this fixes that
 maybeOpenFile :: Maybe String -> IO (Maybe File)
 maybeOpenFile Nothing = return Nothing
-maybeOpenFile (Just x) = Just <$> fopen x
+maybeOpenFile (Just x) = fmap Just . fopen $ x
 
 sdiv :: (Integral a, Bounded a) => a -> a -> a
 sdiv x 0 = x
