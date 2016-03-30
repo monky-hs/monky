@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Monky.NewNetwork
+module Monky.Network.Dynamic
   ( getUHandles
   , UHandles
   , Handles
@@ -10,13 +10,10 @@ module Monky.NewNetwork
 where
 
 import Data.Bits ((.|.))
-import System.IO.Error (catchIOError)
 import Control.Concurrent (forkIO, threadWaitRead)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map as M
-import Data.Time.Clock.POSIX
-import Monky.Utility
 import Data.IORef
 
 import qualified Data.ByteString.Char8 as BS
@@ -25,15 +22,7 @@ import System.Linux.Netlink
 import System.Linux.Netlink.Constants
 import System.Linux.Netlink.Route
 
--- |Current state of network device
-data NetState
-  = Down -- ^It is down, consider off
-  | Up -- ^It is up, consider on
-  | Unknown -- ^Unknown, kernel docu says to consider on
-  | Dormant -- ^Dormant, consider off
-
--- |The normal network handle as in Network
-data NetworkHandle = NetH File File File (IORef Int) (IORef Int) (IORef POSIXTime)
+import Monky.Network.Static
 
 -- |A Wrapper than also carries the name, for comparision
 type NetHandle = (String, NetworkHandle)
@@ -44,69 +33,14 @@ type Handles = IntMap NetHandle
 -- |The actual handel exposed and used by this module
 type UHandles = (IORef Handles, (String -> Bool))
 
-basePath :: String
-basePath = "/sys/class/net/"
-
-readPath :: String
-readPath = "/statistics/rx_bytes"
-
-writePath :: String
-writePath = "/statistics/tx_bytes"
-
-statePath :: String
-statePath = "/operstate"
-
 instance {-# OVERLAPPING #-} Show NetHandle where
   show (x, _) = x
-
--- |Get the read and write rate from a single network interface
-getReadWrite :: NetworkHandle -> IO (Int, Int)
-getReadWrite (NetH readf writef _ readr writer timer) = do
-  nread <- readValue readf
-  nwrite <- readValue writef
-  ntime <- getPOSIXTime
-  oread <- readIORef readr
-  owrite <- readIORef writer
-  otime <- readIORef timer
-  let cread = oread - nread
-  let cwrite = owrite - nwrite
-  let ctime = otime - ntime
-  writeIORef readr nread
-  writeIORef writer nwrite
-  writeIORef timer ntime
-  return ((cread  * 8) `sdiv` round ctime,
-          (cwrite * 8) `sdiv` round ctime)
-  where sdiv x 0 = x
-        sdiv x y = x `div` y
-
-
--- |Get the current network adapter state from kernel
-getState :: NetworkHandle -> IO NetState
-getState (NetH _ _ statef _ _ _) = do
--- the read can thro an exception if the interace disapperad, we just consider it down
-  state <- catchIOError (readLine statef) (\_ -> return "down")
-  return $ case state of
-    "up" -> Up
-    "down" -> Down
-    "unknown" -> Unknown
-    "dormant" -> Dormant
-    _ -> error ("Don't know the network state \"" ++ state ++ "\" yet")
-
--- 'getReadWrite' but only if the current State of the interface says it's sensible
-getReadWriteM :: NetworkHandle -> IO (Maybe (Int, Int))
-getReadWriteM h = do
-  state <- getState h
-  case state of
-    Up -> Just <$> getReadWrite h
-    Down -> return Nothing
-    Unknown -> Just <$> getReadWrite h
-    Dormant -> return Nothing
 
 
 -- |The fold function used for 'getMultiReadWrite' handling the IO and Maybe stuff
 foldF :: NetworkHandle -> IO (Maybe (Int, Int)) -> IO (Maybe (Int, Int))
 foldF h o = do
-  m <- getReadWriteM h
+  m <- getReadWrite h
   case m of
     (Just (r, w)) -> do
       om <- o
@@ -121,25 +55,6 @@ getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite h = do
   foldr (\(_, v) -> foldF v) (return start) h
   where start = Just (0, 0)
-
-
--- |Get a network handle (for a single device)
-getNetworkHandle :: String -> IO NetworkHandle
-getNetworkHandle dev = do
-  let path = basePath ++ dev
-  readf <- fopen $ path ++ readPath
-  writef <- fopen $ path ++ writePath
-  statef <- fopen $ path ++ statePath
-  readr <- newIORef (1 :: Int)
-  writer <- newIORef (1 :: Int)
-  timer <- newIORef (0 :: POSIXTime)
-  return $NetH readf writef statef readr writer timer
-
-
--- |Close a network handle after it is no longer needed (the device disappeared)
-closeNetworkHandle :: NetworkHandle -> IO ()
-closeNetworkHandle (NetH readf writef statef _ _ _) =
-  fclose readf >> fclose writef >> fclose statef
 
 
 -- |Logic for adding a new device to our Handles
