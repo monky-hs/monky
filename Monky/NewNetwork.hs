@@ -2,6 +2,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Monky.NewNetwork
+  ( getUHandles
+  , UHandles
+  , Handles
+  , getMultiReadWrite
+  )
 where
 
 import Data.Bits ((.|.))
@@ -20,14 +25,23 @@ import System.Linux.Netlink
 import System.Linux.Netlink.Constants
 import System.Linux.Netlink.Route
 
-data NetState = Down | Up | Unknown | Dormant
+-- |Current state of network device
+data NetState
+  = Down -- ^It is down, consider off
+  | Up -- ^It is up, consider on
+  | Unknown -- ^Unknown, kernel docu says to consider on
+  | Dormant -- ^Dormant, consider off
 
+-- |The normal network handle as in Network
 data NetworkHandle = NetH File File File (IORef Int) (IORef Int) (IORef POSIXTime)
 
+-- |A Wrapper than also carries the name, for comparision
 type NetHandle = (String, NetworkHandle)
 
+-- |The map we keep our handles in (the Int is the Interface ID on the system)
 type Handles = IntMap NetHandle
 
+-- |The actual handel exposed and used by this module
 type UHandles = (IORef Handles, (String -> Bool))
 
 basePath :: String
@@ -45,6 +59,7 @@ statePath = "/operstate"
 instance {-# OVERLAPPING #-} Show NetHandle where
   show (x, _) = x
 
+-- |Get the read and write rate from a single network interface
 getReadWrite :: NetworkHandle -> IO (Int, Int)
 getReadWrite (NetH readf writef _ readr writer timer) = do
   nread <- readValue readf
@@ -65,6 +80,7 @@ getReadWrite (NetH readf writef _ readr writer timer) = do
         sdiv x y = x `div` y
 
 
+-- |Get the current network adapter state from kernel
 getState :: NetworkHandle -> IO NetState
 getState (NetH _ _ statef _ _ _) = do
 -- the read can thro an exception if the interace disapperad, we just consider it down
@@ -76,7 +92,7 @@ getState (NetH _ _ statef _ _ _) = do
     "dormant" -> Dormant
     _ -> error ("Don't know the network state \"" ++ state ++ "\" yet")
 
-
+-- 'getReadWrite' but only if the current State of the interface says it's sensible
 getReadWriteM :: NetworkHandle -> IO (Maybe (Int, Int))
 getReadWriteM h = do
   state <- getState h
@@ -87,6 +103,7 @@ getReadWriteM h = do
     Dormant -> return Nothing
 
 
+-- |The fold function used for 'getMultiReadWrite' handling the IO and Maybe stuff
 foldF :: NetworkHandle -> IO (Maybe (Int, Int)) -> IO (Maybe (Int, Int))
 foldF h o = do
   m <- getReadWriteM h
@@ -99,12 +116,14 @@ foldF h o = do
     Nothing -> o
 
 
+-- |Get the sum of all read/write rates from our network devices or Nothing if none is active
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite h = do
   foldr (\(_, v) -> foldF v) (return start) h
   where start = Just (0, 0)
 
 
+-- |Get a network handle (for a single device)
 getNetworkHandle :: String -> IO NetworkHandle
 getNetworkHandle dev = do
   let path = basePath ++ dev
@@ -116,12 +135,14 @@ getNetworkHandle dev = do
   timer <- newIORef (0 :: POSIXTime)
   return $NetH readf writef statef readr writer timer
 
--- TODO check this
+
+-- |Close a network handle after it is no longer needed (the device disappeared)
 closeNetworkHandle :: NetworkHandle -> IO ()
 closeNetworkHandle (NetH readf writef statef _ _ _) =
   fclose readf >> fclose writef >> fclose statef
 
 
+-- |Logic for adding a new device to our Handles
 gotNew :: Int -> String -> Handles -> IO Handles
 gotNew index name m = do
   case IM.lookup index m of
@@ -136,12 +157,13 @@ gotNew index name m = do
         return $IM.adjust (\_ -> (name, h)) index m
 
 
+-- |Logic for removing a handle form Handles after we lost the interface
 lostOld :: Int -> Handles -> IO Handles
 lostOld index m = case IM.lookup index m of
   Nothing -> return m
   (Just (_, h)) ->
     closeNetworkHandle h >>
-    return (IM.delete index m) -- TOOD close handle
+    return (IM.delete index m)
 
 
 requestPacket :: RoutePacket
@@ -161,10 +183,12 @@ readInterface (Packet _ msg attrs) =
 readInterface x = error ("Something went wrong while getting interfaces: " ++ show x)
 
 
+-- |Get all current interfaces from our system
 getCurrentDevs :: IO [(Int, String)]
 getCurrentDevs = do
   sock <- makeSocket
   ifs <- query sock requestPacket
+  closeSocket sock
   return $map readInterface ifs
 
 
@@ -190,8 +214,6 @@ doUpdate (mr, f) (Packet hdr msg attrs)
         writeIORef mr nm
       else return ()
   | messageType hdr == eRTM_DELLINK = do
-    let (Just name) = M.lookup eIFLA_IFNAME attrs
-    let names = init $BS.unpack name
     let index = interfaceIndex msg
     m <- readIORef mr
     nm <- lostOld (fromIntegral index) m
@@ -201,6 +223,7 @@ doUpdate (mr, f) (Packet hdr msg attrs)
 doUpdate _ _ = return ()
 
 
+-- |Updater loop, it blocks on the netlink socker until it gets a message
 updaterLoop :: NetlinkSocket -> UHandles -> IO ()
 updaterLoop sock mr = do
   threadWaitRead (getNetlinkFd sock)
@@ -209,6 +232,7 @@ updaterLoop sock mr = do
   updaterLoop sock mr
 
 
+-- |Start the update loop for adding/removing interfaces
 updater :: UHandles -> IO ()
 updater h = do
   sock <- makeSocket
@@ -216,7 +240,10 @@ updater h = do
   updaterLoop sock h
 
 
-getUHandles :: (String -> Bool) -> IO UHandles
+-- |Get the new handle this module exports and start its updater loop
+getUHandles
+  :: (String -> Bool) -- ^Will be given the name of the handle, only add interface if this returns true (think of it as filter over all possible interfaces)
+  -> IO UHandles
 getUHandles f = do
   handle <- getNetworkHandles f
   ref <- newIORef handle
