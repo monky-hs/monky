@@ -24,10 +24,14 @@ cpuColor p
   | otherwise = "#ff0000"
 
 barTemplate :: String
-barTemplate = "^p(3)^pa(;0)^bg(%s)^r(6x8)^p(-6)^fg(#222222)^r(6x%d)^bg()^pa()^fg()"
+-- Dzen I hate your boxdrawing
+barTemplate = "^p(3)^p(_TOP)^bg(%s)^fg(#222222)^r(6x%d)^bg()^fg()^pa()"
+
 
 printBar :: Int -> String
-printBar pc = printf barTemplate (cpuColor pc) (16- div (16 * pc) 100)
+-- this is only correct if we have 16 pixels on our dzen, but I will keep it for now
+printBar pc = let height = (16 - div (16 * pc) 100) in
+  printf barTemplate (cpuColor pc) height
 
 printXbm :: String -> String
 printXbm u = "^i(/home/" ++ u ++ "/.monky/xbm/cpu.xbm)"
