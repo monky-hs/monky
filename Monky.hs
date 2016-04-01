@@ -45,7 +45,6 @@ import Control.Monad (when)
 import System.IO (hFlush, stdout)
 import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
-import Text.Printf (printf)
 
 
 -- |The module wrapper used to buffer output strings
@@ -73,7 +72,8 @@ printMonkyLine i u [x] = do
   putStrLn t
 printMonkyLine i u (x:xs) = do
   t <- getWrapperText i u x
-  putStr $printf "%s | " t
+  putStr t
+  putStr " | "
   printMonkyLine i u xs
 
 
