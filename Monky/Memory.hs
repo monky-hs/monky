@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2016 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Memory
 Description : Allows to access information about they systems main memory
@@ -31,11 +32,15 @@ module Monky.Memory
   , getMemoryTotal
   , getMemoryUsed
   , getMemoryFree
+  , getMemoryStats
   )
 where
 
-import Monky.Utility (fopen, readContent, File, findLine)
-import Data.Maybe (fromMaybe)
+import Monky.Utility (fopen, readContent, File)
+import Data.Maybe (fromMaybe, listToMaybe)
+
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BS
 
 
 -- |The memory handle used for all functions
@@ -44,8 +49,12 @@ data MemoryHandle = MemoryH File
 path :: String
 path = "/proc/meminfo"
 
-getVal :: String -> Int
-getVal = read . (!! 1) . words
+getVal :: ByteString -> Int
+getVal = fst . fromMaybe (error "Failed to read as int in memory module") .  BS.readInt . (!! 1) . BS.words
+
+
+findLine :: ByteString -> [ByteString] -> Maybe ByteString
+findLine x = listToMaybe . filter (x `BS.isPrefixOf`)
 
 -- |Return the memory available to processes
 getMemoryAvailable :: MemoryHandle -> IO Int
@@ -69,9 +78,18 @@ getMemoryFree (MemoryH f) = do
 -- |Get the amount of memory used by the kernel and processes
 getMemoryUsed :: MemoryHandle -> IO Int
 getMemoryUsed h = do
-  total <- getMemoryTotal h
-  available <- getMemoryAvailable h
-  return (total - available)
+  (_, _, _, used) <- getMemoryStats h
+  return used
+
+-- |Get memory statistics in one got (with only one read) (total, avail, free, used)
+getMemoryStats :: MemoryHandle -> IO (Int, Int, Int, Int)
+getMemoryStats (MemoryH f) = do
+  contents <- readContent f
+  let avail = getVal . fromMaybe "a 0" . findLine "MemAvailable" $ contents
+      total = getVal . fromMaybe "a 0" . findLine "MemTotal" $ contents
+      free = getVal . fromMaybe "a 0" . findLine "MemFree" $ contents
+      used = (total - avail)
+  return (total, avail, free, used)
 
 
 -- |Get a memory handle

@@ -48,51 +48,90 @@ import System.IO
 import Data.List (isPrefixOf)
 import Text.Printf (printf)
 
+import Data.Maybe (fromMaybe)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BS
+
+class LineReadable a where
+  hGetReadable :: File -> IO a
+
+instance LineReadable String where
+  hGetReadable = hGetLine
+
+instance LineReadable ByteString where
+  hGetReadable = BS.hGetLine
+
+class FileReadable a where
+  hGetFile :: File -> IO [a]
+
+instance FileReadable String where
+  hGetFile = readStringLines
+
+instance FileReadable ByteString where
+  hGetFile = readBSLines
+
+
+
 -- |type alias to distinguish system functions from utility
 type File = Handle
 
 -- |Find a line in a list of Strings
-
-findLine :: String -> [String] -> Maybe String
-findLine y (x:xs) = if y `isPrefixOf` x then Just x else findLine y xs
+findLine :: Eq a => [a] -> [[a]] -> Maybe [a]
+findLine y (x:xs) = if y `isPrefixOf` x
+  then Just x
+  else findLine y xs
 findLine _ [] = Nothing
 
 -- |Read the first line of the file and convert it into an 'Int'
 readValue :: File -> IO Int
 readValue h = do
   hSeek h AbsoluteSeek 0
-  line <- hGetLine h
-  return (read line :: Int)
+  line <- hGetReadable h
+  let value = fmap fst $ BS.readInt line
+  return . fromMaybe (error ("Failed to read value from file:" ++ show h)) $ value
 
 -- |Read the first line of the file and convert the words in it into 'Int's
 readValues :: File -> IO [Int]
 readValues h = do
   hSeek h AbsoluteSeek 0
-  line <- hGetLine h
-  return (map read $ words line)
+  line <- hGetReadable h
+  let value = mapM (fmap fst . BS.readInt) $ BS.words line
+  return . fromMaybe (error ("Failed to read values from file:" ++ show h)) $ value
 
 -- |Read the first line of the file
-readLine :: File -> IO String
+readLine :: LineReadable a => File -> IO a
 readLine h = do
   hSeek h AbsoluteSeek 0
-  hGetLine h
+  hGetReadable h
 
--- |Internal function for readContent
-readLineByLine :: File -> [String] -> IO [String]
-readLineByLine h ls = do
+
+-- |Read a File as String line by line
+readStringLines :: File -> IO [String]
+readStringLines h = do
   eof <- hIsEOF h
   if eof
-    then return ls
+    then return []
     else do
-      l <- hGetLine h
-      readLineByLine h (ls ++ [l])
+      l <- hGetReadable h
+      fmap (l:) $ readStringLines h
+
+
+-- |Read a File as ByteString line by line
+readBSLines :: File -> IO [ByteString]
+readBSLines h = fmap (BS.lines . BS.concat) $ readLines' []
+  where
+    readLines' ls = do
+      bytes <- BS.hGet h 512
+      if bytes == BS.empty
+        then return $ reverse ls
+        else readLines' (bytes:ls)
 
 
 -- |Rewind the file descriptor and read the complete file as lines
-readContent :: File -> IO [String]
+readContent :: FileReadable a => File -> IO [a]
 readContent h = do
   hSeek h AbsoluteSeek 0
-  readLineByLine h []
+  hGetFile h
 
 
 -- |Convert a number into a fixed length strings
@@ -110,26 +149,26 @@ convertUnitSI :: Int -> String -> String
 convertUnitSI rate b = convertUnitI (fromIntegral rate) 1000 b "k" "M" "G"
 
 
-convertUnitI :: Float -> Float -> String -> String -> String -> String -> String
+convertUnitI :: Float -> Int -> String -> String -> String -> String -> String
 convertUnitI rate step bs ks ms gs
-  | rate < kf = printf "%4.0f%s" rate bs
-  | rate < kf * 10 = printf "%4.2f%s" kv ks
-  | rate < kf * 100 = printf "%4.1f%s" kv ks
-  | rate < kf * 1000 = printf "%4.0f%s" kv ks
-  | rate < mf * 10 = printf "%4.2f%s" mv ms
-  | rate < mf * 100 = printf "%4.1f%s" mv ms
-  | rate < mf * 1000 = printf "%4.0f%s" mv ms
-  | rate < gf * 10 = printf "%4.2f%s" gv gs
-  | rate < gf * 100 = printf "%4.1f%s" gv gs
-  | rate < gf * 1000 = printf "%4.0f%s" gv gs
+  | rate < fromIntegral (kf       ) = printf "%4.0f%s" rate bs
+  | rate < fromIntegral (kf * 10  ) = printf "%4.2f%s" kv ks
+  | rate < fromIntegral (kf * 100 ) = printf "%4.1f%s" kv ks
+  | rate < fromIntegral (kf * 1000) = printf "%4.0f%s" kv ks
+  | rate < fromIntegral (mf * 10  ) = printf "%4.2f%s" mv ms
+  | rate < fromIntegral (mf * 100 ) = printf "%4.1f%s" mv ms
+  | rate < fromIntegral (mf * 1000) = printf "%4.0f%s" mv ms
+  | rate < fromIntegral (gf * 10  ) = printf "%4.2f%s" gv gs
+  | rate < fromIntegral (gf * 100 ) = printf "%4.1f%s" gv gs
+  | rate < fromIntegral (gf * 1000) = printf "%4.0f%s" gv gs
   | otherwise = printf "%4.0f%s" gv gs
   where
-    kf = step
-    mf = step * step
-    gf = step * step * step
-    kv = rate / kf
-    mv = rate / mf
-    gv = rate / gf
+    kf = 1  * step
+    mf = kf * step
+    gf = mf * step
+    kv = rate / fromIntegral kf
+    mv = rate / fromIntegral mf
+    gv = rate / fromIntegral gf
 
 
 -- |open a file read only
@@ -160,3 +199,5 @@ sdivBound x y = x `div` y
 sdivUBound :: Integral a => a -> a -> a -> a
 sdivUBound _ 0 d = d
 sdivUBound x y _ = x `div` y
+
+infixl 7 `sdivBound`, `sdivUBound`

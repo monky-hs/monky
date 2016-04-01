@@ -9,8 +9,6 @@ Portability : Linux
 module Monky.Examples.TimeFancy ()
 where
 
-import Text.Printf (printf)
-
 import Monky.Modules
 import Monky.Time
 
@@ -25,7 +23,7 @@ getTimeString user h = do
   ts <- getTime h
   t <- getHM h
   let (th, tm) = timeToXBM t
-  return (printf ("^i(/home/" ++ user ++ "/.monky/xbm/%d-%d.xbm)  %s") th tm ts)
+  return ("^i(/home/" ++ user ++ "/.monky/xbm/" ++ show th ++ ('-': show tm) ++ ".xbm)  " ++ ts)
 
 -- |Example instance for time module
 instance Module TimeHandle where

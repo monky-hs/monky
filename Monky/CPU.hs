@@ -45,10 +45,12 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Directory (getDirectoryContents)
 import Monky.Utility
 import Data.List (isPrefixOf)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, fromJust)
 import Data.IORef
 import Text.Printf (printf)
 
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BS (readInt, words, unpack)
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -128,25 +130,34 @@ guessThermalZones = do
 guessThermalZone :: IO (Maybe String)
 guessThermalZone = fmap listToMaybe guessThermalZones
 
+-- |Calcualate the work done by the cores (all, work)
+calculateWork :: [[Int]] -> ([Int], [Int])
+calculateWork xs =
+  let work = map (sum . take 3) xs
+      sall  = zipWith (\x y -> x + sum y) work (map (drop 3) xs) in
+    (sall, work)
+
+
+calculatePercent :: [Int] -> [Int] -> [Int] -> [Int] -> [Int]
+calculatePercent sall work owork oall =
+  let cwork = zipWith (-) work owork
+      call  = zipWith (-) sall oall in
+    zipWith (sdivBound . (* 100)) cwork call
+
+readVals :: [ByteString] -> [Int]
+readVals = map (fst . fromJust . BS.readInt) . tail
 
 getPercent :: ([String] -> Bool) -> CPUHandle -> IO [Int]
 getPercent f (CPUH file _ _ aref wref) = do
-  content <- map words <$> readContent file
-  let cpus = filter f content
+  content <- map BS.words <$> readContent file
+  let cpus = filter (f . map BS.unpack) content
   let d = map readVals cpus
-  -- The amount of time passed (jiffies on cpu)
-  let sall = map sum d
-  -- The amount of actual work done (jiffies on cpu)
-  let work = map (sum . take 3) d
+  let (sall, work) = calculateWork d
   a <- readIORef aref
   w <- readIORef wref
-  let cwork = zipWith (-) work w
-  let call = zipWith (-) sall a
   writeIORef wref work
   writeIORef aref sall
-  return $zipWith (sdivBound . (* 100)) cwork call
-  where
-    readVals = map read . tail
+  return $ calculatePercent sall work w a
 
 -- |Get the cpu usage in percent for each (virtual) cpu
 getCPUPercent :: CPUHandle -> IO [Int]

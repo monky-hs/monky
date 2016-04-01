@@ -26,7 +26,11 @@ Portability : Linux
 -}
 
 module Monky.Time
-(TimeHandle, getTime, getHM, getTimeHandle)
+  ( TimeHandle
+  , getTime
+  , getHM
+  , getTimeHandle
+  )
 where
 
 import Data.Time.Clock
@@ -40,25 +44,27 @@ import System.Locale
 #endif
 
 -- |The handle exported by this module.
-data TimeHandle = TimeH String
+data TimeHandle = TimeH String TimeZone
 
+doTime :: String -> TimeZone -> UTCTime -> String
+doTime str z t = formatTime defaultTimeLocale str $ utcToLocalTime z t
 
 -- |Get the current time in the format given to the handle.
 getTime :: TimeHandle -> IO String
-getTime (TimeH str) = do
+getTime (TimeH str z) = do
   t <- getCurrentTime
-  z <- getCurrentTimeZone
-  return $formatTime defaultTimeLocale str $utcToLocalTime z t
+  return $ doTime str z t
 
 -- |Get the current time (HH:MM) format for the current time zone.
 getHM :: TimeHandle -> IO (Int, Int)
-getHM _ = do
+getHM (TimeH _ z) = do
   t <- getCurrentTime
-  z <- getCurrentTimeZone
   let (LocalTime _ (TimeOfDay h m _)) = utcToLocalTime z t
   return (h, m)
 
 -- |Get a handle for this module
 getTimeHandle :: String  -- ^The format that should be used for 'getTime' in strftime format
               -> IO TimeHandle
-getTimeHandle format = return (TimeH format)
+getTimeHandle format = do
+  z <- getCurrentTimeZone
+  return (TimeH format z)
