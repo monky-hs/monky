@@ -85,10 +85,10 @@ library
 
   exposed-modules: Monky.Version
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid
-  other-modules: Monky.Disk.Common
+  other-modules: Monky.Disk.Common Monky.Examples.CPUCommon
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array
-  build-depends:       text, unix, network, ioctl, mtl, transformers
+  build-depends:       text, unix, network, ioctl, mtl, transformers, text
   build-depends:       template-haskell, containers, stm, statvfs, split
   build-depends:       bytestring
 
