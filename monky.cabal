@@ -90,12 +90,11 @@ library
   exposed-modules: Monky.Examples.Connectivity Monky.Examples.File
   exposed-modules: Monky.Wifi Monky.Examples.Wifi
   exposed-modules: Monky.Examples.Connectivity Monky.Network.Dynamic
-  exposed-modules: Monky.Network.Static
+  exposed-modules: Monky.Network.Static Monky.Examples.File
 
   exposed-modules: Monky.Version
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid
   other-modules: Monky.Disk.Common Monky.Examples.CPUCommon
-  other-modules: Monky.Examples.File
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time
   build-depends:       text, unix, network, mtl, transformers, text
