@@ -61,16 +61,16 @@ instance Module PrepHandle where
   recoverModule (Prep _ (MW a _)) = recoverModule a
 
 instance Module PostHandle where
-  getText u (Post x (MW a _)) = (x ++) <$> getText u a
+  getText u (Post x (MW a _)) = (++ x) <$> getText u a
   getFDs (Post _ (MW a _)) = getFDs a
-  getEventText fd u (Post x (MW a _)) = (x ++) <$> getEventText fd u a
+  getEventText fd u (Post x (MW a _)) = (++ x) <$> getEventText fd u a
   setupModule (Post _ (MW a _)) = setupModule a
   getTextFailable u (Post x (MW a _)) = do
     ret <- getTextFailable u a
-    return ((x ++) <$> ret)
+    return ((++ x) <$> ret)
   getEventTextFailable fd u (Post x (MW a _)) = do
     ret <- getEventTextFailable fd u a
-    return ((x ++) <$> ret)
+    return ((++ x) <$> ret)
   recoverModule (Post _ (MW a _)) = recoverModule a
 
 {-| Create a module that should be prepended with some string
