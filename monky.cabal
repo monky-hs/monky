@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             1.3.6.1
+version:             1.3.6.2
 
 -- The ABOVE LINE has to stay AS IS (except for version changes) for the
 -- template to work properly
@@ -95,6 +95,7 @@ library
   exposed-modules: Monky.Version
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid
   other-modules: Monky.Disk.Common Monky.Examples.CPUCommon
+  other-modules: Monky.Examples.File
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time
   build-depends:       text, unix, network, mtl, transformers, text
