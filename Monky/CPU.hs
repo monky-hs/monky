@@ -78,6 +78,7 @@ newtype Numa = Numa [NumaHandle]
 data ScalingType
   = ScalingMax -- ^Use the maximum frequencie allowed
   | ScalingCur -- ^Use the current frequencie used
+  | ScalingNone -- ^Don't open any files for scaling type
 
 
 pathStat :: String
@@ -144,8 +145,10 @@ calculatePercent sall work owork oall =
       call  = zipWith (-) sall oall in
     zipWith (sdivBound . (* 100)) cwork call
 
+
 readVals :: [ByteString] -> [Int]
 readVals = map (fst . fromJust . BS.readInt) . tail
+
 
 getPercent :: ([String] -> Bool) -> CPUHandle -> IO [Int]
 getPercent f (CPUH file _ _ aref wref) = do
@@ -176,22 +179,25 @@ getCPUTemp (CPUH _ (Just f) _ _ _) = do
   temp <- readValue f
   return (temp `div` 1000)
 
+getMax :: [Int] -> Int
+getMax = foldr max (-1)
 
-{- |this function returns a frequency according th the 'ScalingType' of the
-handle.
+{- |This function returns a frequency according the 'ScalingType' of the handle.
 
 The returned valued will be the max of all (virtual) proceessors on the system.
 -}
 getCPUMaxScalingFreq :: CPUHandle -> IO Float
 getCPUMaxScalingFreq (CPUH _ _ files _ _) = do
   vals <- mapM readValue files
-  return (fromIntegral (maximum vals) / 1000000)
+  return (fromIntegral (getMax vals) / 1000000)
 
 
 -- open the files to read the frequency from
+-- TODO: breaking use Mabye ScalingType instead of ScalingNone
 getCPUFreqs :: ScalingType -> [String] -> IO [File]
 getCPUFreqs ScalingMax = getCPUFreqsMax
 getCPUFreqs ScalingCur = getCPUFreqsCur
+getCPUFreqs ScalingNone = (\_ -> return [])
 
 
 getHandle :: String -> ScalingType -> Maybe String -> IO NumaHandle

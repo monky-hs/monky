@@ -53,7 +53,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
 
 class LineReadable a where
-  hGetReadable :: File -> IO a
+  hGetReadable :: Handle -> IO a
 
 instance LineReadable String where
   hGetReadable = hGetLine
@@ -62,7 +62,7 @@ instance LineReadable ByteString where
   hGetReadable = BS.hGetLine
 
 class FileReadable a where
-  hGetFile :: File -> IO [a]
+  hGetFile :: Handle -> IO [a]
 
 instance FileReadable String where
   hGetFile = readStringLines
@@ -73,7 +73,7 @@ instance FileReadable ByteString where
 
 
 -- |type alias to distinguish system functions from utility
-type File = Handle
+newtype File = File Handle deriving (Show, Eq)
 
 -- |Find a line in a list of Strings
 findLine :: Eq a => [a] -> [[a]] -> Maybe [a]
@@ -84,7 +84,7 @@ findLine _ [] = Nothing
 
 -- |Read the first line of the file and convert it into an 'Int'
 readValue :: File -> IO Int
-readValue h = do
+readValue (File h) = do
   hSeek h AbsoluteSeek 0
   line <- hGetReadable h
   let value = fmap fst $ BS.readInt line
@@ -92,7 +92,7 @@ readValue h = do
 
 -- |Read the first line of the file and convert the words in it into 'Int's
 readValues :: File -> IO [Int]
-readValues h = do
+readValues (File h) = do
   hSeek h AbsoluteSeek 0
   line <- hGetReadable h
   let value = mapM (fmap fst . BS.readInt) $ BS.words line
@@ -100,13 +100,13 @@ readValues h = do
 
 -- |Read the first line of the file
 readLine :: LineReadable a => File -> IO a
-readLine h = do
+readLine (File h) = do
   hSeek h AbsoluteSeek 0
   hGetReadable h
 
 
 -- |Read a File as String line by line
-readStringLines :: File -> IO [String]
+readStringLines :: Handle -> IO [String]
 readStringLines h = do
   eof <- hIsEOF h
   if eof
@@ -117,7 +117,7 @@ readStringLines h = do
 
 
 -- |Read a File as ByteString line by line
-readBSLines :: File -> IO [ByteString]
+readBSLines :: Handle -> IO [ByteString]
 readBSLines h = fmap (BS.lines . BS.concat) $ readLines' []
   where
     readLines' ls = do
@@ -129,7 +129,7 @@ readBSLines h = fmap (BS.lines . BS.concat) $ readLines' []
 
 -- |Rewind the file descriptor and read the complete file as lines
 readContent :: FileReadable a => File -> IO [a]
-readContent h = do
+readContent (File h) = do
   hSeek h AbsoluteSeek 0
   hGetFile h
 
@@ -173,7 +173,7 @@ convertUnitI rate step bs ks ms gs
 
 -- |open a file read only
 fopen :: String -> IO File
-fopen = flip openFile ReadMode
+fopen = fmap File . flip openFile ReadMode
 
 
 -- |Split ys at every occurence of xs

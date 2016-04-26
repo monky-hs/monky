@@ -30,6 +30,8 @@ use with: packPrepend <Prep> instead of normal pack
 module Monky.Prepend
   ( PrepHandle
   , packPrepend
+  , PostHandle
+  , packAppend
   )
 where
 
@@ -43,6 +45,7 @@ import Monky.Modules
 -- |The handle used by this module, contains underlying module and string
 data PrepHandle = Prep String Modules
 
+data PostHandle = Post String Modules
 
 instance Module PrepHandle where
   getText u (Prep x (MW a _)) = (++) x <$> getText u a
@@ -57,6 +60,18 @@ instance Module PrepHandle where
     return ((++) x <$> ret)
   recoverModule (Prep _ (MW a _)) = recoverModule a
 
+instance Module PostHandle where
+  getText u (Post x (MW a _)) = (x ++) <$> getText u a
+  getFDs (Post _ (MW a _)) = getFDs a
+  getEventText fd u (Post x (MW a _)) = (x ++) <$> getEventText fd u a
+  setupModule (Post _ (MW a _)) = setupModule a
+  getTextFailable u (Post x (MW a _)) = do
+    ret <- getTextFailable u a
+    return ((x ++) <$> ret)
+  getEventTextFailable fd u (Post x (MW a _)) = do
+    ret <- getEventTextFailable fd u a
+    return ((x ++) <$> ret)
+  recoverModule (Post _ (MW a _)) = recoverModule a
 
 {-| Create a module that should be prepended with some string
 
@@ -71,3 +86,17 @@ packPrepend :: Module a
             -> IO a -- ^The function to get the module
             -> IO Modules -- ^The returned handle
 packPrepend x i m = pack i (Prep x <$> pack i m)
+
+{-| Create a module that should be appended with some string
+
+This allows you to append an instance of a module with a fixed
+String.
+
+For usage look at 'pack'.
+-}
+packAppend :: Module a
+           => String -- ^The String to prepend
+           -> Int -- ^The refresh rate for this module
+           -> IO a -- ^The function to get the module
+           -> IO Modules -- ^The returned handle
+packAppend x i m = pack i (Post x <$> pack i m)
