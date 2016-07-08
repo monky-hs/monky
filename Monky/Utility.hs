@@ -178,7 +178,7 @@ fopen = fmap File . flip openFile ReadMode
 
 
 fclose :: File -> IO ()
-fclose = hClose
+fclose (File h) = hClose h
 
 -- |Split ys at every occurence of xs
 splitAtEvery :: String -> String -> [String]
