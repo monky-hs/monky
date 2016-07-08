@@ -46,7 +46,7 @@ gotReadable :: SSIDSocket -> Interface -> IO (Maybe String)
 gotReadable s i = do
 -- we only care for ESSID and connect updates are a single message
 -- so this *should* be fine
-  packet <- head <$> getPaket s
+  packet <- head <$> getPacket s
   let cmd = genlCmd . genlDataHeader . packetCustom $packet
   if cmd == eNL80211_CMD_CONNECT
     then getCurrentWifi s i
