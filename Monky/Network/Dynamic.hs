@@ -59,7 +59,7 @@ foldF h o = do
 -- |Get the sum of all read/write rates from our network devices or Nothing if none is active
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite h = do
-  foldr (\(_, v) -> foldF v) (return start) h
+  IM.foldr (\(_, v) -> foldF v) (return start) h
   where start = Just (0, 0)
 
 
