@@ -24,6 +24,11 @@ import System.Linux.Netlink.Route
 
 import Monky.Network.Static
 
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
 -- |A Wrapper than also carries the name, for comparision
 type NetHandle = (String, NetworkHandle)
 
