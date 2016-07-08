@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Monky.Wifi
   ( getCurrentWifi
   , getInterface
@@ -21,6 +22,11 @@ import System.Linux.Netlink.GeNetlink.NL80211
 import System.Linux.Netlink.GeNetlink.NL80211.Constants
 
 import qualified Data.Map as M
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 type Interface = Word32
 type SSIDSocket = NL80211Socket

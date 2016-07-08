@@ -4,8 +4,8 @@ Description : An example module instance for the wifi module
 Maintainer  : ongy
 Stability   : experimental
 Portability : Linux
-
 -}
+{-# LANGUAGE CPP #-}
 module Monky.Examples.Wifi 
   ( getWifiHandle
   , WifiHandle
@@ -18,6 +18,11 @@ import System.Posix.Types (Fd)
 
 import Monky.Modules
 import Monky.Wifi
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 data WifiHandle = WH SSIDSocket (IORef String) Interface
 
