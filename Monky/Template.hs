@@ -63,6 +63,14 @@ import System.Posix.DynamicLinker (DL, dlclose, dlopen, dlsym, RTLDFlags(RTLD_LA
 import Control.Applicative ((<$>))
 #endif
 
+#if MIN_VERSION_base(4,9,0)
+monkyStrict :: Bang
+monkyStrict = Bang NoSourceUnpackedness NoSourceStrictness
+#else
+monkyStrict :: Strict
+monkyStrict = NotStrict
+#endif
+
 -- trim a string
 ltrim :: String -> String
 ltrim = dropWhile isSpace
@@ -100,10 +108,10 @@ applyArrows (x:xs) = AppT (AppT ArrowT x) (applyArrows xs)
 
 
 -- Create function declarations for the constructor
-mkFunDesc :: (String, String) -> VarBangTypeQ
+mkFunDesc :: (String, String) -> VarStrictTypeQ
 mkFunDesc (x,y) = do
   t <- applyArrows <$> mapM getType (prepareFun y)
-  return (mkName x, Bang NoSourceUnpackedness NoSourceStrictness, t)
+  return (mkName x, monkyStrict, t)
 
 
 cleanName :: Char -> String
@@ -183,8 +191,12 @@ importLib hname lname xs = do
   funs <- mapM (mkFunDesc . (\(x,_,y) -> (x,y))) xs
   transformers <- mapM mkTransformer $ nub $ map (\(_,_,x) -> x) xs
   let rawRN = mkName "rawDL"
-  let raw = (rawRN, Bang NoSourceUnpackedness NoSourceStrictness, ConT ''DL)
+  let raw = (rawRN, monkyStrict, ConT ''DL)
+#if MIN_VERSION_base(4,9,0)
   let dhandle = DataD [] name [] Nothing [RecC (mkName hname) (raw:funs)] []
+#else
+  let dhandle = DataD [] name []         [RecC (mkName hname) (raw:funs)] []
+#endif
   fun <- mkGetFun lname hname name xs rawRN
   dest <- mkDestroyFun hname rawRN
   return (dhandle:dest ++ transformers ++ fun)
