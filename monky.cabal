@@ -91,7 +91,7 @@ library
   build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array
   build-depends:       text, unix, network, ioctl, mtl, transformers, text
   build-depends:       template-haskell, containers, stm, statvfs, split
-  build-depends:       bytestring, netlink
+  build-depends:       bytestring, netlink, cereal
 
   if impl(ghc >= 7.8)
     exposed-modules: Monky.MPD Monky.Examples.MPD

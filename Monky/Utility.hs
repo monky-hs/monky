@@ -140,12 +140,12 @@ convertUnit = flip convertUnitI 1000 . fromIntegral
 
 
 -- |Convert a number into a reasonable scale for binary units
-convertUnitB :: Int -> String -> String
+convertUnitB :: Integral a => a -> String -> String
 convertUnitB rate b = convertUnitI (fromIntegral rate) 1024 (' ':b) "ki" "Mi" "Gi"
 
 
 -- |Convert a number into a reasonable scale for SI units
-convertUnitSI :: Int -> String -> String
+convertUnitSI :: Integral a => a -> String -> String
 convertUnitSI rate b = convertUnitI (fromIntegral rate) 1000 b "k" "M" "G"
 
 

@@ -17,6 +17,7 @@ import Data.Maybe (fromMaybe)
 import System.Posix.Types (Fd)
 
 import Monky.Modules
+import Monky.Utility
 import Monky.Wifi
 
 #if MIN_VERSION_base(4,8,0)
@@ -33,16 +34,25 @@ getWifiHandle n = do
   r <- newIORef ""
   return (WH s r i)
 
+statToStr :: WifiStats -> String
+statToStr x =
+  let rs = wifiRates x
+      mr = maximum rs in
+    wifiName x ++ ':':(show $ wifiChannel x) ++ '@':(convertUnitSI mr "B")
+
 getEventTextW :: Fd -> String -> WifiHandle -> IO String
 getEventTextW _ _ (WH s r i) = do
-  new <- gotReadable s i
+  new <- gotReadable' s i
   case new of
     (Just x) -> do
-      writeIORef r x
-      return x
+      let str = statToStr x
+      writeIORef r str
+      return str
     Nothing -> readIORef r
 
 instance Module WifiHandle where
-  getText _ (WH s _ i) = fromMaybe "None" <$> getCurrentWifi s i
+  getText _ (WH s _ i) = do
+    ret <- getCurrentWifiStats s i
+    return $ fromMaybe "None" . fmap statToStr $ ret
   getEventText = getEventTextW
   getFDs (WH s _ _ ) = return [getWifiFd s]
