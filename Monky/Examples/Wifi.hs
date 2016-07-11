@@ -9,6 +9,7 @@ Portability : Linux
 module Monky.Examples.Wifi 
   ( getWifiHandle
   , WifiHandle
+  , WifiFormat(..)
   )
 where
 
@@ -25,34 +26,50 @@ import Monky.Wifi
 import Control.Applicative ((<$>))
 #endif
 
-data WifiHandle = WH SSIDSocket (IORef String) Interface
+-- Socket (Ref,non-updates) Interface Conversion Offline
+data WifiHandle = WH SSIDSocket (IORef String) Interface (WifiStats -> String) String
 
-getWifiHandle :: String -> IO WifiHandle
-getWifiHandle n = do
+data WifiFormat
+  = FormatChannel
+  | FormatRates
+  | FormatName
+  | FormatFreq
+  | FormatMBM
+  | FormatText String
+
+getFun :: WifiFormat -> (WifiStats -> String)
+getFun FormatChannel    = show . wifiChannel
+getFun FormatRates      = flip convertUnitSI "B" . maximum . wifiRates
+getFun FormatName       = wifiName
+getFun FormatFreq       = show . wifiFreq
+getFun FormatMBM        = show . wifiMBM
+getFun (FormatText str) = (\_ -> str)
+
+getFunction :: [WifiFormat] -> (WifiStats -> String)
+getFunction xs = concat . (\a -> map ($ a) $ map getFun xs)
+
+getWifiHandle :: [WifiFormat] -> String -> String -> IO WifiHandle
+getWifiHandle f d n = do
+  let fun = getFunction f
   s <- getSSIDSocket
   i <- fromMaybe (error ("Could not find interface: " ++ n)) <$> getInterface s n
   r <- newIORef ""
-  return (WH s r i)
+  return (WH s r i fun d)
 
-statToStr :: WifiStats -> String
-statToStr x =
-  let rs = wifiRates x
-      mr = maximum rs in
-    wifiName x ++ ':':(show $ wifiChannel x) ++ '@':(convertUnitSI mr "B")
+writeAndRet :: IORef String -> String -> IO String
+writeAndRet r str = writeIORef r str >> return str
 
 getEventTextW :: Fd -> String -> WifiHandle -> IO String
-getEventTextW _ _ (WH s r i) = do
-  new <- gotReadable' s i
+getEventTextW _ _ (WH s r i f d) = do
+  new <- gotReadable s i
   case new of
-    (Just x) -> do
-      let str = statToStr x
-      writeIORef r str
-      return str
-    Nothing -> readIORef r
+    (WifiConnect x) -> writeAndRet r $ f x
+    WifiNone -> readIORef r
+    WifiDisconnect -> writeAndRet r d
 
 instance Module WifiHandle where
-  getText _ (WH s _ i) = do
+  getText _ (WH s _ i f d) = do
     ret <- getCurrentWifiStats s i
-    return $ fromMaybe "None" . fmap statToStr $ ret
+    return $ fromMaybe d . fmap f $ ret
   getEventText = getEventTextW
-  getFDs (WH s _ _ ) = return [getWifiFd s]
+  getFDs (WH s _ _ _ _) = return [getWifiFd s]

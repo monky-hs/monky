@@ -4,13 +4,13 @@ module Monky.Wifi
   , getCurrentWifiStats
   , getInterface
   , gotReadable
-  , gotReadable'
   , getSSIDSocket
   , Interface
   , SSIDSocket
   , getWifiFd
 
   , WifiStats(..)
+  , WifiConn(..)
   )
 where
 
@@ -42,6 +42,11 @@ import Control.Applicative ((<$>))
 type Interface = Word32
 type SSIDSocket = NL80211Socket
 
+data WifiConn
+  = WifiNone
+  | WifiDisconnect
+  | WifiConnect WifiStats
+
 data WifiStats = WifiStats
   { wifiChannel :: Word8
   , wifiRates :: [Word32]
@@ -54,12 +59,15 @@ data WifiStats = WifiStats
 uDecode :: Serialize a => Maybe ByteString -> Maybe a
 uDecode = fmap (\bs -> let (Right x) = decode bs in x)
 
+
 getBssAttrs :: Attributes -> Maybe Attributes
 getBssAttrs attr = do
   bs <- M.lookup eNL80211_ATTR_BSS attr
   case runGet getAttributes bs of
     (Left _)  -> Nothing
     (Right x) -> return x
+
+
 attrToStat :: NL80211Packet -> Maybe WifiStats
 attrToStat pack = do
   pattrs <- getBssAttrs $ packetAttributes pack
@@ -94,35 +102,34 @@ getInterface s n = do
   interfaces <- getInterfaceList s
   return $ snd <$> listToMaybe (filter ((==) n . fst) interfaces)
 
+
 getWifiFd :: SSIDSocket -> Fd
 getWifiFd = getFd
 
 -- We are only looking for ESSID right now, if we want to
 -- make this module more general, we will have to extend the
 -- return type of this function
-gotReadable' :: SSIDSocket -> Interface -> IO (Maybe WifiStats)
-gotReadable' s i = do
+gotReadable :: SSIDSocket -> Interface -> IO WifiConn
+gotReadable s i = do
+-- TODO: make save for multiple interfaces
 -- we only care for ESSID and connect updates are a single message
 -- so this *should* be fine
   ps <- getPacket s
   if null ps
-    then return Nothing
+    then error "Failed to get a package in gotReadable, this should not be possible"
     else do
       let packet = head ps
-      let cmd = genlCmd . genlDataHeader . packetCustom $packet
+      let cmd = genlCmd . genlDataHeader . packetCustom $ packet
       if cmd == eNL80211_CMD_CONNECT
-        then getCurrentWifiStats s i
+        then do
+          wifi <- getCurrentWifiStats s i
+          return $ case wifi of
+            Nothing -> WifiDisconnect
+            Just x -> WifiConnect x
         else if cmd == eNL80211_CMD_DISCONNECT
-          then return . Just $ WifiStats 0 [0] "" 0 0
-          else return Nothing
+          then return WifiDisconnect
+          else return WifiNone
 
--- We are only looking for ESSID right now, if we want to
--- make this module more general, we will have to extend the
--- return type of this function
-gotReadable :: SSIDSocket -> Interface -> IO (Maybe String)
-gotReadable s i = do
-  stats <- gotReadable' s i
-  return . fmap wifiName $ stats
 
 getSSIDSocket :: IO SSIDSocket
 getSSIDSocket = do
