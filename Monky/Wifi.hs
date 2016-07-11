@@ -76,13 +76,13 @@ attrToStat pack = do
 
   name <- fmap show . M.lookup eWLAN_EID_SSID $ attrs
   channel <- uDecode . M.lookup eWLAN_EID_DS_PARAMS $ attrs
-  rate <- M.lookup eWLAN_EID_SUPP_RATES $ attrs
+  rate <- M.lookup eWLAN_EID_SUPP_RATES attrs
 
   freq <- uDecode . M.lookup eNL80211_BSS_FREQUENCY $ pattrs
   mbm <- uDecode . M.lookup eNL80211_BSS_SIGNAL_MBM $ pattrs
 
-  let bs = M.lookup eWLAN_EID_EXT_SUPP_RATES $ attrs
-  let ratL = rate `BS.append` fromMaybe (BS.empty) bs
+  let bs = M.lookup eWLAN_EID_EXT_SUPP_RATES attrs
+  let ratL = rate `BS.append` fromMaybe BS.empty bs
   let rates = map (\y -> fromIntegral (y .&. 0x7F) * (500000 :: Word32)) . BS.unpack $ ratL
 
   return $ WifiStats channel rates name freq mbm
@@ -91,7 +91,7 @@ attrToStat pack = do
 getCurrentWifiStats :: SSIDSocket -> Interface -> IO (Maybe WifiStats)
 getCurrentWifiStats s i = do
   wifis <- getConnectedWifi s i
-  return $ attrToStat =<< (listToMaybe wifis)
+  return $ attrToStat =<< listToMaybe wifis
 
 
 getCurrentWifi :: SSIDSocket -> Interface -> IO (Maybe String)
@@ -128,11 +128,10 @@ gotReadable s i = do
             Just x -> WifiConnect x
         else if cmd == eNL80211_CMD_DISCONNECT
           then let bs = M.lookup eNL80211_ATTR_IFINDEX (packetAttributes packet) in
-            if fromMaybe False . fmap (== i) . uGetWord32 $ bs
+            if maybe False (== i) . uGetWord32 $ bs
               then return WifiDisconnect
               else return WifiNone
-          else do
-            return WifiNone
+          else return WifiNone
 
 
 getSSIDSocket :: IO SSIDSocket

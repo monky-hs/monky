@@ -37,16 +37,16 @@ data WifiFormat
   | FormatMBM
   | FormatText String
 
-getFun :: WifiFormat -> (WifiStats -> String)
+getFun :: WifiFormat -> WifiStats -> String
 getFun FormatChannel    = show . wifiChannel
 getFun FormatRates      = flip convertUnitSI "B" . maximum . wifiRates
 getFun FormatName       = wifiName
 getFun FormatFreq       = show . wifiFreq
 getFun FormatMBM        = show . wifiMBM
-getFun (FormatText str) = (\_ -> str)
+getFun (FormatText str) = const str
 
-getFunction :: [WifiFormat] -> (WifiStats -> String)
-getFunction xs = concat . (\a -> map ($ a) $ map getFun xs)
+getFunction :: [WifiFormat] -> WifiStats -> String
+getFunction xs = concat . (\a -> map (($ a) . getFun) xs)
 
 getWifiHandle :: [WifiFormat] -> String -> String -> IO WifiHandle
 getWifiHandle f d n = do
@@ -70,6 +70,6 @@ getEventTextW _ _ (WH s r i f d) = do
 instance Module WifiHandle where
   getText _ (WH s r i f d) = do
     ret <- getCurrentWifiStats s i
-    writeAndRet r $ fromMaybe d . fmap f $ ret
+    writeAndRet r $ maybe d f ret
   getEventText = getEventTextW
   getFDs (WH s _ _ _ _) = return [getWifiFd s]
