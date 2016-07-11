@@ -88,16 +88,16 @@ library
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid
   other-modules: Monky.Disk.Common Monky.Examples.CPUCommon
 
-  build-depends:       base >=4.6.0.1 && <=5, directory, time, old-locale, array
+  build-depends:       base >=4.6.0.1 && <=5, directory, time
   build-depends:       text, unix, network, mtl, transformers, text
-  build-depends:       template-haskell, containers, stm, statvfs, split
+  build-depends:       template-haskell, containers, stm, statvfs
   build-depends:       bytestring, netlink, cereal
 
   if impl(ghc >= 7.8)
     exposed-modules: Monky.MPD Monky.Examples.MPD
-    build-depends: socket
+    -- build-depends: socket
   if impl(ghc < 7.10)
-    build-depends: transformers-compat
+    build-depends: transformers-compat, old-locale
 
 
   if flag(ibus)
