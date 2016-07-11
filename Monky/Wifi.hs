@@ -14,7 +14,6 @@ module Monky.Wifi
   )
 where
 
-
 import Data.Bits ((.&.))
 import Data.Word (Word8, Word32)
 import Data.Maybe (listToMaybe, fromMaybe)
@@ -32,7 +31,7 @@ import qualified Data.ByteString as BS
 import Data.ByteString (ByteString)
 
 import Data.Serialize (Serialize, decode)
-import Data.Serialize.Get (runGet)
+import Data.Serialize.Get (runGet, getWord32host)
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -59,6 +58,8 @@ data WifiStats = WifiStats
 uDecode :: Serialize a => Maybe ByteString -> Maybe a
 uDecode = fmap (\bs -> let (Right x) = decode bs in x)
 
+uGetWord32 :: Maybe ByteString -> Maybe Word32
+uGetWord32 = fmap (\bs -> let (Right x) = runGet getWord32host bs in x)
 
 getBssAttrs :: Attributes -> Maybe Attributes
 getBssAttrs attr = do
@@ -111,7 +112,6 @@ getWifiFd = getFd
 -- return type of this function
 gotReadable :: SSIDSocket -> Interface -> IO WifiConn
 gotReadable s i = do
--- TODO: make save for multiple interfaces
 -- we only care for ESSID and connect updates are a single message
 -- so this *should* be fine
   ps <- getPacket s
@@ -127,8 +127,12 @@ gotReadable s i = do
             Nothing -> WifiDisconnect
             Just x -> WifiConnect x
         else if cmd == eNL80211_CMD_DISCONNECT
-          then return WifiDisconnect
-          else return WifiNone
+          then let bs = M.lookup eNL80211_ATTR_IFINDEX (packetAttributes packet) in
+            if fromMaybe False . fmap (== i) . uGetWord32 $ bs
+              then return WifiDisconnect
+              else return WifiNone
+          else do
+            return WifiNone
 
 
 getSSIDSocket :: IO SSIDSocket

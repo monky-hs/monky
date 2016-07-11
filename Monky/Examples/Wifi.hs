@@ -68,8 +68,8 @@ getEventTextW _ _ (WH s r i f d) = do
     WifiDisconnect -> writeAndRet r d
 
 instance Module WifiHandle where
-  getText _ (WH s _ i f d) = do
+  getText _ (WH s r i f d) = do
     ret <- getCurrentWifiStats s i
-    return $ fromMaybe d . fmap f $ ret
+    writeAndRet r $ fromMaybe d . fmap f $ ret
   getEventText = getEventTextW
   getFDs (WH s _ _ _ _) = return [getWifiFd s]
