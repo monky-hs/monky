@@ -14,6 +14,7 @@ module Monky.Wifi
   )
 where
 
+
 import Data.Bits ((.&.))
 import Data.Word (Word8, Word32)
 import Data.Maybe (listToMaybe, fromMaybe)
@@ -103,28 +104,25 @@ gotReadable' :: SSIDSocket -> Interface -> IO (Maybe WifiStats)
 gotReadable' s i = do
 -- we only care for ESSID and connect updates are a single message
 -- so this *should* be fine
-  packet <- head <$> getPacket s
-  let cmd = genlCmd . genlDataHeader . packetCustom $packet
-  if cmd == eNL80211_CMD_CONNECT
-    then getCurrentWifiStats s i
-    else if cmd == eNL80211_CMD_DISCONNECT
-      then return . Just $ WifiStats 0 [] "" 0 0
-      else return Nothing
+  ps <- getPacket s
+  if null ps
+    then return Nothing
+    else do
+      let packet = head ps
+      let cmd = genlCmd . genlDataHeader . packetCustom $packet
+      if cmd == eNL80211_CMD_CONNECT
+        then getCurrentWifiStats s i
+        else if cmd == eNL80211_CMD_DISCONNECT
+          then return . Just $ WifiStats 0 [0] "" 0 0
+          else return Nothing
 
 -- We are only looking for ESSID right now, if we want to
 -- make this module more general, we will have to extend the
 -- return type of this function
 gotReadable :: SSIDSocket -> Interface -> IO (Maybe String)
 gotReadable s i = do
--- we only care for ESSID and connect updates are a single message
--- so this *should* be fine
-  packet <- head <$> getPacket s
-  let cmd = genlCmd . genlDataHeader . packetCustom $packet
-  if cmd == eNL80211_CMD_CONNECT
-    then getCurrentWifi s i
-    else if cmd == eNL80211_CMD_DISCONNECT
-      then return (Just "")
-      else return Nothing
+  stats <- gotReadable' s i
+  return . fmap wifiName $ stats
 
 getSSIDSocket :: IO SSIDSocket
 getSSIDSocket = do
