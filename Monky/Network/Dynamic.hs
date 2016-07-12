@@ -11,6 +11,7 @@ module Monky.Network.Dynamic
 where
 
 import Data.Bits ((.|.))
+import Control.Monad (when)
 import Control.Concurrent (forkIO, threadWaitRead)
 import Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IM
@@ -37,7 +38,7 @@ type NetHandle = (String, NetworkHandle)
 type Handles = IntMap NetHandle
 
 -- |The actual handel exposed and used by this module
-type UHandles = (IORef Handles, (String -> Bool))
+type UHandles = (IORef Handles, String -> Bool)
 
 instance {-# OVERLAPPING #-} Show NetHandle where
   show (x, _) = x
@@ -58,13 +59,13 @@ foldF h o = do
 
 -- |Get the sum of all read/write rates from our network devices or Nothing if none is active
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
-getMultiReadWrite h = do
-  IM.foldr (\(_, v) -> foldF v) (return Nothing) h
+getMultiReadWrite =
+  IM.foldr (\(_, v) -> foldF v) (return Nothing)
 
 
 -- |Logic for adding a new device to our Handles
 gotNew :: Int -> String -> Handles -> IO Handles
-gotNew index name m = do
+gotNew index name m =
   case IM.lookup index m of
     Nothing -> do
       h <- getNetworkHandle name
@@ -74,7 +75,7 @@ gotNew index name m = do
       else do
         h <- getNetworkHandle name
         closeNetworkHandle v
-        return $IM.adjust (\_ -> (name, h)) index m
+        return $IM.adjust (const (name, h)) index m
 
 
 -- |Logic for removing a handle form Handles after we lost the interface
@@ -130,13 +131,11 @@ doUpdate (mr, f) (Packet hdr msg attrs)
   | messageType hdr == eRTM_NEWLINK = do
     let (Just name) = M.lookup eIFLA_IFNAME attrs
     let names = init $BS.unpack name -- Drop \0
-    if f names
-      then do -- Add
-        let index = interfaceIndex msg
-        m <- readIORef mr
-        nm <- gotNew (fromIntegral index) names m
-        writeIORef mr nm
-      else return () -- Ignore
+    when (f names) $ do -- Add
+      let index = interfaceIndex msg
+      m <- readIORef mr
+      nm <- gotNew (fromIntegral index) names m
+      writeIORef mr nm
   | messageType hdr == eRTM_DELLINK = do
     let index = interfaceIndex msg
     m <- readIORef mr
@@ -151,7 +150,7 @@ doUpdate _ _ = return ()
 updaterLoop :: NetlinkSocket -> UHandles -> IO ()
 updaterLoop sock h = do
   threadWaitRead (getNetlinkFd sock)
-  packet <- (recvOne sock :: IO [RoutePacket])
+  packet <- recvOne sock :: IO [RoutePacket]
   mapM_ (doUpdate h) packet
   updaterLoop sock h
 
