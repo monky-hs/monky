@@ -22,7 +22,6 @@ module Monky.Examples.IBus
   )
 where
 
-
 #if MIN_VERSION_base(4,8,0)
 #else
 import Control.Applicative ((<$>))

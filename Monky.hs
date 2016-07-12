@@ -41,7 +41,7 @@ import Control.Concurrent (threadDelay)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Monky.Event
 import Monky.Modules
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import System.IO (hFlush, stdout)
 import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
@@ -58,7 +58,7 @@ getWrapperText :: Int -> String -> ModuleWrapper -> IO String
 getWrapperText tick u (MWrapper (MW m i) r _)
   | i <= 0 = readIORef r
   | i > 0 = do
-    when (tick `mod` i == 0) $do
+    when (tick `mod` i == 0) $ do
       s <- getText u m
       writeIORef r s
     readIORef r
@@ -124,9 +124,7 @@ packMod x = do
 initModule :: ModuleWrapper -> IO ()
 initModule (MWrapper (MW m _) sref bref) = do
   ret <- setupModule m
-  if ret
-    then return ()
-    else do
+  unless ret $ do
       writeIORef sref "Init failed"
       writeIORef bref True
       return ()
@@ -141,7 +139,7 @@ startLoop mods = do
   u <- getEffectiveUserName
   m <- sequence mods
   l <- mapM packMod m
-  mapM_ (flip updateText u) l
+  mapM_ (`updateText` u) l
   let f = rmEmpty l
   mapM_ initModule f
   startEventLoop (map (\y@(MWrapper x _ _) -> (updateText' y u, x)) f)

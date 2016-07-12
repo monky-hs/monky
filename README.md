@@ -1,5 +1,9 @@
 [![BuildStatus](https://travis-ci.org/monky-hs/monky.svg?branch=master)](https://travis-ci.org/monky-hs/monky)
 
+This is an experimental branch, it is expected to fail CI because a dependency
+is not yet on hackage (Also the <$> import might be missing):
+https://github.com/ongy/netlink-h://github.com/ongy/netlink-hs
+
 Monky is an application to feed status bars (like dzen2) with a lines to display.
 
 If you have any more questions or suggestions, come and join us (or rather me) on freenode at #monky.
