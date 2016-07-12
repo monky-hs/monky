@@ -59,8 +59,7 @@ foldF h o = do
 -- |Get the sum of all read/write rates from our network devices or Nothing if none is active
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite h = do
-  IM.foldr (\(_, v) -> foldF v) (return start) h
-  where start = Just (0, 0)
+  IM.foldr (\(_, v) -> foldF v) (return Nothing) h
 
 
 -- |Logic for adding a new device to our Handles
@@ -87,6 +86,7 @@ lostOld index m = case IM.lookup index m of
     return (IM.delete index m)
 
 
+-- |The packet used to drump all current network devices
 requestPacket :: RoutePacket
 requestPacket =
   let flags = fNLM_F_REQUEST .|. fNLM_F_MATCH .|. fNLM_F_ROOT
@@ -95,10 +95,11 @@ requestPacket =
     Packet header msg M.empty
 
 
+-- |Read the interface name and index from 'RoutePacket'
 readInterface :: RoutePacket -> (Int, String)
 readInterface (Packet _ msg attrs) =
   let (Just name) = M.lookup eIFLA_IFNAME attrs
-      names = init $BS.unpack name
+      names = init $ BS.unpack name -- Drop \0
       index = interfaceIndex msg in
     (fromIntegral index, names)
 readInterface x = error ("Something went wrong while getting interfaces: " ++ show x)
@@ -113,6 +114,7 @@ getCurrentDevs = do
   return $map readInterface ifs
 
 
+-- |Get the 'Handles' wrapper for all current interfaces
 getNetworkHandles :: (String -> Bool) -> IO Handles
 getNetworkHandles f = do
   interfaces <- filter (f . snd) <$> getCurrentDevs
@@ -121,19 +123,20 @@ getNetworkHandles f = do
           gotNew index dev =<< m
 
 
+-- |Handle an incomming rtneltink message and update the handle
 doUpdate :: UHandles -> RoutePacket -> IO ()
 doUpdate (mr, f) (Packet hdr msg attrs)
 -- for now we will assume that we want the interface
   | messageType hdr == eRTM_NEWLINK = do
     let (Just name) = M.lookup eIFLA_IFNAME attrs
-    let names = init $BS.unpack name
+    let names = init $BS.unpack name -- Drop \0
     if f names
-      then do
+      then do -- Add
         let index = interfaceIndex msg
         m <- readIORef mr
         nm <- gotNew (fromIntegral index) names m
         writeIORef mr nm
-      else return ()
+      else return () -- Ignore
   | messageType hdr == eRTM_DELLINK = do
     let index = interfaceIndex msg
     m <- readIORef mr
@@ -146,11 +149,11 @@ doUpdate _ _ = return ()
 
 -- |Updater loop, it blocks on the netlink socker until it gets a message
 updaterLoop :: NetlinkSocket -> UHandles -> IO ()
-updaterLoop sock mr = do
+updaterLoop sock h = do
   threadWaitRead (getNetlinkFd sock)
   packet <- (recvOne sock :: IO [RoutePacket])
-  mapM_ (doUpdate mr) packet
-  updaterLoop sock mr
+  mapM_ (doUpdate h) packet
+  updaterLoop sock h
 
 
 -- |Start the update loop for adding/removing interfaces

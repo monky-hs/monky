@@ -49,7 +49,7 @@ data NetState
 -- |Get the current network adapter state from kernel
 getState :: NetworkHandle -> IO NetState
 getState (NetH _ _ statef _ _ _) = do
--- the read can thro an exception if the interace disapperad, we just consider it down
+-- the read can throw an exception if the interface disapperad, we just consider it down
   state <- catchIOError (readLine statef) (\_ -> return "down")
   return $ case state of
     "up" -> Up
@@ -65,40 +65,47 @@ data NetworkHandle = NetH File File File (IORef Int) (IORef Int) (IORef POSIXTim
 basePath :: String
 basePath = "/sys/class/net/"
 
+
 readPath :: String
 readPath = "/statistics/rx_bytes"
+
 
 writePath :: String
 writePath = "/statistics/tx_bytes"
 
+
 statePath :: String
 statePath = "/operstate"
+
 
 getReadWriteReal :: NetworkHandle -> IO (Int, Int)
 getReadWriteReal (NetH readf writef _ readref writeref timeref) = do
   nread <- readValue readf
   nwrite <- readValue writef
   time <- getPOSIXTime
+
   oread <- readIORef readref
   owrite <- readIORef writeref
   otime <- readIORef timeref
-  let cread = oread - nread
-  let cwrite = owrite - nwrite
-  let ctime = otime - time
+
   writeIORef readref nread
   writeIORef writeref nwrite
   writeIORef timeref time
+
+  let cread = oread - nread
+  let cwrite = owrite - nwrite
+  let ctime = otime - time
   return ((cread * 8) `sdivBound` round ctime,
     (cwrite * 8) `sdivBound` round ctime)
 
+
 getReadWrite :: NetworkHandle -> IO (Maybe (Int, Int))
-getReadWrite (NetH readf writef statef readref writeref timeref) = do
-  state <- readLine statef
-  if state == "down"
-    then return Nothing
-    else do
-      val <- getReadWriteReal (NetH readf writef statef readref writeref timeref)
-      return $Just val
+getReadWrite h = do
+  state <- getState h
+  case state of
+    Up -> fmap Just . getReadWriteReal $ h
+    Unknown -> fmap Just . getReadWriteReal $ h
+    _ -> return Nothing
 
 
 getNetworkHandle :: String -> IO NetworkHandle
@@ -116,6 +123,4 @@ getNetworkHandle dev = do
 -- |Close a network handle after it is no longer needed (the device disappeared)
 closeNetworkHandle :: NetworkHandle -> IO ()
 closeNetworkHandle (NetH readf writef statef _ _ _) =
-  fclose readf >> fclose writef >> fclose statef
-
-
+  mapM_ fclose [readf, writef, statef]
