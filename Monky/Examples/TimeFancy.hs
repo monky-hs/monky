@@ -9,6 +9,7 @@ Portability : Linux
 module Monky.Examples.TimeFancy ()
 where
 
+import qualified Data.Text as T
 import Monky.Modules
 import Monky.Time
 
@@ -28,3 +29,13 @@ getTimeString user h = do
 -- |Example instance for time module
 instance Module TimeHandle where
     getText = getTimeString
+
+instance NewModule TimeHandle where
+  getOutput h = do
+    ts <- getTime h
+    t <- getHM h
+    let (th, tm) = timeToXBM t
+    return
+      [ MonkyImage . T.pack $ (show th ++ '-':show tm ++ ".xbm")
+      , MonkyPlain . T.pack $ ts
+      ]

@@ -10,9 +10,11 @@ Portability : Linux
 module Monky.Examples.CPUCommon
   ( formatCPUText
   , printXbm
+  , formatNCPUText
   )
 where
 
+import Monky.Modules (MonkyOut(..))
 import Text.Printf (printf)
 
 import Data.Text (Text)
@@ -48,3 +50,22 @@ printThemp t = T.cons ' ' (T.pack $ show t) `T.append` "°C"
 
 formatCPUText :: [Int] -> Int -> Float -> Text
 formatCPUText cp ct cf = printFrequency cf `T.append` T.concat (map printBar cp) `T.append` printThemp ct
+
+barNTemplate :: Int -> MonkyOut
+-- Dzen I hate your boxdrawing
+barNTemplate h =
+  MonkyColor ("#222222", cpuColor h) (MonkyBar h)
+
+printNXbm :: MonkyOut
+printNXbm = MonkyImage "cpu.xbm"
+
+printNFrequency :: Float -> MonkyOut
+printNFrequency = MonkyPlain . T.pack . (printf "%.1fG ^p(-3)" :: Float -> String)
+
+printNThemp :: Int -> MonkyOut
+printNThemp t = MonkyPlain (T.cons ' ' (T.pack $ show t) `T.append` "°C")
+
+formatNCPUText :: [Int] -> Int -> Float -> [MonkyOut]
+formatNCPUText cp ct cf =
+  printNXbm :printNFrequency cf :(map barNTemplate cp) ++ [printNThemp ct]
+

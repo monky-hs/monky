@@ -13,6 +13,7 @@ module Monky.Examples.Wifi
   )
 where
 
+import qualified Data.Text as T
 import Data.IORef
 import Data.Maybe (fromMaybe)
 import System.Posix.Types (Fd)
@@ -73,3 +74,8 @@ instance Module WifiHandle where
     writeAndRet r $ maybe d f ret
   getEventText = getEventTextW
   getFDs (WH s _ _ _ _) = return [getWifiFd s]
+
+instance NewModule WifiHandle where
+  getOutput (WH s _ i f d) = do
+    ret <- getCurrentWifiStats s i
+    return [MonkyPlain $ T.pack $ maybe d f ret]

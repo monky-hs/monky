@@ -7,6 +7,7 @@ Portability : Linux
 
 -}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE CPP #-}
 module Monky.Examples.MPD
   ( MPDHandle
@@ -14,13 +15,16 @@ module Monky.Examples.MPD
   )
 where
 
+import qualified Data.Text as T
 
 import Data.IORef
 import Data.Maybe (fromMaybe)
-import Monky.MPD
-import Monky.Modules
+import System.IO (hPutStrLn, stderr)
 import System.Posix.Types (Fd)
 
+import Monky.MPD
+import Monky.Modules
+import Monky.Examples.Utility
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -81,11 +85,6 @@ instance Module MPDHandle where
   getEventTextFailable _ _ (MPDHandle _ _ s) =  do
     r <- readIORef s
     ioInM getEvent r
---  setupModule (MPDHandle h p r) = do
---    s <- getMPDSocket h p
---    case s of
---      (Right x) -> writeIORef r (Just x) >> return True
---      (Left _) -> return False
   recoverModule (MPDHandle h p r) = do
     s <- getMPDSocket h p
     case s of
@@ -98,6 +97,34 @@ instance Module MPDHandle where
       Just x -> getFd x
 
 
+instance NewModule MPDHandle where
+  getOutput (MPDHandle _ _ s) = do
+    r <- readIORef s
+    case r of
+      Nothing -> return [MonkyPlain "Broken"]
+      (Just x) -> do
+        ret <- getSongTitle x
+        return [MonkyPlain . T.pack $ ret]
+  initialize (MPDHandle h p r) = do
+    s <- getMPDSocket h p
+    case s of
+      (Right x) -> writeIORef r (Just x)
+      (Left _) -> return ()
+
+
+instance EvtModule MPDHandle where
+  startEvtLoop h@(MPDHandle _ _ s) ref = do
+    initialize h
+    c <- getOutput h
+    atomicWriteIORef ref c
+    r <- readIORef s
+    case r of
+      Nothing -> hPutStrLn stderr "Could not initialize MPDHandle :("
+      (Just x) -> do
+        [fd] <- getFd x
+        loopFd x fd ref (fmap (\y -> [MonkyPlain . T.pack $ y]) . getEvent)
+
+
 -- |Get an 'MPDHandle' (server has to be running when this is executed)
 getMPDHandle
   :: String -- ^The host to connect to
@@ -105,22 +132,3 @@ getMPDHandle
  -> IO MPDHandle
 getMPDHandle h p = MPDHandle h p <$> newIORef Nothing
 
---
----- |Get the 'MPDHandle' or an error
---getMPDHandle
---  :: String -- ^The host to connect to
--- -> String  -- ^The port to connect to
--- -> IO (Either String MPDHandle)
---getMPDHandle h p = getHandle <$> getMPDSocket h p
---  where getHandle (Right x) = (Right (MPDHandle x))
---        getHandle (Left x) = (Left x)
---
---
----- |Same as 'getMPDHandle' but throws an error instead of returning the error as 'String'
---getMPDHandle'
---  :: String
---  -> String
---  -> IO MPDHandle
---getMPDHandle' h p = getHandle <$> getMPDHandle h p
---  where getHandle (Right x) = x
---        getHandle (Left x) = error x

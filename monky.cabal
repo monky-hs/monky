@@ -89,9 +89,11 @@ library
   exposed-modules: Monky.Prepend Monky.Examples.CPUMany Monky.Connectivity
   exposed-modules: Monky.Wifi Monky.Examples.Wifi
   exposed-modules: Monky.Examples.Connectivity Monky.Network.Dynamic
-  exposed-modules: Monky.Network.Static Monky.Examples.File
+  exposed-modules: Monky.Network.Static Monky.Examples.File Monky.Examples.Utility
 
   exposed-modules: Monky.Version
+  exposed-modules: Monky.Outputs.Dzen2
+
   other-modules: Monky.Template Monky.Event Monky.VersionTH Monky.Blkid
   other-modules: Monky.Disk.Common Monky.Examples.CPUCommon
 

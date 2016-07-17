@@ -33,7 +33,9 @@ To use them, get the handle at the beginning of you application and hand it to
 other functions later on.
 -}
 module Monky
-(startLoop)
+  ( startLoop
+  , startNewLoop
+  )
 where
 
 
@@ -42,9 +44,50 @@ import Data.IORef (IORef, readIORef, writeIORef, newIORef)
 import Monky.Event
 import Monky.Modules
 import Control.Monad (when, unless)
+import Control.Concurrent (forkIO)
 import System.IO (hFlush, stdout)
 import System.Posix.Types (Fd)
 import System.Posix.User (getEffectiveUserName)
+
+
+data NewModuleWrapper = NMWrapper NewModules (IORef [MonkyOut])
+
+-- |Packs a module into a wrapper with an IORef for cached output
+packNewMod :: NewModules -> IO NewModuleWrapper
+packNewMod x@(Poll (NMW m _)) = do
+  sref <- newIORef []
+  initialize m
+  return (NMWrapper x sref)
+packNewMod x@(Evt (DW m)) = do
+  sref <- newIORef []
+  _ <- forkIO (startEvtLoop m sref)
+  return $ NMWrapper x sref
+
+getNWrapperText :: Int -> NewModuleWrapper -> IO [MonkyOut]
+getNWrapperText tick (NMWrapper (Poll (NMW m i)) r) = do
+  when (tick `mod` i == 0) $ do
+    o <- getOutput m
+    writeIORef r o
+  readIORef r
+getNWrapperText _ (NMWrapper (Evt _) r) = readIORef r
+
+doMonkyLine :: MonkyOutput o => Int -> o -> [NewModuleWrapper] -> IO ()
+doMonkyLine t o xs =
+  doLine o =<< mapM (getNWrapperText t) xs
+
+newLoop :: MonkyOutput o => Int -> o -> [NewModuleWrapper] -> IO ()
+newLoop t o xs = do
+  doMonkyLine t o xs
+  threadDelay 1000000
+  newLoop (t+1) o xs
+
+startNewLoop :: MonkyOutput o => o -> [IO NewModules] -> IO ()
+startNewLoop o mods = do
+  m <- sequence mods
+  l <- mapM packNewMod m
+  newLoop 0 o l
+
+
 
 
 -- |The module wrapper used to buffer output strings

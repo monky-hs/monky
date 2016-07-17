@@ -42,3 +42,16 @@ instance Module Numa where
   getText u (Numa handles) = do
     nodes <- mapM getNumaText handles
     return . T.unpack $ (printXbm u `T.append` (T.concat $ intersperse " - " nodes))
+
+
+{- NEW STUFF #-}
+getNCPUText :: CPUHandle -> IO [MonkyOut]
+getNCPUText ch = do
+  cp <- getCPUPercent ch
+  ct <- getCPUTemp ch
+  cf <- getCPUMaxScalingFreq ch
+  return (formatNCPUText cp ct cf)
+
+
+instance NewModule CPUHandle where
+  getOutput = getNCPUText

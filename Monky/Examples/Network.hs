@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.Network
 Description : An example module instance for the network module
@@ -15,6 +16,8 @@ module Monky.Examples.Network
   )
 where
 
+import Data.Text (Text)
+import qualified Data.Text as T
 import Data.IORef (readIORef)
 
 import Monky.Utility
@@ -92,3 +95,37 @@ getDNetworkText :: String -> String -> D.Handles -> IO String
 getDNetworkText e _ nh = do
   nv <- D.getMultiReadWrite nh
   return $ formatNetworkText e nv
+
+
+{- 2.0 STUFF -}
+{- Network Module -}
+
+formatNNetworkText :: Text -> Maybe (Int, Int) -> Text
+formatNNetworkText e Nothing = e
+formatNNetworkText _ (Just (r, w)) = T.pack
+  (convertUnit r "B" "k" "M" "G" ++ ' ':convertUnit w "B" "k" "M" "G")
+
+
+getNNetworkText :: Text -> NetworkHandles -> IO [MonkyOut]
+getNNetworkText e nh = do
+  nv <- getReadWriteMulti nh
+  return [MonkyPlain $ formatNNetworkText e nv]
+
+
+getNDNetworkText :: Text -> D.Handles -> IO [MonkyOut]
+getNDNetworkText e nh = do
+  nv <- D.getMultiReadWrite nh
+  return [MonkyPlain $ formatNNetworkText e nv]
+
+
+instance NewModule NetworkDynHandle where
+  getOutput (DH e h) = getNDNetworkText (T.pack e) =<< readIORef (fst h)
+
+instance NewModule NetworkHandles' where
+  getOutput (NH' e h) = getNNetworkText (T.pack e) h
+
+instance NewModule NetworkStaticHandle where
+  getOutput (SH e h) = do
+    rates <- S.getReadWrite h
+    return [MonkyPlain $ formatNNetworkText (T.pack e) rates]
+

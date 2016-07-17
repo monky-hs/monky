@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.Disk
 Description : An example module instance for the disk module
@@ -9,6 +10,7 @@ Portability : Linux
 module Monky.Examples.Disk ()
 where
 
+import qualified Data.Text as T
 import Text.Printf (printf)
 
 import Monky.Utility
@@ -34,3 +36,12 @@ getDiskText u dh = do
 -- |Example instance for disk module
 instance Module DiskHandle where
   getText = getDiskText
+
+instance NewModule DiskHandle where
+  getOutput dh = do
+    (dr, dw) <- getDiskReadWrite dh
+    df <- getDiskFree dh
+    return
+      [ MonkyImage "diskette.xbm"
+      , MonkyPlain . T.pack $ printf "%s %s %s" (convertUnitSI df "B") (convertUnitSI dr "B" ) (convertUnitSI dw "B")
+      ]

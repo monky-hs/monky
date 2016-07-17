@@ -22,6 +22,9 @@ module Monky.Examples.IBus
   )
 where
 
+import qualified Data.Text as T
+import Data.IORef
+
 #if MIN_VERSION_base(4,8,0)
 #else
 import Control.Applicative ((<$>))
@@ -40,6 +43,20 @@ import IBus.EngineDesc
 
 
 data IBusH = IBusH IBusClient [(String, String)]
+
+instance NewModule IBusH where
+  getOutput (IBusH h m) = do
+    engine <- try $ engineName <$> getIBusEngine h
+    case engine of
+      (Left e) -> return [MonkyPlain . T.pack $ clientErrorMessage e]
+      (Right x) -> return [MonkyImage . T.pack $ remapEngine m x]
+
+instance EvtModule IBusH where
+  startEvtLoop ih@(IBusH h m) r = do
+    atomicWriteIORef r =<< getOutput ih
+    void $ subscribeToEngine h $ \xs -> do
+      let engine = head xs
+      atomicWriteIORef r [MonkyImage . T.pack $ remapEngine m engine]
 
 instance Module IBusH where
   getText = getText'

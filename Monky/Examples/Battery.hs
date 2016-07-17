@@ -9,6 +9,7 @@ Portability : Linux
 module Monky.Examples.Battery ()
 where
 
+import qualified Data.Text as T
 import Text.Printf (printf)
 
 import Monky.Modules
@@ -51,3 +52,16 @@ getBatteryText user bh = do
 instance Module BatteryHandle where
   getText = getBatteryText
 
+instance NewModule BatteryHandle where
+  getOutput bh = do
+    p <- getCurrentLevel bh
+    s <- getTimeLeft bh
+    online <- getCurrentStatus bh
+    pow <- getLoading bh
+    let h = s `div` 3600
+        m = (s `mod` 3600) `div` 60
+    return 
+      [ MonkyImage . T.pack $ batterySymbol online p "ongy"
+      , MonkyColor (T.pack $ batteryColor online p, T.pack "") $
+        MonkyPlain . T.pack $ printf "%.1fW %d%% %2d:%02d" pow p h m
+      ]

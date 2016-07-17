@@ -15,6 +15,8 @@ where
 import Monky.Modules
 import Monky.Utility (fopen, readLine, File)
 
+import qualified Data.Text.Encoding as T
+
 newtype FileHandle = FH File
 
 getFile :: FileHandle -> File
@@ -25,3 +27,8 @@ getFileHandle = fmap FH . fopen
 
 instance Module FileHandle where
   getText _ = readLine . getFile
+
+instance NewModule FileHandle where
+  getOutput h = do
+    line <- readLine . getFile $ h
+    return [MonkyPlain $ T.decodeUtf8 line]

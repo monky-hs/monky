@@ -61,3 +61,18 @@ getMemoryText user mh = do
 instance Module MemoryHandle where
   getText u h = T.unpack <$> getMemoryText u h
 
+
+newBar :: (Int, Int) -> [MonkyOut]
+newBar (u, us) =
+  [ MonkyHBar (u `div` 2)
+  , MonkyColor ("#444444", "") (MonkyHBar (us `div` 2))
+  , MonkyColor ("#222222", "") (MonkyHBar ((100 - us) `div` 2))
+  ]
+
+getNMemoryOut :: MemoryHandle -> IO [MonkyOut]
+getNMemoryOut h = do
+  percents <- getUsagePercents h
+  return $ MonkyImage "mem.xbm":newBar percents
+
+instance NewModule MemoryHandle where
+  getOutput = getNMemoryOut
