@@ -60,7 +60,14 @@ For the fancy clock example you will also need the `.xbm` files in this repo.
 ## 2.0 breaking changes
  * startLoop needs a seconds argument. Modules will be in Monky.Outputs
  * pack was split into pollPack and evtPack
- * Module was splitt in PollModule and EvtModule for polling and event based
+ * Module was split in PollModule and EvtModule for polling and event based
  * Examples use newtype wrappers. Orphan instances are now discouraged
  * Memory/CPU/Time have been merged, new get\* functions are used to choose mode
  * Prepend has been moved
+ * the executable that's compiled by monky has been renamed to monky.exe to avoid confusion
+
+### General changes
+ * monky is now more modular and has an internal output datatype
+ * monky moved to Data.Text from (text) over String
+ * the event system has been simplified
+ * config file does not have to import Monky.\* anymore, Monky.Example.\* is enough
