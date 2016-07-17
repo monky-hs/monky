@@ -40,4 +40,3 @@ getCPUText user ch = do
 -- |Example instance for CPU module
 instance Module CPUHandle where
   getText = getCPUText
-

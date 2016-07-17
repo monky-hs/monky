@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.Time
 Description : An example module instance for the time module
@@ -9,7 +10,7 @@ Portability : Linux
 module Monky.Examples.Time ()
 where
 
-import Text.Printf (printf)
+import qualified Data.Text as T
 
 import Monky.Modules
 import Monky.Time
@@ -18,8 +19,16 @@ import Monky.Time
 getTimeString :: String -> TimeHandle -> IO String
 getTimeString user h = do
   ts <- getTime h
-  return (printf ("^i(/home/" ++ user ++ "/.monky/xbm/clock.xbm)  %s") ts)
+  return ("^i(/home/" ++ user ++ "/.monky/xbm/clock.xbm)  " ++ ts)
 
 -- |Example instance for time module
 instance Module TimeHandle where
     getText = getTimeString
+
+instance NewModule TimeHandle where
+  getOutput h = do
+    ts <- getTime h
+    return
+      [ MonkyImage "clock.xbm"
+      , MonkyPlain $ T.pack ts
+      ]

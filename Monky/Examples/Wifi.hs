@@ -5,21 +5,24 @@ Maintainer  : ongy
 Stability   : experimental
 Portability : Linux
 -}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE CPP #-}
-module Monky.Examples.Wifi 
+module Monky.Examples.Wifi
   ( getWifiHandle
   , WifiHandle
   , WifiFormat(..)
   )
 where
 
+import Formatting
+import Data.Text (Text)
 import qualified Data.Text as T
 import Data.IORef
 import Data.Maybe (fromMaybe)
 import System.Posix.Types (Fd)
 
 import Monky.Modules
-import Monky.Utility
+import Monky.Examples.Utility
 import Monky.Wifi
 
 #if MIN_VERSION_base(4,8,0)
@@ -38,16 +41,16 @@ data WifiFormat
   | FormatMBM
   | FormatText String
 
-getFun :: WifiFormat -> WifiStats -> String
-getFun FormatChannel    = show . wifiChannel
+getFun :: WifiFormat -> WifiStats -> Text
+getFun FormatChannel    = sformat int . wifiChannel
 getFun FormatRates      = flip convertUnitSI "B" . maximum . wifiRates
-getFun FormatName       = wifiName
-getFun FormatFreq       = show . wifiFreq
-getFun FormatMBM        = show . wifiMBM
-getFun (FormatText str) = const str
+getFun FormatName       = T.pack . wifiName
+getFun FormatFreq       = sformat int . wifiFreq
+getFun FormatMBM        = sformat int . wifiMBM
+getFun (FormatText str) = const (T.pack str)
 
 getFunction :: [WifiFormat] -> WifiStats -> String
-getFunction xs = concat . (\a -> map (($ a) . getFun) xs)
+getFunction xs = T.unpack . T.concat . (\a -> map (($ a) . getFun) xs)
 
 getWifiHandle :: [WifiFormat] -> String -> String -> IO WifiHandle
 getWifiHandle f d n = do

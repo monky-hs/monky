@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.Memory
 Description : An example module instance for the memory module
@@ -9,9 +10,9 @@ Portability : Linux
 module Monky.Examples.Memory ()
 where
 
-import Text.Printf (printf)
+import qualified Data.Text as T
 
-import Monky.Utility
+import Monky.Examples.Utility
 import Monky.Modules
 import Monky.Memory
 
@@ -19,11 +20,17 @@ import Monky.Memory
 getMemoryText :: String -> MemoryHandle -> IO String
 getMemoryText user mh = do
   mp <- getMemoryAvailable mh
-  return $printf ("^i(/home/" ++ user ++ "/.monky/xbm/mem.xbm) %s") (convertUnitB (mp * 1024) "B" :: String)
+  return ("^i(/home/" ++ user ++ "/.monky/xbm/mem.xbm) " ++ (T.unpack $ convertUnitB (mp * 1024) "B"))
 
 
 -- |Example instance for memory module
 instance Module MemoryHandle where
   getText = getMemoryText
 
-
+instance NewModule MemoryHandle where
+  getOutput h = do
+    mp <- getMemoryAvailable h
+    return
+      [ MonkyImage "mem.xbm"
+      , MonkyPlain $ convertUnitB (mp * 1024) "B"
+      ]

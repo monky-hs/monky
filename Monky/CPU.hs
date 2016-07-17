@@ -47,7 +47,6 @@ import Monky.Utility
 import Data.List (isPrefixOf)
 import Data.Maybe (listToMaybe, fromJust)
 import Data.IORef
-import Text.Printf (printf)
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS (readInt, words, unpack)
@@ -93,17 +92,11 @@ thermalBaseP = "/sys/class/thermal/"
 pathTemp :: String -> String
 pathTemp zone = thermalBaseP ++ zone ++ "/temp"
 
-pathMaxScalingT :: String
-pathMaxScalingT = "/sys/devices/system/cpu/%s/cpufreq/scaling_max_freq"
-
 pathMaxScaling :: String -> String
-pathMaxScaling = printf pathMaxScalingT
-
-pathCurScalingT :: String
-pathCurScalingT = "/sys/devices/system/cpu/%s/cpufreq/scaling_cur_freq"
+pathMaxScaling str = "/sys/devices/system/cpu/" ++ str ++ "/cpufreq/scaling_max_freq"
 
 pathCurScaling :: String -> String
-pathCurScaling = printf pathCurScalingT
+pathCurScaling str = "/sys/devices/system/cpu/" ++ str ++ "/cpufreq/scaling_cur_freq"
 
 pathNumaBase :: String
 pathNumaBase = "/sys/devices/system/node/"

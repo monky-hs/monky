@@ -14,8 +14,9 @@ module Monky.Examples.CPUCommon
   )
 where
 
+import Formatting
+
 import Monky.Modules (MonkyOut(..))
-import Text.Printf (printf)
 
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -43,7 +44,7 @@ printXbm :: String -> Text
 printXbm u = "^i(/home/" `T.append` T.pack u `T.append` "/.monky/xbm/cpu.xbm) "
 
 printFrequency :: Float -> Text
-printFrequency = T.pack . (printf "%.1fG ^p(-3)" :: Float -> String)
+printFrequency = sformat (fixed 1 % "G")
 
 printThemp :: Int -> Text
 printThemp t = T.cons ' ' (T.pack $ show t) `T.append` "°C"
@@ -60,10 +61,10 @@ printNXbm :: MonkyOut
 printNXbm = MonkyImage "cpu.xbm"
 
 printNFrequency :: Float -> MonkyOut
-printNFrequency = MonkyPlain . T.pack . (printf "%.1fG ^p(-3)" :: Float -> String)
+printNFrequency = MonkyPlain . sformat (fixed 1 % "G")
 
 printNThemp :: Int -> MonkyOut
-printNThemp t = MonkyPlain (T.cons ' ' (T.pack $ show t) `T.append` "°C")
+printNThemp = MonkyPlain . sformat (" " % int % "°C") 
 
 formatNCPUText :: [Int] -> Int -> Float -> [MonkyOut]
 formatNCPUText cp ct cf =

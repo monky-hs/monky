@@ -38,6 +38,7 @@ doSegment :: DzenOutput -> [MonkyOut] -> IO ()
 doSegment h = mapM_ (doOut h)
 
 instance MonkyOutput DzenOutput where
+  doLine _ [] = error "Why are you calling doLine without any modules? I don't think your config makes sense"
   doLine h [x] = do
     doSegment h x
     putStr "\n"

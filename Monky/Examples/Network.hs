@@ -20,7 +20,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.IORef (readIORef)
 
-import Monky.Utility
+import Monky.Examples.Utility
 import Monky.Modules
 import Monky.Network
 
@@ -81,8 +81,8 @@ getDynamicHandle e = fmap (DH e) . D.getUHandles
 {- Network Module -}
 formatNetworkText :: String -> Maybe (Int, Int) -> String
 formatNetworkText e Nothing = e
-formatNetworkText _ (Just (r, w)) =
-  convertUnit r "B" "k" "M" "G" ++ ' ':convertUnit w "B" "k" "M" "G"
+formatNetworkText _ (Just (r, w)) = T.unpack
+  (convertUnit r "B" "k" "M" "G" `T.append` (' ' `T.cons` convertUnit w "B" "k" "M" "G"))
 
 
 getNetworkText :: String -> String -> NetworkHandles -> IO String
@@ -102,8 +102,8 @@ getDNetworkText e _ nh = do
 
 formatNNetworkText :: Text -> Maybe (Int, Int) -> Text
 formatNNetworkText e Nothing = e
-formatNNetworkText _ (Just (r, w)) = T.pack
-  (convertUnit r "B" "k" "M" "G" ++ ' ':convertUnit w "B" "k" "M" "G")
+formatNNetworkText _ (Just (r, w)) =
+  convertUnit r "B" "k" "M" "G" `T.append` (' ' `T.cons` convertUnit w "B" "k" "M" "G")
 
 
 getNNetworkText :: Text -> NetworkHandles -> IO [MonkyOut]

@@ -71,7 +71,8 @@ executable monky
                  unix,
                  template-haskell,
                  containers,
-                 bytestring
+                 bytestring,
+                 text, formatting
 
   -- Directories containing source files.
   -- hs-source-dirs:
@@ -100,7 +101,7 @@ library
   build-depends:       base >=4.6.0.1 && <=5, directory, time
   build-depends:       text, unix, network, mtl, transformers, text
   build-depends:       template-haskell, containers, stm, statvfs
-  build-depends:       bytestring, netlink, cereal
+  build-depends:       bytestring, netlink, cereal, formatting
 
   if impl(ghc >= 7.8)
     exposed-modules: Monky.MPD Monky.Examples.MPD

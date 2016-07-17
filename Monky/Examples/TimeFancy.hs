@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.TimeFancy
 Description : A slightelly more fancy example module instance for the time module
@@ -8,6 +9,8 @@ Portability : Linux
 -}
 module Monky.Examples.TimeFancy ()
 where
+
+import Formatting
 
 import qualified Data.Text as T
 import Monky.Modules
@@ -36,6 +39,6 @@ instance NewModule TimeHandle where
     t <- getHM h
     let (th, tm) = timeToXBM t
     return
-      [ MonkyImage . T.pack $ (show th ++ '-':show tm ++ ".xbm")
+      [ MonkyImage $ sformat (int % "-" % int % ".xbm") th tm
       , MonkyPlain . T.pack $ ts
       ]

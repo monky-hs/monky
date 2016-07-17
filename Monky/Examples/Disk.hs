@@ -10,22 +10,21 @@ Portability : Linux
 module Monky.Examples.Disk ()
 where
 
+import Formatting
 import qualified Data.Text as T
-import Text.Printf (printf)
 
-import Monky.Utility
+import Monky.Examples.Utility
 import Monky.Modules
 import Monky.Disk
 
 {- Disk module -}
 formatDiskText :: String -> Int -> Int -> Int -> String
-formatDiskText user dr dw df =
-  printf "%s %s" eins zwei
+formatDiskText user dr dw df = eins ++ ' ' : zwei
   where
     eins :: String
-    eins = printf ("^i(/home/" ++ user ++ "/.monky/xbm/diskette.xbm) %s") (convertUnit df "B" "k" "M" "G")
+    eins = "^i(/home/" ++ user ++ "/.monky/xbm/diskette.xbm) " ++ (T.unpack $ convertUnit df "B" "k" "M" "G")
     zwei :: String
-    zwei = printf "%s %s" (convertUnit dr  "B" "k" "M" "G") (convertUnit dw "B" "k" "M" "G")
+    zwei = (T.unpack $ convertUnit dr  "B" "k" "M" "G") ++ ' ' : (T.unpack $ convertUnit dw "B" "k" "M" "G")
 
 getDiskText :: String -> DiskHandle -> IO String
 getDiskText u dh = do
@@ -43,5 +42,5 @@ instance NewModule DiskHandle where
     df <- getDiskFree dh
     return
       [ MonkyImage "diskette.xbm"
-      , MonkyPlain . T.pack $ printf "%s %s %s" (convertUnitSI df "B") (convertUnitSI dr "B" ) (convertUnitSI dw "B")
+      , MonkyPlain $ sformat (stext % " " % stext % " " % stext) (convertUnitSI df "B") (convertUnitSI dr "B" ) (convertUnitSI dw "B")
       ]
