@@ -98,6 +98,9 @@ library
   build-depends:       template-haskell, containers, stm, statvfs
   build-depends:       bytestring, netlink, cereal, formatting, composition
 
+  -- force double-conversion version for old ghc/library?
+  if impl(ghc < 7.8)
+    build-depends: double-conversion == 0.2.0.6
   if impl(ghc >= 7.8)
     exposed-modules: Monky.MPD Monky.Examples.MPD
     -- build-depends: socket
