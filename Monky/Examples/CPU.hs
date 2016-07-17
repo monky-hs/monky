@@ -35,6 +35,11 @@ import Data.List (intercalate)
 import Monky.Modules
 import qualified Monky.CPU as C
 
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
 {- SHARED -}
 
 {- CPU Module -}
