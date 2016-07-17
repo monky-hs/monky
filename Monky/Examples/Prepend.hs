@@ -28,7 +28,7 @@ Portability: linux
 use with: packPrepend <Prep> instead of normal pack
 -}
 
-module Monky.Prepend
+module Monky.Examples.Prepend
   ( PrepHandle
   , packPrepend
   , PostHandle

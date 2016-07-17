@@ -1,5 +1,7 @@
 [![BuildStatus](https://travis-ci.org/monky-hs/monky.svg?branch=master)](https://travis-ci.org/monky-hs/monky)
 
+This is the 2.0 Branch of monky. 2.0 has a couple of breaking changes, please look at the bottom for a summary.
+
 Monky is an application to feed status bars (like dzen2) with a lines to display.
 
 If you have any more questions or suggestions, come and join us (or rather me) on freenode at #monky.
@@ -55,3 +57,10 @@ For the fancy clock example you will also need the `.xbm` files in this repo.
 ![Ongy-Laptop](http://i.imgur.com/EzHD3re.png?1)
 [config](http://lpaste.net/143262)
 
+## 2.0 breaking changes
+ * startLoop needs a seconds argument. Modules will be in Monky.Outputs
+ * pack was split into pollPack and evtPack
+ * Module was splitt in PollModule and EvtModule for polling and event based
+ * Examples use newtype wrappers. Orphan instances are now discouraged
+ * Memory/CPU/Time have been merged, new get\* functions are used to choose mode
+ * Prepend has been moved
