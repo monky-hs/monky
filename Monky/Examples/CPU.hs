@@ -22,6 +22,8 @@ module Monky.Examples.CPU
   , getCPUHandleNoT'
   , getNumaHandlesNoT
   , getNumaHandlesNoT'
+
+  , C.ScalingType(..)
   )
 where
 

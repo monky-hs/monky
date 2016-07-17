@@ -48,7 +48,7 @@ newBar :: Float -> (Int, Int) -> [MonkyOut]
 newBar f (u, us) =
   let used   = round $ fromIntegral u / f
       cached = round $ fromIntegral (us - u) / f
-      fill   = round $ fromIntegral (100 - used - cached) / f in
+      fill   = round (100 / f) - used - cached in
     [ MonkyHBar used
     , MonkyColor ("#444444", "") (MonkyHBar cached)
     , MonkyColor ("#222222", "") (MonkyHBar fill)
