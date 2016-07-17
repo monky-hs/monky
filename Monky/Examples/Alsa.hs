@@ -7,18 +7,20 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Monky.Examples.Alsa ()
+module Monky.Examples.Alsa
+  ( getVOLHandle
+  )
 where
 
 import Data.IORef (atomicWriteIORef)
 
-import Monky.Alsa
+import Monky.Alsa hiding (getVOLHandle)
+import qualified Monky.Alsa as A (getVOLHandle)
 import Monky.Modules
 import Monky.Examples.Utility
 
 import Formatting
 import Data.Text (Text)
-import qualified Data.Text as T
 
 {- ALSA module -}
 getVolumeStr :: VOLHandle -> IO Text
@@ -30,22 +32,23 @@ getVolumeStr h = do
     then return "Mute"
     else return $ sformat ((left 3 ' ' %. int) % "%") v
 
--- |Example instance for alsa module
-instance Module VOLHandle where
-  getText _ = fmap T.unpack . getVolumeStr
-  getFDs = getPollFDs
-
-instance NewModule VOLHandle where
-  getOutput = getVOLOutput
-
 getVOLOutput :: VOLHandle -> IO [MonkyOut]
 getVOLOutput h = do
   out <- getVolumeStr h
   return [MonkyPlain out]
 
-instance EvtModule VOLHandle where
-  startEvtLoop h r = do
+instance PollModule AlsaH where
+  getOutput (AH h) = getVOLOutput h
+
+instance EvtModule AlsaH where
+  startEvtLoop (AH h) r = do
     [fd] <- getPollFDs h
-    s <- getOutput h
+    s <- getOutput (AH h)
     atomicWriteIORef r s
     loopFd h fd r getVOLOutput
+
+newtype AlsaH = AH VOLHandle
+
+getVOLHandle :: String -- ^The audio-card to use
+             -> IO AlsaH
+getVOLHandle = fmap AH . A.getVOLHandle

@@ -32,7 +32,7 @@ import Control.Applicative ((<$>))
 #endif
 
 -- |A Wrapper than also carries the name, for comparision
-type NetHandle = (String, NetworkHandle)
+data NetHandle = NetHandle String NetworkHandle
 
 -- |The map we keep our handles in (the Int is the Interface ID on the system)
 type Handles = IntMap NetHandle
@@ -40,8 +40,8 @@ type Handles = IntMap NetHandle
 -- |The actual handel exposed and used by this module
 type UHandles = (IORef Handles, String -> Bool)
 
-instance {-# OVERLAPPING #-} Show NetHandle where
-  show (x, _) = x
+instance Show NetHandle where
+  show (NetHandle x _) = x
 
 
 -- |The fold function used for 'getMultiReadWrite' handling the IO and Maybe stuff
@@ -60,7 +60,7 @@ foldF h o = do
 -- |Get the sum of all read/write rates from our network devices or Nothing if none is active
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite =
-  IM.foldr (\(_, v) -> foldF v) (return Nothing)
+  IM.foldr (\(NetHandle _ v) -> foldF v) (return Nothing)
 
 
 -- |Logic for adding a new device to our Handles
@@ -69,20 +69,20 @@ gotNew index name m =
   case IM.lookup index m of
     Nothing -> do
       h <- getNetworkHandle name
-      return $IM.insert index (name, h) m
-    Just (x, v) -> if x == name
+      return $IM.insert index (NetHandle name h) m
+    Just (NetHandle x v) -> if x == name
       then return m
       else do
         h <- getNetworkHandle name
         closeNetworkHandle v
-        return $IM.adjust (const (name, h)) index m
+        return $IM.adjust (const (NetHandle name h)) index m
 
 
 -- |Logic for removing a handle form Handles after we lost the interface
 lostOld :: Int -> Handles -> IO Handles
 lostOld index m = case IM.lookup index m of
   Nothing -> return m
-  (Just (_, h)) ->
+  (Just (NetHandle _ h)) ->
     closeNetworkHandle h >>
     return (IM.delete index m)
 

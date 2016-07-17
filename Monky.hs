@@ -34,158 +34,50 @@ other functions later on.
 -}
 module Monky
   ( startLoop
-  , startNewLoop
   )
 where
 
 
 import Control.Concurrent (threadDelay)
 import Data.IORef (IORef, readIORef, writeIORef, newIORef)
-import Monky.Event
 import Monky.Modules
-import Control.Monad (when, unless)
+import Control.Monad (when)
 import Control.Concurrent (forkIO)
-import System.IO (hFlush, stdout)
-import System.Posix.Types (Fd)
-import System.Posix.User (getEffectiveUserName)
 
 
-data NewModuleWrapper = NMWrapper NewModules (IORef [MonkyOut])
+data ModuleWrapper = MWrapper Modules (IORef [MonkyOut])
 
 -- |Packs a module into a wrapper with an IORef for cached output
-packNewMod :: NewModules -> IO NewModuleWrapper
-packNewMod x@(Poll (NMW m _)) = do
+packMod :: Modules -> IO ModuleWrapper
+packMod x@(Poll (NMW m _)) = do
   sref <- newIORef []
   initialize m
-  return (NMWrapper x sref)
-packNewMod x@(Evt (DW m)) = do
+  return (MWrapper x sref)
+packMod x@(Evt (DW m)) = do
   sref <- newIORef []
   _ <- forkIO (startEvtLoop m sref)
-  return $ NMWrapper x sref
+  return $ MWrapper x sref
 
-getNWrapperText :: Int -> NewModuleWrapper -> IO [MonkyOut]
-getNWrapperText tick (NMWrapper (Poll (NMW m i)) r) = do
+getWrapperText :: Int -> ModuleWrapper -> IO [MonkyOut]
+getWrapperText tick (MWrapper (Poll (NMW m i)) r) = do
   when (tick `mod` i == 0) $ do
     o <- getOutput m
     writeIORef r o
   readIORef r
-getNWrapperText _ (NMWrapper (Evt _) r) = readIORef r
+getWrapperText _ (MWrapper (Evt _) r) = readIORef r
 
-doMonkyLine :: MonkyOutput o => Int -> o -> [NewModuleWrapper] -> IO ()
+doMonkyLine :: MonkyOutput o => Int -> o -> [ModuleWrapper] -> IO ()
 doMonkyLine t o xs =
-  doLine o =<< mapM (getNWrapperText t) xs
+  doLine o =<< mapM (getWrapperText t) xs
 
-newLoop :: MonkyOutput o => Int -> o -> [NewModuleWrapper] -> IO ()
-newLoop t o xs = do
+mainLoop :: MonkyOutput o => Int -> o -> [ModuleWrapper] -> IO ()
+mainLoop t o xs = do
   doMonkyLine t o xs
   threadDelay 1000000
-  newLoop (t+1) o xs
+  mainLoop (t+1) o xs
 
-startNewLoop :: MonkyOutput o => o -> [IO NewModules] -> IO ()
-startNewLoop o mods = do
-  m <- sequence mods
-  l <- mapM packNewMod m
-  newLoop 0 o l
-
-
-
-
--- |The module wrapper used to buffer output strings
-data ModuleWrapper = MWrapper Modules (IORef String) (IORef Bool)
-
-{- Wrapper logic -}
--- |Get the text from a module wrapper
---
--- This function updates the string buffer if needed and reeturns its contents
-getWrapperText :: Int -> String -> ModuleWrapper -> IO String
-getWrapperText tick u (MWrapper (MW m i) r _)
-  | i <= 0 = readIORef r
-  | i > 0 = do
-    when (tick `mod` i == 0) $ do
-      s <- getText u m
-      writeIORef r s
-    readIORef r
-getWrapperText _ _ _ = return "Something borked"
-
--- |print out one line
-printMonkyLine :: Int -> String -> [ModuleWrapper] -> IO ()
-printMonkyLine _ _ [] = putStrLn "Is this even possible?"
-printMonkyLine i u [x] = do
-  t <- getWrapperText i u x
-  putStrLn t
-printMonkyLine i u (x:xs) = do
-  t <- getWrapperText i u x
-  putStr t
-  putStr " | "
-  printMonkyLine i u xs
-
-
-{- Polling logic -}
--- |Update the IORef buffereing the modules section
-updateText :: ModuleWrapper -> String -> IO ()
-updateText (MWrapper (MW m _) r b) u = do
-  rec <- readIORef b
-  if rec
-    then recoverModule m >>= (\v -> when v (writeIORef b False >> doUpdate))
-    else doUpdate
-  where
-    doUpdate = do
-      ret <- getTextFailable u m 
-      case ret of
-        Just s -> writeIORef r s
-        Nothing -> writeIORef b True >> writeIORef r "Broken"
-
-{- |Update the IORef of a modules from an event
-
-This function returns False if the module entered a broken state and should
-not be called from the fd events anymore but should be called in a recovery loop
--}
-updateText' :: ModuleWrapper -> String -> Fd -> IO Bool
-updateText' (MWrapper (MW m _) r _) u fd = do
-  ret <- getEventTextFailable fd u m
-  case ret of
-    Just s -> writeIORef r s >> return True
-    Nothing -> writeIORef r "Broken" >> return False
-
-
--- |The main loop which waits for events and updates the wrappers
-mainLoop :: Int -> String  -> [ModuleWrapper] -> IO()
-mainLoop i u m = do
-  printMonkyLine i u m
-  hFlush stdout
-  threadDelay 1000000
-  mainLoop (i+1) u m
-
-
--- |Packs a module into a wrapper with an IORef for cached output
-packMod :: Modules -> IO ModuleWrapper
-packMod x = do
-  sref <- newIORef ("" :: String)
-  bref <- newIORef (True :: Bool)
-  return (MWrapper x sref bref)
-
-initModule :: ModuleWrapper -> IO ()
-initModule (MWrapper (MW m _) sref bref) = do
-  ret <- setupModule m
-  unless ret $ do
-      writeIORef sref "Init failed"
-      writeIORef bref True
-      return ()
-
-{- |Starts the main loop for monky
-
-This is the entry-point for printing normal lines.
-This function never returns.
--}
-startLoop :: [IO Modules] -> IO ()
-startLoop mods = do
-  u <- getEffectiveUserName
+startLoop :: MonkyOutput o => o -> [IO Modules] -> IO ()
+startLoop o mods = do
   m <- sequence mods
   l <- mapM packMod m
-  mapM_ (`updateText` u) l
-  let f = rmEmpty l
-  mapM_ initModule f
-  startEventLoop (map (\y@(MWrapper x _ _) -> (updateText' y u, x)) f)
-  mainLoop 0 u l
-  where
-    rmEmpty = filter (\(MWrapper (MW _ i) _ _) -> i <= 0)
+  mainLoop 0 o l

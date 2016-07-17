@@ -25,10 +25,7 @@ getFile (FH f) = f
 getFileHandle :: String -> IO FileHandle
 getFileHandle = fmap FH . fopen
 
-instance Module FileHandle where
-  getText _ = readLine . getFile
-
-instance NewModule FileHandle where
+instance PollModule FileHandle where
   getOutput h = do
     line <- readLine . getFile $ h
     return [MonkyPlain $ T.decodeUtf8 line]

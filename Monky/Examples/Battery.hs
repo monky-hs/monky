@@ -7,14 +7,19 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Monky.Examples.Battery ()
+module Monky.Examples.Battery
+  ( getBatteryHandle
+  , getBatteryHandle'
+  )
 where
 
 import Formatting
 import Data.Text (Text)
+import Data.Composition ((.:))
 
 import Monky.Modules
-import Monky.Battery
+import Monky.Battery hiding (getBatteryHandle, getBatteryHandle')
+import qualified Monky.Battery as B (getBatteryHandle, getBatteryHandle')
 
 {- Battery Module -}
 batteryColor :: BatteryState -> Int -> Text
@@ -33,8 +38,8 @@ batterySymbol _ p
   | p < 20 = "bat_empty_01.xbm"
   | otherwise = "bat_full_01.xbm"
 
-instance NewModule BatteryHandle where
-  getOutput bh = do
+instance PollModule BatteryH where
+  getOutput (BH bh) = do
     p <- getCurrentLevel bh
     s <- getTimeLeft bh
     online <- getCurrentStatus bh
@@ -46,3 +51,16 @@ instance NewModule BatteryHandle where
       , MonkyColor (batteryColor online p, "") $
         MonkyPlain $ sformat (fixed 1 % "W " % int % "% " % (left 2 ' ' %. int) % ":" % (left 2 '0' %. int)) pow p h m
       ]
+
+newtype BatteryH = BH BatteryHandle
+
+-- |Create a 'BatteryHandle'
+getBatteryHandle :: String  -- ^The name of the wall socket adapter used by the battery
+                 -> String -- ^The name of the battery
+                 -> IO BatteryH
+getBatteryHandle = fmap BH .: B.getBatteryHandle
+
+
+-- |Version which defaults to "BAT0"
+getBatteryHandle' :: String -> IO BatteryH
+getBatteryHandle' = fmap BH . B.getBatteryHandle'

@@ -29,18 +29,14 @@ This module provides the 'Module' class which is used to define a 'Monky'
 compatible module.
 -}
 module Monky.Modules
-  ( Modules(..)
-  , Module(..)
-  , pack
-  
-  , MonkyOut(..)
+  ( MonkyOut(..)
   , MonkyOutput(..)
-  , NewModule(..)
+  , PollModule(..)
   , EvtModule(..)
-  , NewModules(..)
+  , Modules(..)
   , EvtModules(..)
   , PollModules(..)
-  , newPack
+  , pollPack
   , dynPack
   )
 where
@@ -52,7 +48,6 @@ import Control.Applicative ((<$>))
 
 import Data.IORef (IORef)
 import Data.Text (Text)
-import System.Posix.Types (Fd)
 
 
 -- |An data type to encode general output types
@@ -72,7 +67,7 @@ class MonkyOutput a where
     -> IO () -- ^IO() since the output module chooses how to transfer the data to the display client
 
 -- |The "New" class for collection modules
-class NewModule a where
+class PollModule a where
   -- |get the current (new) output
   getOutput
     :: a -- ^The handle, may store data from previous calls
@@ -89,78 +84,22 @@ class EvtModule a where
   startEvtLoop :: a -> IORef [MonkyOut] -> IO ()
 
 -- |A wrapper around module instances so they can be put into a list.
-data PollModules = forall a . NewModule a => NMW a Int
+data PollModules = forall a . PollModule a => NMW a Int
 data EvtModules = forall a . EvtModule a => DW a
 
-data NewModules 
+data Modules 
   = Poll PollModules
   | Evt EvtModules
 
 -- |Function to make packaging modules easier
-newPack :: NewModule a
-        => Int -- ^The refresh rate for this module
-        -> IO a -- ^The function to get a module (get??Handle)
-        -> IO NewModules -- ^The packed module ready to be given to 'startLoop'
-newPack i = fmap (Poll . flip NMW i)
+pollPack :: PollModule a
+         => Int -- ^The refresh rate for this module
+         -> IO a -- ^The function to get a module (get??Handle)
+         -> IO Modules -- ^The packed module ready to be given to 'startLoop'
+pollPack i = fmap (Poll . flip NMW i)
 
 
 dynPack :: EvtModule a
         => IO a
-        -> IO NewModules
+        -> IO Modules
 dynPack = fmap (Evt . DW)
-
-
--- |A wrapper around module instances so they can be put into a list.
-data Modules = forall a . Module a => MW a Int
--- |The type class for modules
-class Module a where
-    getText :: String -- ^The current user
-            -> a -- ^The handle to this module
-            -> IO String -- ^The text segment that should be displayed for this module
-    getFDs :: a -- ^The handle to this module
-           -> IO [Fd] -- ^The 'Fd's to listen on for events
-    getFDs _ = return []
-    {- |This function is used instead of 'getText' for event triggerd updates.
-
-      The default implementation mappes this to 'getText'
-    -}
-    getEventText :: Fd -- ^The fd that triggered an event
-                 -> String -- ^The current user
-                 -> a -- ^The handle to this module
-                 -> IO String -- ^The text segment that should be displayed
-    getEventText _ = getText
-
-    {- |This is supposed to set up the module
-       This is only needed, if the module may fail
-       so doing nothing should be ok for all *normal* modules
-
-       The module should return 'True' if the setup was successful (is usable)
-       or 'False' if it failed to enter the broken state right at startup
-
-       Do to the current inner working of monky, recoverModule will be called before setupModule can be called, which will make this unnecessary for most modules
-    -}
-    setupModule :: a -> IO Bool
-    setupModule _ = return True
-
-    {- |This function is a wrapper around 'getText' that allows
-        modules to report a fail and go into a failed state -}
-    getTextFailable :: String -> a -> IO (Maybe String)
-    getTextFailable u h = Just <$> getText u h
-    {- |This function is a wrapper around 'getEventText' that allows
-        modules to report a fail and go into a failed state -}
-    getEventTextFailable :: Fd -> String -> a -> IO (Maybe String)
-    getEventTextFailable f u h = Just <$> getEventText f u h
-
-    {- |If a module failed earlier this will be called in periodicly
-       until the module returns true to indicate a successful recovery -}
-    recoverModule :: a -> IO Bool
-    recoverModule _ = return True
-
--- |Function to make packaging modules easier
-pack :: Module a
-     => Int -- ^The refresh rate for this module
-     -> IO a -- ^The function to get a module (get??Handle)
-     -> IO Modules -- ^The packed module ready to be given to 'startLoop'
-pack i = fmap (flip MW i)
-
-

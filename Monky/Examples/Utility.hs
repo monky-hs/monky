@@ -11,6 +11,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Formatting
 
+import Control.Monad (unless)
 import Control.Concurrent (threadWaitRead)
 import Data.IORef (IORef, atomicWriteIORef)
 import System.Posix.Types (Fd)
@@ -27,7 +28,7 @@ loopFd
 loopFd h fd r f = do
   threadWaitRead fd
   out <- f h
-  atomicWriteIORef r out
+  unless (null out) (atomicWriteIORef r out)
   loopFd h fd r f
 
 

@@ -37,6 +37,7 @@ module Monky.CPU
   , getCPUMaxScalingFreq
   , ScalingType(..)
   , getNumaHandles
+  , getNumaHandles'
   )
 where
 
@@ -205,16 +206,16 @@ getHandle path t xs = do
   where isCPU ys = "cpu" `isPrefixOf` ys && all isDigit (drop 3 ys)
 
 -- |Create an 'CPUHandle'
-getCPUHandle' 
+getCPUHandle
   :: ScalingType -- ^The scaling type, either "ScalingMax" or "ScalingCur"
   -> Maybe String -- ^The thermal zone to use or Nothing if there isn't any
   -> IO CPUHandle
-getCPUHandle' xs ys = numaHandle <$> getHandle pathCPUBase xs ys
+getCPUHandle xs ys = numaHandle <$> getHandle pathCPUBase xs ys
 
 
 -- |Version for getCPUHandle' that defaults to thermal zone "thermal_zone0"
-getCPUHandle :: ScalingType -> IO CPUHandle
-getCPUHandle s = getCPUHandle' s =<< guessThermalZone
+getCPUHandle' :: ScalingType -> IO CPUHandle
+getCPUHandle' s = getCPUHandle s =<< guessThermalZone
 
 -- |Version for NumaAvare handles
 getNumaHandle
@@ -225,11 +226,11 @@ getNumaHandle
 getNumaHandle xs = getHandle (pathNumaBase ++ xs)
 
 -- |Get the Numa aware handle
-getNumaHandles'
+getNumaHandles
   :: ScalingType
   -> [Maybe String] -- ^A list of thermal zones for our numa handles
   -> IO Numa
-getNumaHandles' t xs = do
+getNumaHandles t xs = do
   nodes <- filter isNode <$> getDirectoryContents pathNumaBase
   handles <- sequence $ zipWith openNode nodes xs
   return $ Numa handles
@@ -237,8 +238,8 @@ getNumaHandles' t xs = do
         openNode node thermal = getNumaHandle node t thermal
 
 -- |getnumaHandles' but try to guess the thermal zones
-getNumaHandles :: ScalingType -> IO Numa
-getNumaHandles t = do
+getNumaHandles' :: ScalingType -> IO Numa
+getNumaHandles' t = do
   zones <- guessThermalZones
   let tzones = map Just zones ++ repeat Nothing
-  getNumaHandles' t tzones
+  getNumaHandles t tzones

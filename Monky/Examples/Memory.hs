@@ -7,30 +7,57 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Monky.Examples.Memory ()
+module Monky.Examples.Memory
+  ( getMemoryHandle
+  , getMemoryBarHandle
+  )
 where
-
-import qualified Data.Text as T
 
 import Monky.Examples.Utility
 import Monky.Modules
-import Monky.Memory
+
+import Monky.Memory hiding (getMemoryHandle)
+import qualified Monky.Memory as M (getMemoryHandle)
+
+newtype MHandle = MH MemoryHandle
+
+getMemoryHandle :: IO MHandle
+getMemoryHandle = fmap MH $ M.getMemoryHandle
 
 {- Memory Module -}
-getMemoryText :: String -> MemoryHandle -> IO String
-getMemoryText user mh = do
-  mp <- getMemoryAvailable mh
-  return ("^i(/home/" ++ user ++ "/.monky/xbm/mem.xbm) " ++ (T.unpack $ convertUnitB (mp * 1024) "B"))
-
-
--- |Example instance for memory module
-instance Module MemoryHandle where
-  getText = getMemoryText
-
-instance NewModule MemoryHandle where
-  getOutput h = do
+instance PollModule MHandle where
+  getOutput (MH h) = do
     mp <- getMemoryAvailable h
     return
       [ MonkyImage "mem.xbm"
       , MonkyPlain $ convertUnitB (mp * 1024) "B"
       ]
+
+data MBHandle = MBH Float MemoryHandle
+
+getMemoryBarHandle :: Float -> IO MBHandle
+getMemoryBarHandle f = fmap (MBH f) $ M.getMemoryHandle
+
+
+getUsagePercents :: MemoryHandle -> IO (Int,Int)
+getUsagePercents h = do
+  (total, avail, free, _) <- getMemoryStats h
+  return ((total - avail) * 100 `div` total, (total - free) * 100 `div` total)
+
+newBar :: Float -> (Int, Int) -> [MonkyOut]
+newBar f (u, us) =
+  let used   = round $ fromIntegral u / f
+      cached = round $ fromIntegral (us - u) / f
+      fill   = round $ fromIntegral (100 - used - cached) / f in
+    [ MonkyHBar used
+    , MonkyColor ("#444444", "") (MonkyHBar cached)
+    , MonkyColor ("#222222", "") (MonkyHBar fill)
+    ]
+
+getNMemoryOut :: MemoryHandle -> Float -> IO [MonkyOut]
+getNMemoryOut h f = do
+  percents <- getUsagePercents h
+  return $ MonkyImage "mem.xbm":newBar f percents
+
+instance PollModule MBHandle where
+  getOutput (MBH f h) = getNMemoryOut h f

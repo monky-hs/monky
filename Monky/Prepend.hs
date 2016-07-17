@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE CPP #-}
 {-|
 Module : Monky.Prepend
@@ -43,35 +44,19 @@ import Control.Applicative ((<$>))
 import Monky.Modules
 
 -- |The handle used by this module, contains underlying module and string
-data PrepHandle = Prep String Modules
+data PrepHandle = forall m . PollModule m => Prep [MonkyOut] m
 
-data PostHandle = Post String Modules
+data PostHandle = forall m . PollModule m => Post [MonkyOut] m
 
-instance Module PrepHandle where
-  getText u (Prep x (MW a _)) = (++) x <$> getText u a
-  getFDs (Prep _ (MW a _)) = getFDs a
-  getEventText fd u (Prep x (MW a _)) = (++)x <$> getEventText fd u a
-  setupModule (Prep _ (MW a _)) = setupModule a
-  getTextFailable u (Prep x (MW a _)) = do
-    ret <- getTextFailable u a
-    return ((++) x <$> ret)
-  getEventTextFailable fd u (Prep x (MW a _)) = do
-    ret <- getEventTextFailable fd u a
-    return ((++) x <$> ret)
-  recoverModule (Prep _ (MW a _)) = recoverModule a
+instance PollModule PrepHandle where
+  getOutput  (Prep t m) = (t ++) <$> getOutput m
+  initialize (Prep _ m) = initialize m
 
-instance Module PostHandle where
-  getText u (Post x (MW a _)) = (++ x) <$> getText u a
-  getFDs (Post _ (MW a _)) = getFDs a
-  getEventText fd u (Post x (MW a _)) = (++ x) <$> getEventText fd u a
-  setupModule (Post _ (MW a _)) = setupModule a
-  getTextFailable u (Post x (MW a _)) = do
-    ret <- getTextFailable u a
-    return ((++ x) <$> ret)
-  getEventTextFailable fd u (Post x (MW a _)) = do
-    ret <- getEventTextFailable fd u a
-    return ((++ x) <$> ret)
-  recoverModule (Post _ (MW a _)) = recoverModule a
+instance PollModule PostHandle where
+  getOutput  (Post t m) = (++t) <$> getOutput m
+  initialize (Post _ m) = initialize m
+
+-- TODO: Add EvtModule instance
 
 {-| Create a module that should be prepended with some string
 
@@ -80,12 +65,12 @@ String.
 
 For usage look at 'pack'.
 -}
-packPrepend :: Module a
-            => String -- ^The String to prepend
+packPrepend :: PollModule a
+            => [MonkyOut] -- ^The String to prepend
             -> Int -- ^The refresh rate for this module
             -> IO a -- ^The function to get the module
             -> IO Modules -- ^The returned handle
-packPrepend x i m = pack i (Prep x <$> pack i m)
+packPrepend x i m = pollPack i (Prep x <$> m)
 
 {-| Create a module that should be appended with some string
 
@@ -94,9 +79,9 @@ String.
 
 For usage look at 'pack'.
 -}
-packAppend :: Module a
-           => String -- ^The String to prepend
+packAppend :: PollModule a
+           => [MonkyOut] -- ^The String to prepend
            -> Int -- ^The refresh rate for this module
            -> IO a -- ^The function to get the module
            -> IO Modules -- ^The returned handle
-packAppend x i m = pack i (Post x <$> pack i m)
+packAppend x i m = pollPack i (Post x <$> m)

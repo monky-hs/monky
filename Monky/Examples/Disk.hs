@@ -7,37 +7,26 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Monky.Examples.Disk ()
+module Monky.Examples.Disk
+  ( getDiskHandle
+  )
 where
 
 import Formatting
-import qualified Data.Text as T
 
 import Monky.Examples.Utility
 import Monky.Modules
-import Monky.Disk
+import Monky.Disk hiding (getDiskHandle)
+import qualified Monky.Disk as D (getDiskHandle)
+
+newtype DiskH = DH DiskHandle
+
+getDiskHandle :: String -> IO DiskH
+getDiskHandle = fmap DH . D.getDiskHandle
 
 {- Disk module -}
-formatDiskText :: String -> Int -> Int -> Int -> String
-formatDiskText user dr dw df = eins ++ ' ' : zwei
-  where
-    eins :: String
-    eins = "^i(/home/" ++ user ++ "/.monky/xbm/diskette.xbm) " ++ (T.unpack $ convertUnit df "B" "k" "M" "G")
-    zwei :: String
-    zwei = (T.unpack $ convertUnit dr  "B" "k" "M" "G") ++ ' ' : (T.unpack $ convertUnit dw "B" "k" "M" "G")
-
-getDiskText :: String -> DiskHandle -> IO String
-getDiskText u dh = do
-  (dr, dw) <- getDiskReadWrite dh
-  df <- getDiskFree dh
-  return (formatDiskText u dr dw df)
-
--- |Example instance for disk module
-instance Module DiskHandle where
-  getText = getDiskText
-
-instance NewModule DiskHandle where
-  getOutput dh = do
+instance PollModule DiskH where
+  getOutput (DH dh) = do
     (dr, dw) <- getDiskReadWrite dh
     df <- getDiskFree dh
     return

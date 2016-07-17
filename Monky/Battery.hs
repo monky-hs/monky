@@ -173,10 +173,10 @@ createChargeNowHandle e b = do
 
 
 -- |Create a 'BatteryHandle'
-getBatteryHandle' :: String  -- ^The name of the wall socket adapter used by the battery
+getBatteryHandle :: String  -- ^The name of the wall socket adapter used by the battery
                  -> String -- ^The name of the battery
                  -> IO BatteryHandle
-getBatteryHandle' e b = do
+getBatteryHandle e b = do
   exists <- doesFileExist $ pnowPath b
   if exists
     then createPowerNowHandle e b
@@ -184,5 +184,5 @@ getBatteryHandle' e b = do
 
 
 -- |Version which defaults to "BAT0"
-getBatteryHandle :: String -> IO BatteryHandle
-getBatteryHandle = flip getBatteryHandle' "BAT0"
+getBatteryHandle' :: String -> IO BatteryHandle
+getBatteryHandle' = flip getBatteryHandle "BAT0"

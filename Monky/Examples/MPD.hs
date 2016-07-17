@@ -31,13 +31,6 @@ import Monky.Examples.Utility
 import Control.Applicative ((<$>))
 #endif
 
-ioInM :: (a -> IO b) -> Maybe a -> IO (Maybe b)
-ioInM _ Nothing = return Nothing
-ioInM act (Just x) = do
-  ret <- act x
-  return (Just ret)
-
-
 getPlayingSong :: State -> MPDSocket -> IO (Either String SongInfo)
 getPlayingSong Playing s = getMPDSong s
 getPlayingSong _ _ = return (Left "Not playing")
@@ -75,29 +68,7 @@ getFd s = do
   return [fd]
 
 
-instance Module MPDHandle where
--- The unfailable ones aren't called if failable is defined explicitly
-  getEventText _ _ _ = return ""
-  getText _ _ = return ""
-  getTextFailable _ (MPDHandle _ _ s) = do
-    r <- readIORef s
-    ioInM getSongTitle r
-  getEventTextFailable _ _ (MPDHandle _ _ s) =  do
-    r <- readIORef s
-    ioInM getEvent r
-  recoverModule (MPDHandle h p r) = do
-    s <- getMPDSocket h p
-    case s of
-      (Right x) -> writeIORef r (Just x) >> return True
-      (Left _) -> return False
-  getFDs (MPDHandle _ _ s) = do
-    r <- readIORef s
-    case r of
-      Nothing -> return []
-      Just x -> getFd x
-
-
-instance NewModule MPDHandle where
+instance PollModule MPDHandle where
   getOutput (MPDHandle _ _ s) = do
     r <- readIORef s
     case r of
