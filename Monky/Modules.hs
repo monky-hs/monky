@@ -37,7 +37,7 @@ module Monky.Modules
   , EvtModules(..)
   , PollModules(..)
   , pollPack
-  , dynPack
+  , evtPack
   )
 where
 
@@ -99,7 +99,7 @@ pollPack :: PollModule a
 pollPack i = fmap (Poll . flip NMW i)
 
 
-dynPack :: EvtModule a
+evtPack :: EvtModule a
         => IO a
         -> IO Modules
-dynPack = fmap (Evt . DW)
+evtPack = fmap (Evt . DW)
