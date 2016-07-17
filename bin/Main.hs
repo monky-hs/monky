@@ -119,7 +119,7 @@ createVersionFile ExitSuccess = withFile ".version" WriteMode (\file ->
 
 
 compile :: IO ()
-compile = system ("ghc " ++ compilerFlags ++ " monky.hs -o" ++ exeName) >>= createVersionFile
+compile = system ("ghc " ++ compilerFlags ++ " monky.hs -o " ++ exeName) >>= createVersionFile
 
 
 hasMonkyUpdated :: [FilePath] -> IO Bool
