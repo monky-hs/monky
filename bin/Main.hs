@@ -78,7 +78,7 @@ monkyPath = flip (++) "/.monky" <$> getHomeDirectory
 
 
 compilerFlags :: String
-compilerFlags = "--make -XOverloadedStrings -odir build -hidir build -O"
+compilerFlags = "--make -XOverloadedStrings -odir build -hidir build -O -with-rtsopts=-V0"
 
 
 changeDir :: IO ()
