@@ -57,6 +57,11 @@ For the fancy clock example you will also need the `.xbm` files in this repo.
 ![Ongy-Laptop](http://i.imgur.com/EzHD3re.png?1)
 [config](http://lpaste.net/143262)
 
+### 2.0 branch
+
+![Laptop-2.0](http://imgur.com/nQQ9ywX)
+[config](http://lpaste.net/170301)
+
 ## 2.0 breaking changes
  * startLoop needs a seconds argument. Modules will be in Monky.Outputs
  * pack was split into pollPack and evtPack
