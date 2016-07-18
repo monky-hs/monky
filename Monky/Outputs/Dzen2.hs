@@ -1,4 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : Monky.Outputs/Dzen2
+Description : Output module for dzen2
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module provides the output generation for piping into a dzen2 bar
+-}
 module Monky.Outputs.Dzen2
   ( DzenOutput
   , getDzenOut
@@ -12,7 +21,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
--- |The output handle, the int is a height hint since dzen has no percent movements
+-- |The output handle for dzen2 pipe
 data DzenOutput = DzenOutput Int Text
 
 doOut :: DzenOutput -> MonkyOut -> IO ()
@@ -48,5 +57,9 @@ instance MonkyOutput DzenOutput where
     putStr " | "
     doLine h xs
 
-getDzenOut :: Int -> Text -> DzenOutput
+-- |Get an output handle for dzen2 formatting
+getDzenOut
+  :: Int -- ^The height of your dzen bar in pixel (required for block-drawing)
+  -> Text -- ^Path to the directory cointaining your .xbm files.
+  -> DzenOutput
 getDzenOut = DzenOutput

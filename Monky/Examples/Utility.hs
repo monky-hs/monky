@@ -1,4 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : Monky.Examples.Utility
+Description : Provides utility functions for module implementations
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module provides utility functions used in monky modules
+-}
 module Monky.Examples.Utility
  ( loopFd
  , convertUnit

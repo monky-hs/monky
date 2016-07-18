@@ -10,6 +10,7 @@ Portability : Linux
 module Monky.Examples.Battery
   ( getBatteryHandle
   , getBatteryHandle'
+  , BatteryH
   )
 where
 
@@ -52,6 +53,7 @@ instance PollModule BatteryH where
         MonkyPlain $ sformat (fixed 1 % "W " % int % "% " % (left 2 ' ' %. int) % ":" % (left 2 '0' %. int)) pow p h m
       ]
 
+-- |The handle type for this module
 newtype BatteryH = BH BatteryHandle
 
 -- |Create a 'BatteryHandle'
@@ -61,6 +63,6 @@ getBatteryHandle :: String  -- ^The name of the wall socket adapter used by the 
 getBatteryHandle = fmap BH .: B.getBatteryHandle
 
 
--- |Version which defaults to "BAT0"
+-- |Version of 'getBatteryHandle' that defaults to "BAT0"
 getBatteryHandle' :: String -> IO BatteryH
 getBatteryHandle' = fmap BH . B.getBatteryHandle'

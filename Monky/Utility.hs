@@ -135,7 +135,7 @@ readContent (File h) = do
 fopen :: String -> IO File
 fopen = fmap File . flip openFile ReadMode
 
-
+-- |Close a file opened by 'fopen'
 fclose :: File -> IO ()
 fclose (File h) = hClose h
 

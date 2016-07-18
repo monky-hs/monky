@@ -10,6 +10,9 @@ Portability : Linux
 module Monky.Examples.Memory
   ( getMemoryHandle
   , getMemoryBarHandle
+
+  , MHandle
+  , MBHandle
   )
 where
 
@@ -19,8 +22,10 @@ import Monky.Modules
 import Monky.Memory hiding (getMemoryHandle)
 import qualified Monky.Memory as M (getMemoryHandle)
 
+-- |Simple handle to display current memory available
 newtype MHandle = MH MemoryHandle
 
+-- |Get the the memory handle
 getMemoryHandle :: IO MHandle
 getMemoryHandle = fmap MH $ M.getMemoryHandle
 
@@ -33,9 +38,13 @@ instance PollModule MHandle where
       , MonkyPlain $ convertUnitB (mp * 1024) "B"
       ]
 
+-- |Handle to display the current memory usage (used/caches/free) as horizontal bar
 data MBHandle = MBH Float MemoryHandle
 
-getMemoryBarHandle :: Float -> IO MBHandle
+-- |Get the 'MBHandle'
+getMemoryBarHandle
+  :: Float -- ^A factor to modify bar length. Total-length: 100/f
+  -> IO MBHandle
 getMemoryBarHandle f = fmap (MBH f) $ M.getMemoryHandle
 
 

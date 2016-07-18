@@ -9,6 +9,7 @@ Portability : Linux
 -}
 module Monky.Examples.Disk
   ( getDiskHandle
+  , DiskH
   )
 where
 
@@ -19,9 +20,13 @@ import Monky.Modules
 import Monky.Disk hiding (getDiskHandle)
 import qualified Monky.Disk as D (getDiskHandle)
 
+-- |The handle type for this module
 newtype DiskH = DH DiskHandle
 
-getDiskHandle :: String -> IO DiskH
+-- |Get a disk handle
+getDiskHandle
+  :: String -- ^The UUID of the device to monitor. It has to be mounted at monky startup!
+  -> IO DiskH
 getDiskHandle = fmap DH . D.getDiskHandle
 
 {- Disk module -}

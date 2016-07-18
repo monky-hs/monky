@@ -10,6 +10,7 @@ Portability : Linux
 -}
 module Monky.Examples.Connectivity
   ( getConnH
+  , Conn
   )
 where
 
@@ -23,8 +24,10 @@ showCon :: Bool -> Text
 showCon False = "Unconnected"
 showCon True  = "  Connected"
 
+-- |The handle type for this module
 newtype Conn = Conn ConnHandle
 
+-- |Get a handle that allows testing for connectivity to a server
 getConnH
   :: String -- ^The Host to use for connectivity probing
   -> Int -- ^Which port to use for connecivity probing (drop is bad)

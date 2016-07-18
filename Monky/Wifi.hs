@@ -1,4 +1,12 @@
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.Wifi
+Description : Gives access to wifi status
+Maintainer  : ongy
+Stability   : experimental
+Portability : Linux
+
+-}
 module Monky.Wifi
   ( getCurrentWifi
   , getCurrentWifiStats
@@ -38,14 +46,18 @@ import Data.Serialize.Get (runGet, getWord32host)
 import Control.Applicative ((<$>))
 #endif
 
+-- |The interface identifier
 type Interface = Word32
+-- |The socket type for this module
 type SSIDSocket = NL80211Socket
 
+-- |Enum for connection change
 data WifiConn
-  = WifiNone
-  | WifiDisconnect
-  | WifiConnect WifiStats
+  = WifiNone -- ^Nothing changed, connection unrelated message
+  | WifiDisconnect -- ^The current network was disconnectd
+  | WifiConnect WifiStats -- ^A new connection was established
 
+-- |Wifi network connection information
 data WifiStats = WifiStats
   { wifiChannel :: Word8
   , wifiRates :: [Word32]
@@ -87,29 +99,33 @@ attrToStat pack = do
 
   return $ WifiStats channel rates name freq mbm
 
-
+-- |Get the stats of a currently connected wifi network
 getCurrentWifiStats :: SSIDSocket -> Interface -> IO (Maybe WifiStats)
 getCurrentWifiStats s i = do
   wifis <- getConnectedWifi s i
   return $ attrToStat =<< listToMaybe wifis
 
 
+-- |Get only the name of the currently connected wifi
 getCurrentWifi :: SSIDSocket -> Interface -> IO (Maybe String)
 getCurrentWifi s i = fmap wifiName <$> getCurrentWifiStats s i
 
 
+-- |Get the interface id by name
 getInterface :: SSIDSocket -> String -> IO (Maybe Interface)
 getInterface s n = do
   interfaces <- getInterfaceList s
   return $ snd <$> listToMaybe (filter ((==) n . fst) interfaces)
 
 
+-- |get the raw fd for eventing
 getWifiFd :: SSIDSocket -> Fd
 getWifiFd = getFd
 
 -- We are only looking for ESSID right now, if we want to
 -- make this module more general, we will have to extend the
 -- return type of this function
+-- |This should be called when the fd returned by 'getWifiFd' got readable
 gotReadable :: SSIDSocket -> Interface -> IO WifiConn
 gotReadable s i = do
 -- we only care for ESSID and connect updates are a single message
@@ -134,6 +150,7 @@ gotReadable s i = do
           else return WifiNone
 
 
+-- |Get a netlink socket bound to nl80211 mlme Group
 getSSIDSocket :: IO SSIDSocket
 getSSIDSocket = do
   s <- makeNL80211Socket

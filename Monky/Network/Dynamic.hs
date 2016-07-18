@@ -1,6 +1,18 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.Network.Dynamic
+Description : Allows access to information about they systems network
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module exports a handle to access dynamic network configurations.
+
+This will update when a new network interface appears or disappears.
+The value returned by this will be the sum over all interfaces.
+-}
 
 module Monky.Network.Dynamic
   ( getUHandles

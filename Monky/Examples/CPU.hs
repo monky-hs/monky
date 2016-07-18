@@ -20,11 +20,16 @@ module Monky.Examples.CPU
   , getNumaHandlesMany'
 
   , getCPUHandleNoT
-  , getCPUHandleNoT'
   , getNumaHandlesNoT
-  , getNumaHandlesNoT'
 
   , C.ScalingType(..)
+
+  , CPUHandle
+  , NumaHandle
+  , CPUMHandle
+  , NumaMHandle
+  , CPUNHandle
+  , NumaNHandle
   )
 where
 
@@ -66,22 +71,30 @@ printThemp = MonkyPlain . sformat (" " % int % "°C")
 
 
 {- NORMAL -}
+-- |The handle type for the default setup
 newtype CPUHandle  = CPH C.CPUHandle
+-- |The handle type for the default setup (numa aware)
 newtype NumaHandle = NUH C.Numa
 
-getCPUHandle :: C.ScalingType -> Maybe String -> IO CPUHandle
+-- |Get a 'CPUHandle'
+getCPUHandle
+  :: C.ScalingType -- ^The type of scaling frequency that should be reported
+  -> Maybe String -- ^The thermal zone of the cpu
+  -> IO CPUHandle
 getCPUHandle = fmap CPH .: C.getCPUHandle
 
+-- |Same as 'getCPUHandle' but tries to guess the thermal zone
 getCPUHandle' :: C.ScalingType -> IO CPUHandle
 getCPUHandle' = fmap CPH . C.getCPUHandle'
 
--- |Get the Numa aware handle
+-- |Numa aware version of 'getCPUHandle'
 getNumaHandles
-  :: C.ScalingType
+  :: C.ScalingType -- ^The type of scaling frequency that should be reported
   -> [Maybe String] -- ^A list of thermal zones for our numa handles
   -> IO NumaHandle
 getNumaHandles = fmap NUH .: C.getNumaHandles
 
+-- |Same as 'getNumaHandles' but tries to guess the thermal zone
 getNumaHandles' :: C.ScalingType -> IO NumaHandle
 getNumaHandles' = fmap NUH . C.getNumaHandles'
 
@@ -111,23 +124,28 @@ instance PollModule NumaHandle where
 
 
 {- MANY -}
+-- |A variant of 'CPUHandle' that merges CPU loads into (Average|MAX) usefule with high core count
 newtype CPUMHandle  = CPHM C.CPUHandle
+-- |Numa aware version of "CPUMHandle'
 newtype NumaMHandle = NUHM C.Numa
 
 
+-- |'getCPUHandle' for 'CPUMHandle'
 getCPUHandleMany :: C.ScalingType -> Maybe String -> IO CPUMHandle
 getCPUHandleMany = fmap CPHM .: C.getCPUHandle
 
+-- |'getCPUHandle'' for 'CPUMHandle'
 getCPUHandleMany' :: C.ScalingType -> IO CPUMHandle
 getCPUHandleMany' = fmap CPHM . C.getCPUHandle'
 
--- |Get the Numa aware handle
+-- |'getNumaHandles' for 'NumaMHandle'
 getNumaHandlesMany
   :: C.ScalingType
   -> [Maybe String] -- ^A list of thermal zones for our numa handles
   -> IO NumaMHandle
 getNumaHandlesMany = fmap NUHM .: C.getNumaHandles
 
+-- |'getNumaHandles'' for 'NumaMHandle'
 getNumaHandlesMany' :: C.ScalingType -> IO NumaMHandle
 getNumaHandlesMany' = fmap NUHM . C.getNumaHandles'
 
@@ -160,25 +178,20 @@ instance PollModule NumaMHandle where
 
 
 {- NOTemp -}
+-- |A version of 'CPUHandle' that does not display the themperature, for instances when it's not exportet (VM)
 newtype CPUNHandle = CPHN C.CPUHandle
+-- |Numa aware version of 'CPUNHandle'
 newtype NumaNHandle = NUHN C.Numa
 
 
-getCPUHandleNoT :: C.ScalingType -> Maybe String -> IO CPUNHandle
-getCPUHandleNoT = fmap CPHN .: C.getCPUHandle
+-- |'getCPUHandle' for 'CPUNHandle'
+getCPUHandleNoT :: C.ScalingType -> IO CPUNHandle
+getCPUHandleNoT = fmap CPHN . flip C.getCPUHandle Nothing
 
-getCPUHandleNoT' :: C.ScalingType -> IO CPUNHandle
-getCPUHandleNoT' = fmap CPHN . C.getCPUHandle'
-
--- |Get the Numa aware handle
+-- |Get the Numa aware version of 'getCPUHandleNoT'
 getNumaHandlesNoT
-  :: C.ScalingType
-  -> [Maybe String] -- ^A list of thermal zones for our numa handles
-  -> IO NumaNHandle
-getNumaHandlesNoT = fmap NUHN .: C.getNumaHandles
-
-getNumaHandlesNoT' :: C.ScalingType -> IO NumaNHandle
-getNumaHandlesNoT' = fmap NUHN . C.getNumaHandles'
+  :: C.ScalingType -> IO NumaNHandle
+getNumaHandlesNoT = fmap NUHN . flip C.getNumaHandles [Nothing]
 
 getNumaTextN :: C.Numa -> IO [MonkyOut]
 getNumaTextN (C.Numa xs) = do

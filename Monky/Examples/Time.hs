@@ -10,6 +10,9 @@ Portability : Linux
 module Monky.Examples.Time
   ( getTimeHandle
   , getFancyTimeHandle
+
+  , THandle
+  , FTHandle
   )
 where
 
@@ -20,8 +23,10 @@ import Monky.Modules
 import Monky.Time hiding (getTimeHandle)
 import qualified Monky.Time as MT (getTimeHandle)
 
+-- |Handle for accessing system time
 newtype THandle = TH TimeHandle
 
+-- |Get a 'THandle'
 getTimeHandle :: String  -- ^The format that should be used for 'getTime' in strftime format
               -> IO THandle
 getTimeHandle = fmap TH . MT.getTimeHandle
@@ -41,8 +46,10 @@ timeToXBM (h, m) = (xh, xm)
   where xh = h `mod` 12
         xm = m `div` 15
 
+-- |Like 'THandle' but uses a fancy variant of clock images
 newtype FTHandle = FTH TimeHandle
 
+-- |Get a 'FTHandle'
 getFancyTimeHandle :: String  -- ^The format that should be used for 'getTime' in strftime format
                    -> IO FTHandle
 getFancyTimeHandle = fmap FTH . MT.getTimeHandle

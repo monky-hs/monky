@@ -19,6 +19,7 @@ function.
 -}
 module Monky.Examples.IBus
   ( getIBusH
+  , IBusH
   )
 where
 
@@ -40,7 +41,7 @@ import Monky.Modules
 import IBus
 import IBus.EngineDesc
 
-
+-- |The handle type for this module
 data IBusH = IBusH IBusClient [(String, Text)]
 
 instance PollModule IBusH where

@@ -78,6 +78,7 @@ statePath :: String
 statePath = "/operstate"
 
 
+
 getReadWriteReal :: NetworkHandle -> IO (Int, Int)
 getReadWriteReal (NetH readf writef _ readref writeref timeref) = do
   nread <- readValue readf
@@ -98,7 +99,7 @@ getReadWriteReal (NetH readf writef _ readref writeref timeref) = do
   return ((cread * 8) `sdivBound` round ctime,
     (cwrite * 8) `sdivBound` round ctime)
 
-
+-- |Get the (read, write) rate of the network interface. This is averaged over the time between calls
 getReadWrite :: NetworkHandle -> IO (Maybe (Int, Int))
 getReadWrite h = do
   state <- getState h
@@ -107,8 +108,10 @@ getReadWrite h = do
     Unknown -> fmap Just . getReadWriteReal $ h
     _ -> return Nothing
 
-
-getNetworkHandle :: String -> IO NetworkHandle
+-- |Get a 'NetworkHandle'
+getNetworkHandle
+  :: String -- ^Name of the interface to monitor
+  -> IO NetworkHandle
 getNetworkHandle dev = do
   readf <- fopen $path ++ readPath
   writef <- fopen $path ++ writePath

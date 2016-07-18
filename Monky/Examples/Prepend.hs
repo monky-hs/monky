@@ -46,6 +46,7 @@ import Monky.Modules
 -- |The handle used by this module, contains underlying module and string
 data PrepHandle = forall m . PollModule m => Prep [MonkyOut] m
 
+-- |The handle used by this module, contains underlying module and string
 data PostHandle = forall m . PollModule m => Post [MonkyOut] m
 
 instance PollModule PrepHandle where
@@ -63,7 +64,7 @@ instance PollModule PostHandle where
 This allows you to prepend an instance of a module with a fixed
 String.
 
-For usage look at 'pack'.
+For usage look at 'pollPack'.
 -}
 packPrepend :: PollModule a
             => [MonkyOut] -- ^The String to prepend
@@ -77,7 +78,7 @@ packPrepend x i m = pollPack i (Prep x <$> m)
 This allows you to append an instance of a module with a fixed
 String.
 
-For usage look at 'pack'.
+For usage look at 'pollPack'.
 -}
 packAppend :: PollModule a
            => [MonkyOut] -- ^The String to prepend

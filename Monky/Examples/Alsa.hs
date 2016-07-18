@@ -9,6 +9,7 @@ Portability : Linux
 -}
 module Monky.Examples.Alsa
   ( getVOLHandle
+  , AlsaH
   )
 where
 
@@ -47,8 +48,10 @@ instance EvtModule AlsaH where
     atomicWriteIORef r s
     loopFd h fd r getVOLOutput
 
+-- |The handle type for this module
 newtype AlsaH = AH VOLHandle
 
+-- |Get a handle which allows access to audio (alsa) subsystem information
 getVOLHandle :: String -- ^The audio-card to use
              -> IO AlsaH
 getVOLHandle = fmap AH . A.getVOLHandle

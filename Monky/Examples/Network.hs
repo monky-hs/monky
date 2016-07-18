@@ -13,6 +13,9 @@ module Monky.Examples.Network
   ( getNetworkHandles'
   , getStaticHandle
   , getDynamicHandle
+
+  , NetworkDynHandle
+  , NetworkStaticHandle
   )
 where
 
@@ -28,7 +31,10 @@ import qualified Monky.Network.Dynamic as D
 import qualified Monky.Network.Static as S
 
 data NetworkHandles' = NH' Text NetworkHandles
+
+-- |Handle for dynamic network handling
 data NetworkDynHandle = DH Text D.UHandles
+-- |HAndle for a staticly configured network interface
 data NetworkStaticHandle = SH Text S.NetworkHandle
 
 -- |Actually get the network handle
@@ -38,12 +44,14 @@ getNetworkHandles'
   -> IO NetworkHandles'
 getNetworkHandles' e = fmap (NH' e) . getNetworkHandles
 
+-- |Get a handle for a static network interface
 getStaticHandle
   :: Text -- ^The string to use when network is disconnected
   -> String -- ^Name of the network interface
   -> IO NetworkStaticHandle
 getStaticHandle e = fmap (SH e) . S.getNetworkHandle
 
+-- |Get a handle that will update with new or disappearing network interfaces
 getDynamicHandle
   :: Text -- ^The string to use when network is disconnected
   -> (String -> Bool) -- ^The filter function for the dynamic handle

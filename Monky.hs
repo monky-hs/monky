@@ -76,6 +76,7 @@ mainLoop t o xs = do
   threadDelay 1000000
   mainLoop (t+1) o xs
 
+-- |Start the mainLoop of monky. This should be the return type of your main
 startLoop :: MonkyOutput o => o -> [IO Modules] -> IO ()
 startLoop o mods = do
   m <- sequence mods
