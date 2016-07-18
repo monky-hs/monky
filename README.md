@@ -59,7 +59,7 @@ For the fancy clock example you will also need the `.xbm` files in this repo.
 
 ### 2.0 branch
 
-![Laptop-2.0](http://imgur.com/nQQ9ywX)
+![Laptop-2.0](http://imgur.com/nQQ9ywX?1)
 [config](http://lpaste.net/170301)
 
 ## 2.0 breaking changes
