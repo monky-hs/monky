@@ -15,6 +15,7 @@ module Monky.Examples.MPD
   )
 where
 
+import Data.Text (Text)
 import qualified Data.Text as T
 
 import Data.IORef
@@ -36,15 +37,15 @@ getPlayingSong Playing s = getMPDSong s
 getPlayingSong _ _ = return (Left "Not playing")
 
 
-extractTitle :: SongInfo -> Maybe String
+extractTitle :: SongInfo -> Maybe Text
 extractTitle = tagTitle . songTags
 
 
-getSongTitle :: MPDSocket -> IO String
+getSongTitle :: MPDSocket -> IO Text
 getSongTitle sock = getMPDStatus sock >>= getSong
-  where getSong (Left x) = return x
+  where getSong (Left x) = return . T.pack $ x
         getSong (Right status) = getTitle <$> getPlayingSong (state status) sock
-        getTitle (Left x) = x
+        getTitle (Left x) = T.pack x
         getTitle (Right x) = fromMaybe "No Title" $extractTitle x
 
 
@@ -53,7 +54,7 @@ data MPDHandle = MPDHandle String String (IORef (Maybe MPDSocket))
 
 
 -- TODO ignoring errors is never a good idea
-getEvent :: MPDSocket -> IO String
+getEvent :: MPDSocket -> IO Text
 getEvent s = do
   _ <- readOk s
   t <- getSongTitle s
@@ -75,7 +76,7 @@ instance PollModule MPDHandle where
       Nothing -> return [MonkyPlain "Broken"]
       (Just x) -> do
         ret <- getSongTitle x
-        return [MonkyPlain . T.pack $ ret]
+        return [MonkyPlain ret]
   initialize (MPDHandle h p r) = do
     s <- getMPDSocket h p
     case s of
@@ -93,7 +94,7 @@ instance EvtModule MPDHandle where
       Nothing -> hPutStrLn stderr "Could not initialize MPDHandle :("
       (Just x) -> do
         [fd] <- getFd x
-        loopFd x fd ref (fmap (\y -> [MonkyPlain . T.pack $ y]) . getEvent)
+        loopFd x fd ref (fmap (\y -> [MonkyPlain y]) . getEvent)
 
 
 -- |Get an 'MPDHandle' (server has to be running when this is executed)

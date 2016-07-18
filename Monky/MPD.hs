@@ -45,6 +45,11 @@ module Monky.MPD
   )
 where
 
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
+import qualified Data.Text.Read as R
+
 import System.IO.Error
 import GHC.IO.Exception
 import Control.Exception (try)
@@ -54,12 +59,11 @@ import Control.Monad.Trans.Except
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import Data.Maybe (isJust,fromJust)
-import Monky.Utility (splitAtEvery)
 import System.Posix.Types (Fd(..))
 import System.Timeout (timeout)
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString
-import qualified Data.ByteString.Char8 as BS (unpack,pack)
+import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map as M
 
 #if MIN_VERSION_base(4,8,0)
@@ -81,34 +85,34 @@ data State
 -- |Collection of tags MPD supports
 data TagCollection = TagCollection
   {
-    tagArtist          :: Maybe String
-  , tagArtistSort      :: Maybe String
-  , tagAlbum           :: Maybe String
-  , tagAlbumSort       :: Maybe String
-  , tagAlbumArtist     :: Maybe String
-  , tagAlbumArtistSort :: Maybe String
-  , tagTitle           :: Maybe String
-  , tagTrack           :: Maybe String
-  , tagName            :: Maybe String
-  , tagGenre           :: Maybe String
-  , tagDate            :: Maybe String
-  , tagComposer        :: Maybe String
-  , tagPerformer       :: Maybe String
-  , tagComment         :: Maybe String
-  , tagDisc            :: Maybe String
-  , tagMArtistid       :: Maybe String
-  , tagMAlbumid        :: Maybe String
-  , tagMAlbumArtistid  :: Maybe String
-  , tagMTrackid        :: Maybe String
-  , tagMReleaseTrackid :: Maybe String
+    tagArtist          :: Maybe Text
+  , tagArtistSort      :: Maybe Text
+  , tagAlbum           :: Maybe Text
+  , tagAlbumSort       :: Maybe Text
+  , tagAlbumArtist     :: Maybe Text
+  , tagAlbumArtistSort :: Maybe Text
+  , tagTitle           :: Maybe Text
+  , tagTrack           :: Maybe Text
+  , tagName            :: Maybe Text
+  , tagGenre           :: Maybe Text
+  , tagDate            :: Maybe Text
+  , tagComposer        :: Maybe Text
+  , tagPerformer       :: Maybe Text
+  , tagComment         :: Maybe Text
+  , tagDisc            :: Maybe Text
+  , tagMArtistid       :: Maybe Text
+  , tagMAlbumid        :: Maybe Text
+  , tagMAlbumArtistid  :: Maybe Text
+  , tagMTrackid        :: Maybe Text
+  , tagMReleaseTrackid :: Maybe Text
   } deriving (Show, Eq)
 
 -- |Information about an song
 data SongInfo = SongInfo
   {
-    songFile     :: String
+    songFile     :: Text
   , songRange    :: Maybe (Float, Float)
-  , songMTime    :: Maybe String
+  , songMTime    :: Maybe Text
   , songTime     :: Maybe Int
   , songDuration :: Maybe Float
   , songTags     :: TagCollection
@@ -143,9 +147,12 @@ data Status = Status
   , duration       :: Maybe Int --added with 0.20
   , audio          :: Maybe (Int,Int,Int)
   , updating       :: Maybe Int
-  , mpderror       :: Maybe String
+  , mpderror       :: Maybe Text
   } deriving (Show, Eq)
 
+-- This isn't nice, but OK for now
+readText :: Integral a => Text -> a
+readText t = let (Right (x, _)) = R.decimal t in x
 
 rethrowSExcpt :: String -> IOError -> ExceptT String IO a
 rethrowSExcpt xs e = throwE (xs ++ ": " ++ show e)
@@ -215,9 +222,9 @@ getMPDSocket host port = do
 getMPDFd :: MPDSocket -> IO Fd
 getMPDFd (MPDSocket s) = return . Fd $fdSocket s
 
-recvMessage :: MPDSock -> ExceptT String IO [String]
+recvMessage :: MPDSock -> ExceptT String IO [Text]
 recvMessage sock =
-  trySExcpt "receive" $lines . BS.unpack <$> recv sock 4096
+  trySExcpt "receive" $ T.lines . E.decodeUtf8 <$> recv sock 4096
 
 sendMessage :: MPDSock -> String -> ExceptT String IO ()
 sendMessage sock message = void $
@@ -229,7 +236,7 @@ This does not filter out errors, error checking has to be done by the user.
 This does filter out the last OK though
 -}
 
-doQuery :: MPDSocket -> String -> ExceptT String IO [String]
+doQuery :: MPDSocket -> String -> ExceptT String IO [Text]
 doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> (f <$> recvMessage s)
   where f = filter (/= "OK")
 
@@ -237,7 +244,7 @@ doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> (f <$> recvMessage s)
 readOk :: MPDSocket -> IO (Either String ())
 readOk (MPDSocket s) = runExceptT $ do
   resp <- recvMessage s
-  unless (resp == ["OK"]) (throwE $concat resp)
+  unless (resp == ["OK"]) (throwE . T.unpack . T.concat $ resp)
 
 {- |Go into MPDs 'idle' mode, this does return, but MPD wont time us out and
 will notify us if something happens
@@ -249,18 +256,24 @@ goIdle
 goIdle (MPDSocket s) xs = runExceptT $ void $ sendMessage s ("idle" ++ xs ++ "\n")
 
 
-getAudioTuple :: String -> (Int,Int,Int)
-getAudioTuple xs = let [x,y,z] = read <$> splitAtEvery ":" xs in (x,y,z)
+getAudioTuple :: Text -> (Int,Int,Int)
+getAudioTuple xs =
+  let (Right (x, ys)) = R.decimal xs
+      (Right (y, zs)) = R.decimal $ T.tail ys
+      (Right (z, _))  = R.decimal $ T.tail zs
+    in (x, y, z)
 
 
-getState :: String -> State
+getState :: Text -> State
 getState "play"  = Playing
 getState "stop"  = Stopped
 getState "pause" = Paused
-getState _ = error "Got unknown state"
+getState xs = error ("Got unknown state: " ++ T.unpack xs)
 
 
-parseStatusRec :: M.Map String String -> [String] -> Status
+parseStatusRec :: M.Map Text Text -> [Text] -> Status
+parseStatusRec m (x:xs) = let (key,value) = T.break (== ' ') x in
+  parseStatusRec (M.insert (T.init key) (T.tail value) m) xs
 parseStatusRec m [] = Status
   { volume = fromJust $getInt "volume"
   , repeats = fromJust $getBool "repeat"
@@ -274,28 +287,30 @@ parseStatusRec m [] = Status
   , songId = getInt "songid"
   , nextSong = getInt "nextsong"
   , nextSongId = getInt "nextsongid"
-  , time = fmap (read . takeWhile (/= ':')) $getVal "time"
-  , elapsed = read <$> M.lookup "elapsed" m
+  , time = fmap (readText . T.takeWhile (/= ':')) $getVal "time"
+  , elapsed = read . T.unpack <$> M.lookup "elapsed" m
   , duration = getInt "duration"
   , bitrate = getInt "bitrate"
   , xfade = getInt "xfade"
-  , mixrAmpdb = fromJust . fmap read $getVal "mixrampdb"
+  , mixrAmpdb = fromJust . fmap readF $ getVal "mixrampdb"
   , mixrAmpDelay = getInt "mixrampdelay"
   , audio = getAudio m
   , updating = getInt "updating_db"
   , mpderror = M.lookup "error" m
   }
   where getVal = flip M.lookup m
-        getBool = fmap (=="1") . getVal
-        getInt = fmap read . getVal
+        getBool = fmap (== ("1" :: Text)) . getVal
+        getInt = fmap readText . getVal
         getState_ = getState . fromJust . M.lookup "state"
         getAudio = fmap getAudioTuple . M.lookup "audio"
+        readF t = let (Right (x, _)) = R.rational t in x
+
+
+parseSongInfoRec :: M.Map Text Text -> [Text] -> SongInfo
 -- use init to drop the ':' for keys
-parseStatusRec m (x:xs) = let (key,' ':value) = break (== ' ') x in
-  parseStatusRec (M.insert (init key) value m) xs
-
-
-parseSongInfoRec :: M.Map String String -> [String] -> SongInfo
+-- use break instead of words because of comment or artist
+parseSongInfoRec m (x:xs) = let (key, value) = T.break isSpace x in
+  parseSongInfoRec (M.insert (T.init key) (T.tail value) m) xs
 parseSongInfoRec m [] = let tags = TagCollection {
     tagArtist = M.lookup "Artist" m
   , tagArtistSort = M.lookup "ArtistSort" m
@@ -321,30 +336,27 @@ parseSongInfoRec m [] = let tags = TagCollection {
   } in
     SongInfo {
       songFile = fromJust $M.lookup "file" m
-    , songRange = readT . split '-' <$> M.lookup "Range" m
+    , songRange = readT <$> M.lookup "Range" m
     , songMTime = M.lookup "Last-Modified" m
     , songTime = mRead "Time"
-    , songDuration = read <$> M.lookup "duration" m
+    , songDuration = readF <$> M.lookup "duration" m
     , songTags = tags
     , songPos = mRead "Pos"
     , songInfoId = mRead "Id"
     , songPriority = mRead "Prio"
     }
-  where split x xs = (takeWhile (/=x) xs, tail $dropWhile (/=x) xs)
-        readT (x,y) = (read x, read y)
-        mRead = fmap read . flip M.lookup m
+  where readT xs =
+          let (Right (x, ys)) = R.rational xs
+              (Right (y, _))  = R.rational . T.tail $ ys in
+            (x, y)
+        mRead = fmap (readText) . flip M.lookup m
+        readF t = let (Right (x, _)) = R.rational t in x
 
 
--- use init to drop the ':' for keys
--- use break instead of words because of comment or artist
-parseSongInfoRec m (x:xs) = let (key,' ':value) = break isSpace x in
-  parseSongInfoRec (M.insert (init key) value m) xs
-
-
-parseStatus :: [String] -> Status
+parseStatus :: [Text] -> Status
 parseStatus [] = error "Called parseStatus with []"
-parseStatus xs@(x:_) = if "ACK" `isPrefixOf` x
-  then error x
+parseStatus xs@(x:_) = if "ACK" `T.isPrefixOf` x
+  then error (T.unpack x)
   else parseStatusRec M.empty xs
 
 -- |Get the current status or an error from the MPD server
@@ -353,10 +365,10 @@ getMPDStatus s = do
   resp <- runExceptT $doQuery s "status"
   return $fmap parseStatus resp
 
-parseSongInfo :: [String] -> SongInfo
+parseSongInfo :: [Text] -> SongInfo
 parseSongInfo [] = error "Called parseSongInfo with []"
-parseSongInfo xs@(x:_) = if "ACK" `isPrefixOf` x
-  then error x
+parseSongInfo xs@(x:_) = if "ACK" `T.isPrefixOf` x
+  then error (T.unpack x)
   else parseSongInfoRec M.empty xs
 
 -- |Get the information about the song currently beeing player from the MPD server
