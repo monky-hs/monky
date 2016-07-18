@@ -102,6 +102,7 @@ library
   build-depends:       text, unix, network, mtl, transformers, text
   build-depends:       template-haskell, containers, stm, statvfs
   build-depends:       bytestring, netlink, cereal, formatting, composition
+  build-depends:       env-locale >= 1.0.0.1
 
   -- force double-conversion version for old ghc/library?
   if impl(ghc < 7.8)

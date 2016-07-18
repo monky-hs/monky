@@ -37,6 +37,8 @@ import Data.Time.Clock
 import Data.Time.Format
 import Data.Time.LocalTime
 
+import System.Locale.Current
+
 -- 4.8 breaks with System.Locale import
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -44,20 +46,20 @@ import System.Locale
 #endif
 
 -- |The handle exported by this module.
-data TimeHandle = TimeH String TimeZone
+data TimeHandle = TimeH TimeLocale String TimeZone
 
-doTime :: String -> TimeZone -> UTCTime -> String
-doTime str z t = formatTime defaultTimeLocale str $ utcToLocalTime z t
+doTime :: TimeLocale -> String -> TimeZone -> UTCTime -> String
+doTime tl str z t = formatTime tl str $ utcToLocalTime z t
 
 -- |Get the current time in the format given to the handle.
 getTime :: TimeHandle -> IO String
-getTime (TimeH str z) = do
+getTime (TimeH tl str z) = do
   t <- getCurrentTime
-  return $ doTime str z t
+  return $ doTime tl str z t
 
 -- |Get the current time (HH:MM) format for the current time zone.
 getHM :: TimeHandle -> IO (Int, Int)
-getHM (TimeH _ z) = do
+getHM (TimeH _ _ z) = do
   t <- getCurrentTime
   let (LocalTime _ (TimeOfDay h m _)) = utcToLocalTime z t
   return (h, m)
@@ -67,4 +69,5 @@ getTimeHandle :: String  -- ^The format that should be used for 'getTime' in str
               -> IO TimeHandle
 getTimeHandle format = do
   z <- getCurrentTimeZone
-  return (TimeH format z)
+  tl <- currentLocale
+  return (TimeH tl format z)
