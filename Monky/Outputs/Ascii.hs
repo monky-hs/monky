@@ -51,5 +51,5 @@ instance MonkyOutput AsciiOutput where
     doLine h xs
 
 -- |Get an output handle for ascii formatting
-getAsciiOut :: AsciiOutput
-getAsciiOut = AsciiOutput
+getAsciiOut :: IO AsciiOutput
+getAsciiOut = return AsciiOutput

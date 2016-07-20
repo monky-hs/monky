@@ -92,7 +92,7 @@ library
   exposed-modules: Monky.Examples.Connectivity Monky.Network.Dynamic
   exposed-modules: Monky.Network.Static Monky.Examples.File Monky.Examples.Utility
 
-  exposed-modules: Monky.Version
+  exposed-modules: Monky.Version Monky.Examples.Combine
   exposed-modules: Monky.Outputs.Dzen2 Monky.Outputs.Ascii Monky.Outputs.Utf8 Monky.Outputs.Fallback
 
   other-modules: Monky.Template Monky.VersionTH Monky.Blkid

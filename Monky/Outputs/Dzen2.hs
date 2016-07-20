@@ -14,6 +14,7 @@ module Monky.Outputs.Dzen2
   )
 where
 
+import Data.Composition ((.:))
 import System.IO (hFlush, stdout)
 import Monky.Modules
 
@@ -61,5 +62,5 @@ instance MonkyOutput DzenOutput where
 getDzenOut
   :: Int -- ^The height of your dzen bar in pixel (required for block-drawing)
   -> Text -- ^Path to the directory cointaining your .xbm files.
-  -> DzenOutput
-getDzenOut = DzenOutput
+  -> IO DzenOutput
+getDzenOut = return .: DzenOutput

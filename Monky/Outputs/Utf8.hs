@@ -69,5 +69,5 @@ instance MonkyOutput Utf8Output where
     doLine h xs
 
 -- |Get an output handle for ascii formatting
-getUtf8Out :: Utf8Output
-getUtf8Out = Utf8Output
+getUtf8Out :: IO Utf8Output
+getUtf8Out = return Utf8Output

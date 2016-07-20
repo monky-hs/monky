@@ -14,28 +14,29 @@ module Monky.Examples.CPU
   , getNumaHandles
   , getNumaHandles'
 
-  , getCPUHandleMany
-  , getCPUHandleMany'
-  , getNumaHandlesMany
-  , getNumaHandlesMany'
-
-  , getCPUHandleNoT
-  , getNumaHandlesNoT
-
   , C.ScalingType(..)
 
   , CPUHandle
   , NumaHandle
-  , CPUMHandle
-  , NumaMHandle
-  , CPUNHandle
-  , NumaNHandle
+
+  , FreqHandle
+  , TempHandle
+
+  , getFreqHandle
+  , getFreqNuma
+
+  , getTempHandle
+  , getTempHandle'
+  , getTempHandles
+
+  , getRawNumas
+  , getRawCPU
   )
 where
 
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Formatting
-import Data.Composition ((.:))
 import Data.List (intercalate)
 
 import Monky.Modules
@@ -69,147 +70,126 @@ printFrequency = MonkyPlain . sformat (fixed 1 % "G")
 printThemp :: Int -> MonkyOut
 printThemp = MonkyPlain . sformat (" " % int % "°C") 
 
+getNumaNode :: C.NumaHandle -> IO [MonkyOut]
+getNumaNode nh = map printBar <$> C.getNumaPercent nh
+
+-- |Handle to get the cpu usage stats
+newtype RawCPU = RawCPU C.CPUHandle
+-- |Numa aware handle to get cpu usage stats
+newtype RawNuma = RawNuma C.NumaHandle
+
+instance PollModule RawCPU where
+  getOutput (RawCPU h) =
+    map printBar <$> C.getCPUPercent h
+
+instance PollModule RawNuma where
+  getOutput (RawNuma h) = getNumaNode h
+
+-- |Handle to access cpu frequency information
+newtype FreqHandle = FH C.FreqHandle
+-- |Handle to acces thermal zone information
+newtype TempHandle = TH C.TempHandle
+
+instance PollModule FreqHandle where
+  getOutput (FH fh) =
+    return . printFrequency <$> C.getCPUMaxScalingFreq fh
+
+instance PollModule TempHandle where
+  getOutput (TH th) =
+    return . printThemp <$> C.getCPUTemp th
 
 {- NORMAL -}
 -- |The handle type for the default setup
-newtype CPUHandle  = CPH C.CPUHandle
+data CPUHandle  = CPH FreqHandle RawCPU TempHandle
 -- |The handle type for the default setup (numa aware)
-newtype NumaHandle = NUH C.Numa
+data NumaHandle = NUH [(FreqHandle, RawNuma, TempHandle)]
 
--- |Get a 'CPUHandle'
+-- |Get a handle to access max node frequency
+getFreqHandle :: C.ScalingType -> IO FreqHandle
+getFreqHandle = fmap FH . C.getFreqHandle
+
+-- |Numa away version of 'getFreqHandle'
+getFreqNuma :: C.ScalingType -> RawNuma -> IO FreqHandle
+getFreqNuma t (RawNuma h) = FH <$>  C.getFreqNuma t h
+
+-- |Get the 'TempHandle' for the system (tries to guess CPU zone)
+getTempHandle' :: IO TempHandle
+getTempHandle' = getTempHandle . fromMaybe (error "Could not find thermal zone") =<< C.guessThermalZone
+
+-- |Get a 'TempHandle' for each cpu termal zone on the system. will be infinite list, with invalidated zones for convinience
+getTempHandles :: IO [TempHandle]
+getTempHandles = fmap (map TH ) C.getThermalZones
+
+-- |Get a 'TempHandle' for the specified thermal zone
+getTempHandle :: String -> IO TempHandle
+getTempHandle = fmap TH . C.getThermalZone
+
+-- |Get a raw CPU handle
+getRawCPU :: IO RawCPU
+getRawCPU = RawCPU <$> C.getCPUHandle
+
+-- |Get raw numa aware cpu handles
+getRawNumas :: IO [RawNuma]
+getRawNumas = map RawNuma <$> C.getNumaHandles
+
+{- |Get a 'CPUHandle'
+
+This is a shiny combination of the raw handles exported by this module
+-}
 getCPUHandle
   :: C.ScalingType -- ^The type of scaling frequency that should be reported
-  -> Maybe String -- ^The thermal zone of the cpu
+  -> String -- ^The thermal zone of the cpu
   -> IO CPUHandle
-getCPUHandle = fmap CPH .: C.getCPUHandle
+getCPUHandle s t = do
+  fh <- getFreqHandle s
+  raw <-  getRawCPU
+  th <- getTempHandle t
+  return $ CPH fh raw th
 
 -- |Same as 'getCPUHandle' but tries to guess the thermal zone
 getCPUHandle' :: C.ScalingType -> IO CPUHandle
-getCPUHandle' = fmap CPH . C.getCPUHandle'
+getCPUHandle' s = do
+  fh <- getFreqHandle s
+  raw <-  getRawCPU
+  th <- getTempHandle'
+  return $ CPH fh raw th
 
 -- |Numa aware version of 'getCPUHandle'
 getNumaHandles
   :: C.ScalingType -- ^The type of scaling frequency that should be reported
-  -> [Maybe String] -- ^A list of thermal zones for our numa handles
+  -> [String] -- ^A list of thermal zones for our numa handles
   -> IO NumaHandle
-getNumaHandles = fmap NUH .: C.getNumaHandles
+getNumaHandles st zones = do
+  raw <- getRawNumas
+  th <- mapM getTempHandle zones
+  fh <- mapM (getFreqNuma st) raw
+  return . NUH $ zip3 fh raw th
 
 -- |Same as 'getNumaHandles' but tries to guess the thermal zone
 getNumaHandles' :: C.ScalingType -> IO NumaHandle
-getNumaHandles' = fmap NUH . C.getNumaHandles'
+getNumaHandles' st = do
+  raw <- getRawNumas
+  zones <- getTempHandles
+  fh <- mapM (getFreqNuma st) raw
+  return . NUH $ zip3 fh raw zones
 
-getNumaNode :: C.NumaHandle -> IO [MonkyOut]
-getNumaNode nh = map printBar <$> C.getNumaPercent nh
 
-getNumaText :: C.Numa -> IO [MonkyOut]
-getNumaText (C.Numa xs) = do
-  let ch = C.numaHandle . head $ xs
-  nodes <- mapM getNumaNode xs
-  ct <- C.getCPUTemp ch
-  cf <- C.getCPUMaxScalingFreq ch
-  return ([printXbm, printFrequency cf] ++ intercalate [(MonkyPlain " - ")] nodes  ++ [printThemp ct])
 
-getCPUText :: C.CPUHandle -> IO [MonkyOut]
-getCPUText ch = do
-  cp <- C.getCPUPercent ch
-  ct <- C.getCPUTemp ch
-  cf <- C.getCPUMaxScalingFreq ch
-  return ([printXbm, printFrequency cf] ++ map printBar cp ++ [printThemp ct])
+
+formatNumaNode :: (FreqHandle, RawNuma, TempHandle) -> IO [MonkyOut]
+formatNumaNode (fh, rh, th) = do
+  freq <- getOutput fh
+  raw <- getOutput rh
+  temp <- getOutput th
+  return (freq ++ raw ++ temp)
 
 instance PollModule CPUHandle where
-  getOutput (CPH h) = getCPUText h
+  getOutput (CPH fh rh th) = do
+    cp <- getOutput rh
+    ct <- getOutput th
+    cf <- getOutput fh
+    return (printXbm: cf ++ cp ++ ct)
 
 instance PollModule NumaHandle where
-  getOutput (NUH h) = getNumaText h
-
-
-{- MANY -}
--- |A variant of 'CPUHandle' that merges CPU loads into (Average|MAX) usefule with high core count
-newtype CPUMHandle  = CPHM C.CPUHandle
--- |Numa aware version of "CPUMHandle'
-newtype NumaMHandle = NUHM C.Numa
-
-
--- |'getCPUHandle' for 'CPUMHandle'
-getCPUHandleMany :: C.ScalingType -> Maybe String -> IO CPUMHandle
-getCPUHandleMany = fmap CPHM .: C.getCPUHandle
-
--- |'getCPUHandle'' for 'CPUMHandle'
-getCPUHandleMany' :: C.ScalingType -> IO CPUMHandle
-getCPUHandleMany' = fmap CPHM . C.getCPUHandle'
-
--- |'getNumaHandles' for 'NumaMHandle'
-getNumaHandlesMany
-  :: C.ScalingType
-  -> [Maybe String] -- ^A list of thermal zones for our numa handles
-  -> IO NumaMHandle
-getNumaHandlesMany = fmap NUHM .: C.getNumaHandles
-
--- |'getNumaHandles'' for 'NumaMHandle'
-getNumaHandlesMany' :: C.ScalingType -> IO NumaMHandle
-getNumaHandlesMany' = fmap NUHM . C.getNumaHandles'
-
-getNumaNodeM :: C.NumaHandle -> IO [MonkyOut]
-getNumaNodeM nh = do
-  percs <- C.getNumaPercent nh
-  return $ map printBar [maximum percs, sum percs `div` length percs]
-
-getNumaTextM :: C.Numa -> IO [MonkyOut]
-getNumaTextM (C.Numa xs) = do
-  let ch = C.numaHandle . head $ xs
-  nodes <- mapM getNumaNodeM xs
-  ct <- C.getCPUTemp ch
-  cf <- C.getCPUMaxScalingFreq ch
-  return ([printXbm, printFrequency cf] ++ intercalate [(MonkyPlain " - ")] nodes ++ [printThemp ct])
-
-getCPUTextM :: C.CPUHandle -> IO [MonkyOut]
-getCPUTextM ch = do
-  cp <- C.getCPUPercent ch
-  let bs = [maximum cp, sum cp `div` length cp]
-  ct <- C.getCPUTemp ch
-  cf <- C.getCPUMaxScalingFreq ch
-  return ([printXbm, printFrequency cf] ++ map printBar bs ++ [printThemp ct])
-
-instance PollModule CPUMHandle where
-  getOutput (CPHM h) = getCPUTextM h
-
-instance PollModule NumaMHandle where
-  getOutput (NUHM h) = getNumaTextM h
-
-
-{- NOTemp -}
--- |A version of 'CPUHandle' that does not display the themperature, for instances when it's not exportet (VM)
-newtype CPUNHandle = CPHN C.CPUHandle
--- |Numa aware version of 'CPUNHandle'
-newtype NumaNHandle = NUHN C.Numa
-
-
--- |'getCPUHandle' for 'CPUNHandle'
-getCPUHandleNoT :: C.ScalingType -> IO CPUNHandle
-getCPUHandleNoT = fmap CPHN . flip C.getCPUHandle Nothing
-
--- |Get the Numa aware version of 'getCPUHandleNoT'
-getNumaHandlesNoT
-  :: C.ScalingType -> IO NumaNHandle
-getNumaHandlesNoT = fmap NUHN . flip C.getNumaHandles [Nothing]
-
-getNumaTextN :: C.Numa -> IO [MonkyOut]
-getNumaTextN (C.Numa xs) = do
-  let ch = C.numaHandle . head $ xs
-  nodes <- mapM getNumaNode xs
-  cf <- C.getCPUMaxScalingFreq ch
-  return ([printXbm, printFrequency cf] ++ intercalate [(MonkyPlain " - ")] nodes)
-
-getCPUTextN :: C.CPUHandle -> IO [MonkyOut]
-getCPUTextN ch = do
-  cp <- C.getCPUPercent ch
-  let bs = [maximum cp, sum cp `div` length cp]
-  cf <- C.getCPUMaxScalingFreq ch
-  return ([printXbm, printFrequency cf] ++ map printBar bs)
-
-instance PollModule CPUNHandle where
-  getOutput (CPHN h) = getCPUTextN h
-
-instance PollModule NumaNHandle where
-  getOutput (NUHN h) = getNumaTextN h
-
+  getOutput (NUH xs) =
+    (printXbm:) . intercalate [(MonkyPlain (" - "))] <$> mapM formatNumaNode xs

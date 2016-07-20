@@ -1,5 +1,13 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.Outputs.Fallback
+Description : Output module for doing a "best guess"
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+-}
 module Monky.Outputs.Fallback
   ( WrapOuts
   , getFallbackOut
@@ -18,6 +26,7 @@ import Monky.Outputs.Utf8
 import Control.Applicative ((<$>))
 #endif
 
+-- |The datatype for wrapping outher outputs
 data WrapOuts = forall a . MonkyOutput a => WO a
 
 instance MonkyOutput WrapOuts where
@@ -27,10 +36,18 @@ chooseTerminalOut :: IO WrapOuts
 chooseTerminalOut = do
   l <- getLocaleEncoding
   if textEncodingName l == "UTF-8"
-    then return . WO $ getUtf8Out
-    else return . WO $ getAsciiOut
+    then WO <$> getUtf8Out
+    else WO <$> getAsciiOut
 
-getFallbackOut :: MonkyOutput a => IO a -> IO WrapOuts
+
+{- | Wrapper for normal outputs that tries to find the best output
+
+This function will check if stdout is a terminal and switch to AsciiOut or UTf8Out depending on the locale
+-}
+getFallbackOut
+  :: MonkyOutput a
+  => IO a -- ^The output to use for non-terminal mode
+  -> IO WrapOuts
 getFallbackOut o = do
   e <- hIsTerminalDevice stdout
   if e

@@ -77,8 +77,9 @@ mainLoop t o xs = do
   mainLoop (t+1) o xs
 
 -- |Start the mainLoop of monky. This should be the return type of your main
-startLoop :: MonkyOutput o => o -> [IO Modules] -> IO ()
+startLoop :: MonkyOutput o => IO o -> [IO Modules] -> IO ()
 startLoop o mods = do
   m <- sequence mods
   l <- mapM packMod m
-  mainLoop 0 o l
+  out <- o
+  mainLoop 0 out l
