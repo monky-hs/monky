@@ -59,10 +59,10 @@ cpuColor p
 
 printBar :: Int -> MonkyOut
 printBar h =
-  MonkyColor ("#222222", cpuColor h) (MonkyBar h)
+  MonkyColor (cpuColor h, "#222222") (MonkyBar h)
 
 printXbm :: MonkyOut
-printXbm = MonkyImage "cpu.xbm"
+printXbm = MonkyImage "cpu"
 
 printFrequency :: Float -> MonkyOut
 printFrequency = MonkyPlain . sformat (fixed 1 % "G")

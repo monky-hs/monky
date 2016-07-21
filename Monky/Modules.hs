@@ -42,7 +42,6 @@ where
 import Data.IORef (IORef)
 import Data.Text (Text)
 
-
 -- |An data type to encode general output types
 data MonkyOut
   = MonkyPlain Text -- ^Plaintext output

@@ -30,7 +30,7 @@ doOut _ (MonkyPlain t) = T.putStr t
 doOut (DzenOutput _ p) (MonkyImage path) = do
   T.putStr ("^i(" `T.append` p)
   T.putStr path
-  T.putStr ") "
+  T.putStr ".xbm) "
 doOut (DzenOutput h _) (MonkyBar p) = do
   T.putStr "^p(3)^p(_TOP)^r(6x"
   putStr . show $ h - div (h * p) 100
@@ -39,6 +39,11 @@ doOut (DzenOutput h _) (MonkyHBar p) = do
   T.putStr "^r("
   putStr . show $ p
   T.putStr ("x" `T.append` (T.pack . show $ h `div` 2) `T.append` ")")
+-- Reverse colours for HBar to support the way we draw them
+doOut h (MonkyColor (f, b) (MonkyHBar p)) = do
+  T.putStr ("^bg(" `T.append` f `T.append` ")^fg(" `T.append` b `T.append` ")")
+  doOut h (MonkyHBar p)
+  T.putStr "^bg()^fg()"
 doOut h (MonkyColor (f, b) o) = do
   T.putStr ("^bg(" `T.append` b `T.append` ")^fg(" `T.append` f `T.append` ")")
   doOut h o

@@ -33,11 +33,11 @@ batteryColor _ p
   | otherwise = ""
 
 batterySymbol :: BatteryState -> Int -> Text
-batterySymbol BatLoading _ = "ac_01.xbm"
+batterySymbol BatLoading _ = "ac_01"
 batterySymbol _ p
-  | p < 50 = "bat_low_01.xbm"
-  | p < 20 = "bat_empty_01.xbm"
-  | otherwise = "bat_full_01.xbm"
+  | p < 50 = "bat_low_01"
+  | p < 20 = "bat_empty_01"
+  | otherwise = "bat_full_01"
 
 instance PollModule BatteryH where
   getOutput (BH bh) = do

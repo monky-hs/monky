@@ -34,7 +34,7 @@ instance PollModule MHandle where
   getOutput (MH h) = do
     mp <- getMemoryAvailable h
     return
-      [ MonkyImage "mem.xbm"
+      [ MonkyImage "mem"
       , MonkyPlain $ convertUnitB (mp * 1024) "B"
       ]
 
@@ -66,7 +66,7 @@ newBar f (u, us) =
 getNMemoryOut :: MemoryHandle -> Float -> IO [MonkyOut]
 getNMemoryOut h f = do
   percents <- getUsagePercents h
-  return $ MonkyImage "mem.xbm":newBar f percents
+  return $ MonkyImage "mem":newBar f percents
 
 instance PollModule MBHandle where
   getOutput (MBH f h) = getNMemoryOut h f

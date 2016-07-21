@@ -35,6 +35,6 @@ instance PollModule DiskH where
     (dr, dw) <- getDiskReadWrite dh
     df <- getDiskFree dh
     return
-      [ MonkyImage "diskette.xbm"
+      [ MonkyImage "diskette"
       , MonkyPlain $ sformat (stext % " " % stext % " " % stext) (convertUnitSI df "B") (convertUnitSI dr "B" ) (convertUnitSI dw "B")
       ]
