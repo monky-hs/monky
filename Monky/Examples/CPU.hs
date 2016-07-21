@@ -52,17 +52,17 @@ import Control.Applicative ((<$>))
 {- CPU Module -}
 cpuColor :: Int -> Text
 cpuColor p
-  | p < 15 = "#009900"
-  | p < 50 = "#ffff66"
-  | p < 90 = "#ff6600"
+  | p < 15 = "#00d700"
+  | p < 50 = "#ffff5f"
+  | p < 90 = "#ffd700"
   | otherwise = "#ff0000"
 
 printBar :: Int -> MonkyOut
 printBar h =
-  MonkyColor (cpuColor h, "#222222") (MonkyBar h)
+  MonkyColor (cpuColor h, "#262626") (MonkyBar h)
 
 printXbm :: MonkyOut
-printXbm = MonkyImage "cpu" '🖩'
+printXbm = MonkyImage "cpu" ' '--'🖩' Disabled because of compile errors
 
 printFrequency :: Float -> MonkyOut
 printFrequency = MonkyPlain . sformat (fixed 1 % "G")

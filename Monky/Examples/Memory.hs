@@ -60,7 +60,7 @@ newBar f (u, us) =
       fill   = round (100 / f) - used - cached in
     [ MonkyHBar used
     , MonkyColor ("#444444", "") (MonkyHBar cached)
-    , MonkyColor ("#222222", "") (MonkyHBar fill)
+    , MonkyColor ("#262626", "") (MonkyHBar fill)
     ]
 
 getNMemoryOut :: MemoryHandle -> Float -> IO [MonkyOut]

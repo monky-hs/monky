@@ -40,9 +40,9 @@ doOut (DzenOutput h _) (MonkyHBar p) = do
   putStr . show $ p
   T.putStr ("x" `T.append` (T.pack . show $ h `div` 2) `T.append` ")")
 -- Reverse colours for HBar to support the way we draw them
-doOut h (MonkyColor (f, b) (MonkyHBar p)) = do
+doOut h (MonkyColor (f, b) (MonkyBar p)) = do
   T.putStr ("^bg(" `T.append` f `T.append` ")^fg(" `T.append` b `T.append` ")")
-  doOut h (MonkyHBar p)
+  doOut h (MonkyBar p)
   T.putStr "^bg()^fg()"
 doOut h (MonkyColor (f, b) o) = do
   T.putStr ("^bg(" `T.append` b `T.append` ")^fg(" `T.append` f `T.append` ")")

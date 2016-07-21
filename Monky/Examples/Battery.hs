@@ -24,11 +24,11 @@ import qualified Monky.Battery as B (getBatteryHandle, getBatteryHandle')
 
 {- Battery Module -}
 batteryColor :: BatteryState -> Int -> Text
-batteryColor BatLoading _ = "#009900"
+batteryColor BatLoading _ = "#5fff5f"
 batteryColor _ p
-  | p < 20 = "#ffaf00"
-  | p < 15 = "#ff8700"
-  | p < 10 = "#ff5f00"
+  | p < 20 = "#ffff00"
+  | p < 15 = "#ffd700"
+  | p < 10 = "#ffaf00"
   | p <  5 = "#ff0000"
   | otherwise = ""
 
