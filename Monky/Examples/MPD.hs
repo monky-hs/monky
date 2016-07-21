@@ -85,16 +85,15 @@ instance PollModule MPDHandle where
 
 
 instance EvtModule MPDHandle where
-  startEvtLoop h@(MPDHandle _ _ s) ref = do
+  startEvtLoop h@(MPDHandle _ _ s) fun = do
     initialize h
-    c <- getOutput h
-    atomicWriteIORef ref c
+    fun =<< getOutput h
     r <- readIORef s
     case r of
       Nothing -> hPutStrLn stderr "Could not initialize MPDHandle :("
       (Just x) -> do
         [fd] <- getFd x
-        loopFd x fd ref (fmap (\y -> [MonkyPlain y]) . getEvent)
+        loopFd x fd fun (fmap (\y -> [MonkyPlain y]) . getEvent)
 
 
 -- |Get an 'MPDHandle' (server has to be running when this is executed)

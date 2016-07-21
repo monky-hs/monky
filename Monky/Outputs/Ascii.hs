@@ -23,17 +23,11 @@ import qualified Data.Text.IO as T
 -- |The output handle for dzen2 pipe
 data AsciiOutput = AsciiOutput
 
-barChar :: Int -> Char
-barChar i
-  | i > 80 = '|'
-  | i < 20 = '.'
-  | otherwise = '+'
-
 doOut :: MonkyOut -> IO ()
 doOut (MonkyPlain t)   = T.putStr t
-doOut (MonkyImage _ _)   = return () -- Images are not supported :(
-doOut (MonkyBar p)     = putChar (barChar p)
-doOut (MonkyHBar p)    = putStr $ replicate (p `div` 10) '-'
+doOut (MonkyImage _ _) = return () -- Images are not supported :(
+doOut (MonkyBar p)     = putStr (show p) >> putChar '%'
+doOut (MonkyHBar p)    = putStr $ show p
 doOut (MonkyColor _ o) = doOut o
 
 doSegment :: [MonkyOut] -> IO ()

@@ -39,7 +39,6 @@ module Monky.Modules
   )
 where
 
-import Data.IORef (IORef)
 import Data.Text (Text)
 
 -- |An data type to encode general output types
@@ -74,8 +73,11 @@ class PollModule a where
 
 -- |The class for eventing modules
 class EvtModule a where
-  -- |Start your own event loop. Changes should be propagated by updating the IORef. Use 'atomicWriteIORef'.
-  startEvtLoop :: a -> IORef [MonkyOut] -> IO ()
+  {- |Start your own event loop. The second argument is the consumer of your output.
+   
+   Doing this in an opaque way gives a way to chain actions to your event handling
+   -}
+  startEvtLoop :: a -> ([MonkyOut] -> IO ()) -> IO ()
 
 -- |A wrapper around module instances so they can be put into a list.
 data PollModules = forall a . PollModule a => NMW a Int

@@ -52,10 +52,10 @@ instance PollModule IBusH where
 
 instance EvtModule IBusH where
   startEvtLoop ih@(IBusH h m) r = do
-    atomicWriteIORef r =<< getOutput ih
+    r =<< getOutput ih
     void $ subscribeToEngine h $ \xs -> do
       let engine = head xs
-      atomicWriteIORef r [remapEngine m engine]
+      r [remapEngine m engine]
 
 -- |Get an IBusH used by this module
 getIBusH

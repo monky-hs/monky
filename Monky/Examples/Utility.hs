@@ -31,13 +31,13 @@ import Monky.Modules
 loopFd
   :: h -- ^Some kind of module handle
   -> Fd -- ^The FD to block on
-  -> IORef [MonkyOut] -- ^The IORef passed to startEvtLoop
+  -> ([MonkyOut] -> IO ()) -- ^The update consume function
   -> (h -> IO [MonkyOut]) -- ^The function to generate the output
   -> IO () -- ^This will loop for you
 loopFd h fd r f = do
   threadWaitRead fd
   out <- f h
-  unless (null out) (atomicWriteIORef r out)
+  unless (null out) (r out)
   loopFd h fd r f
 
 

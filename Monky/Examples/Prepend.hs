@@ -29,10 +29,17 @@ use with: packPrepend <Prep> instead of normal pack
 -}
 
 module Monky.Examples.Prepend
-  ( PrepHandle
+  ( PrepHandle(..)
+  , PostHandle(..)
+
   , packPrepend
-  , PostHandle
   , packAppend
+
+  , EvtPrepHandle(..)
+  , EvtPostHandle(..)
+
+  , evtPackPrep
+  , evtPackPost
   )
 where
 
@@ -86,3 +93,28 @@ packAppend :: PollModule a
            -> IO a -- ^The function to get the module
            -> IO Modules -- ^The returned handle
 packAppend x i m = pollPack i (Post x <$> m)
+
+
+data EvtPrepHandle = forall m . EvtModule m => EvtPrep [MonkyOut] m
+data EvtPostHandle = forall m . EvtModule m => EvtPost [MonkyOut] m
+
+instance EvtModule EvtPrepHandle where
+  startEvtLoop (EvtPrep x m) a =
+    startEvtLoop m (\xs -> a (x ++ xs))
+
+instance EvtModule EvtPostHandle where
+  startEvtLoop (EvtPost x m) a =
+    startEvtLoop m (\xs -> a (xs ++ x))
+
+evtPackPrep :: EvtModule a
+            => [MonkyOut]
+            -> IO a
+            -> IO Modules
+evtPackPrep x m = evtPack $ EvtPrep x <$> m
+
+evtPackPost :: EvtModule a
+            => [MonkyOut]
+            -> IO a
+            -> IO Modules
+evtPackPost x m = evtPack $ EvtPost x <$> m
+

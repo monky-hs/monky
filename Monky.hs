@@ -39,7 +39,7 @@ where
 
 
 import Control.Concurrent (threadDelay)
-import Data.IORef (IORef, readIORef, writeIORef, newIORef)
+import Data.IORef (IORef, readIORef, writeIORef, newIORef, atomicWriteIORef)
 import Monky.Modules
 import Control.Monad (when)
 import Control.Concurrent (forkIO)
@@ -55,7 +55,7 @@ packMod x@(Poll (NMW m _)) = do
   return (MWrapper x sref)
 packMod x@(Evt (DW m)) = do
   sref <- newIORef []
-  _ <- forkIO (startEvtLoop m sref)
+  _ <- forkIO (startEvtLoop m (atomicWriteIORef sref))
   return $ MWrapper x sref
 
 getWrapperText :: Int -> ModuleWrapper -> IO [MonkyOut]

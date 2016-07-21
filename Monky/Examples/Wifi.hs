@@ -17,7 +17,6 @@ where
 import Formatting
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.IORef
 import Data.Maybe (fromMaybe)
 
 import Monky.Modules
@@ -75,7 +74,7 @@ getEventOutput (WH s i f d) = do
 
 instance EvtModule WifiHandle where
   startEvtLoop h@(WH s _ _ _) r = do
-    atomicWriteIORef r =<< getOutput h
+    r =<< getOutput h
     loopFd h (getWifiFd s) r getEventOutput
 
 instance PollModule WifiHandle where

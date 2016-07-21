@@ -13,8 +13,6 @@ module Monky.Examples.Alsa
   )
 where
 
-import Data.IORef (atomicWriteIORef)
-
 import Monky.Alsa hiding (getVOLHandle)
 import qualified Monky.Alsa as A (getVOLHandle)
 import Monky.Modules
@@ -44,8 +42,7 @@ instance PollModule AlsaH where
 instance EvtModule AlsaH where
   startEvtLoop (AH h) r = do
     [fd] <- getPollFDs h
-    s <- getOutput (AH h)
-    atomicWriteIORef r s
+    r =<< getOutput (AH h)
     loopFd h fd r getVOLOutput
 
 -- |The handle type for this module
