@@ -39,21 +39,20 @@ This executable compiles the configuration if needed, and execs into the main
 executable.
 -}
 module Main
-(main)
+  ( main
+  )
 where
 
-import Control.Monad (when)
-import Data.List (isSuffixOf)
-import Data.Map (Map)
 import Monky.Version (getVersion)
-import System.Directory (getDirectoryContents, createDirectoryIfMissing, setCurrentDirectory, getModificationTime, getHomeDirectory, removeFile)
-import System.Environment (getArgs)
+import Control.Monad (when, unless)
+import Data.List (isSuffixOf, nub, sort)
+import System.Directory
 import System.Exit (ExitCode(..), exitFailure)
-import System.IO (withFile, IOMode(..), hPutStr, hGetLine)
+import System.IO (withFile, IOMode(..), hPutStr, hPutStrLn, stderr)
 import System.Posix.Process (executeFile)
 import System.Process (system)
 
-import qualified Data.Map as M
+import Options.Applicative
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -62,153 +61,134 @@ import Control.Applicative ((<$>))
 
 data Action
   = Create
+  | ForceCompile
   | Recompile
-  | CheckRecompile
   | Execute
-  | PrintUsage
   deriving (Ord, Show, Eq)
 
+getActions :: Config -> [Action]
+getActions c =
+  (if confCompile c then [ForceCompile] else []) ++
+  (if confGenerate c then [Create] else []) ++
+  [Recompile, Execute]
 
-exeName :: String
-exeName = "monky.exe"
+data Config = Config
+  { monkyDir :: String
+  , exeName :: String
 
+  , confCompile :: Bool
+  , confNoCompile :: Bool
 
-monkyPath :: IO String
-monkyPath = flip (++) "/.monky" <$> getHomeDirectory
+  , confNoExec :: Bool
+
+  , confGenerate :: Bool
+  , confNoGenerate :: Bool
+  } deriving (Show)
+
+-- Takes the current $HOME and a config dir, replaces '~' at beginning of paths
+updatePath :: Config -> String -> Config
+updatePath c home = c { monkyDir = monkyDir' }
+  where monkyDir' = case monkyDir c of
+                     ('~':xs) -> home ++ xs
+                     (xs) -> xs
+
+getConfigP :: Parser Config
+getConfigP = Config <$>
+   strOption (long "monky-dir" <> help "The directory monky resides in. Defaults to ~/.monky" <> short 'd' <> value "~/.monky") <*>
+   strOption (long "monky-exe" <> help "The name of the executable to be created/used." <> short 'e' <> value "monky.exe") <*>
+   switch (long "compile" <> help "Force compilation, even if helper thinks it's not needed" <> short 'c') <*>
+   switch (long "no-compile" <> help "Do not try to compile the executable" <> short 'n') <*>
+   switch (long "no-exec" <> help "Do not execute the compiled executable") <*>
+   switch (long "generate-example" <> help "Force example generation. This will overwrite existing config!") <*>
+   switch (long "no-generate-example" <> help "Don't generate the example, even if required")
+
+monkyDesc :: String
+monkyDesc = concat
+  [ "Monky version: " ++ show getVersion ++ "."
+  , "Monky helper to compile and/or execute the real monky binary"
+  , "This executable will call ghc to (re)compile the main monky.exe"
+  , "Then it will exec monky.exe which in turn will generate the output"
+  , "This file is a simple helper/wrapper. You can execute monky.exe without."
+  ]
+
+getConfig :: IO Config
+getConfig = do
+  conf <- execParser opts
+  updatePath conf <$> getHomeDirectory
+  where opts = info (helper <*> getConfigP)
+                    (fullDesc <>
+                      header monkyDesc)
 
 
 compilerFlags :: String
 compilerFlags = "--make -XOverloadedStrings -odir build -hidir build -O -with-rtsopts=-V0"
 
 
-changeDir :: IO ()
-changeDir = do
-  mdir <- monkyPath
-  createDirectoryIfMissing False mdir
-  setCurrentDirectory mdir
+changeDir :: Config -> IO ()
+changeDir c = do
+  createDirectoryIfMissing False $ monkyDir c
+  setCurrentDirectory $ monkyDir c
 
 
 exampleFile :: String
-exampleFile =
- "import Monky\n" ++
- "import Monky.Modules\n" ++
- "import Monky.CPU\n" ++
- "import Monky.Memory\n" ++
- "\n" ++
- "import Monky.Examples.CPU\n" ++
- "import Monky.Examples.Memory\n" ++
- "\n" ++
- "main :: IO()\n" ++
- "main = startLoop [pack 5 $getCPUHandle ScalingCur, pack 5 getMemoryHandle]"
+exampleFile = unlines
+ [ "import Monky"
+ , "import Monky.Modules\n"
+ , "import Monky.Examples.CPU"
+ , "import Monky.Examples.Memory\n"
+ , "import Monky.Outputs.Ascii\n"
+ , "main :: IO ()"
+ , "main = startLoop getAsciiOut [pollPack 1 $getRawCPU, pollPack 1 getMemoryHandle]"
+ ]
+
+createExample :: Config -> IO ()
+createExample c =
+  unless (confNoGenerate c)$ withFile "monky.hs" WriteMode (`hPutStr` exampleFile)
 
 
-createExample :: IO ()
-createExample = withFile "monky.hs" WriteMode (`hPutStr` exampleFile)
-
-
-createExampleIfMissing :: IO ()
-createExampleIfMissing = do
+shouldCreate :: IO Bool
+shouldCreate = do
   files <- getDirectoryContents "."
-  when ("monky.hs" `notElem` files) createExample
+  return $ "monky.hs" `notElem` files
 
 
-createVersionFile :: ExitCode -> IO ()
-createVersionFile (ExitFailure _) = putStrLn "Compiliation failed" >> exitFailure
-createVersionFile ExitSuccess = withFile ".version" WriteMode (\file ->
-   hPutStr file (show getVersion))
+compile :: Config -> IO ()
+compile c = unless (confNoCompile c) $ do
+  exists <- doesFileExist "monky.hs"
+  when exists $ do
+    ret <- system ("ghc " ++ compilerFlags ++ " monky.hs -o " ++ exeName c)
+    case ret of
+      (ExitFailure _) -> do
+        hPutStrLn stderr "Compilation failed"
+        exitFailure
+      ExitSuccess -> return ()
 
 
-compile :: IO ()
-compile = system ("ghc " ++ compilerFlags ++ " monky.hs -o " ++ exeName) >>= createVersionFile
-
-
-hasMonkyUpdated :: [FilePath] -> IO Bool
-hasMonkyUpdated files =
-  if ".version" `elem` files
-    then withFile ".version" ReadMode (\file -> do
-      l <- hGetLine file
-      let (oldH, oldh, oldm, _) = read l :: (Int, Int, Int, Int)
-      let (newH, newh, newm, _) = getVersion
-      return (oldH < newH || oldh < newh || oldm < newm))
-    else return True
-
-
-needsRecompilation :: IO Bool
-needsRecompilation = do
-  files <- getDirectoryContents "."
-  if "monky" `elem` files
-    then if "monky.hs" `elem` files
-      then do
-        modT <- getModificationTime "monky"
-        times <- sequence $map getModificationTime $filter (isSuffixOf ".hs") files
-        monkyUpdated <- hasMonkyUpdated files
-        return (maximum times > modT || monkyUpdated)
-      else return False
-    else do
-      when ("monky.hs" `notElem` files) createExample
-      return True
-
-
-compileIfUpdated :: IO ()
-compileIfUpdated = needsRecompilation >>= flip when compile
-
-
-forceRecomp :: IO ()
-forceRecomp = do
+forceRecomp :: Config -> IO ()
+forceRecomp c = unless (confNoCompile c) $ do
   files <- getDirectoryContents "."
   mapM_ removeFile (filter isCompiled files)
-  when ("monky" `elem` files) (removeFile "monky")
-  compile
+  when (exeName c `elem` files) (removeFile (exeName c))
+  when ("build" `elem` files) (removeDirectoryRecursive "build")
   where isCompiled s = isSuffixOf ".hi" s || isSuffixOf ".o" s
 
 
-parseArgs :: [String] -> Map Action Bool -> Map Action Bool
-parseArgs ("--recompile":xs) m =
-  parseArgs xs $ M.insert CheckRecompile False $M.insert Recompile True m
-parseArgs ("-r":xs) m = parseArgs ("--recompile":xs) m
-parseArgs ("--no-recompile":xs) m =
-  parseArgs xs $ M.insert CheckRecompile False m
-parseArgs ("-n":xs) m = parseArgs ("--no-recompile":xs) m
-parseArgs ("--no-exec":xs) m = parseArgs xs $ M.insert Execute False m
-parseArgs [] m = m
-parseArgs _ _ = M.insert PrintUsage True M.empty
+executeMonky :: Config -> IO ()
+executeMonky c = unless (confNoExec c) $ executeFile ("./" ++ exeName c) False [] Nothing
 
 
-defaultActions :: Map Action Bool
-defaultActions = M.fromList [(Create, True), (CheckRecompile, True), (Execute, True)]
-
-
-getActionList :: [(Action, Bool)] -> [IO ()]
-getActionList [] = []
-getActionList ((_, False):xs) = getActionList xs
-getActionList ((Recompile, True):xs) = forceRecomp:getActionList xs
-getActionList ((CheckRecompile, True):xs) = compileIfUpdated:getActionList xs
-getActionList ((Execute, True):xs) = executeMonky : getActionList xs
-getActionList ((Create, True):xs) = createExampleIfMissing : getActionList xs
-getActionList ((PrintUsage, True):xs) = printUsage : getActionList xs
-
-
-getActions :: IO [IO ()]
-getActions = do
-  args <- getArgs
-  let m = parseArgs args defaultActions
-  return $getActionList $M.toAscList m
-
-
-printUsage :: IO ()
-printUsage = do
-  putStrLn "Default: Create example if needed, compile if needed and run monky\n"
-  putStrLn "--recompile/-r:     Force recompilation"
-  putStrLn "--no-recompile/-n:  Don't recompile"
-  putStrLn "--no-exec:          Don't execute main executable"
-
-
-executeMonky :: IO ()
-executeMonky = executeFile ("./" ++ exeName) False [] Nothing
+execAction :: Action -> (Config -> IO ())
+execAction Create = createExample
+execAction ForceCompile = forceRecomp
+execAction Recompile = compile
+execAction Execute = executeMonky
 
 
 main :: IO ()
 main = do
-  changeDir
-  acts <- getActions
-  sequence_ acts
+  conf <- getConfig
+  changeDir conf
+  should <- shouldCreate
+  let actions = getActions conf
+  let acts = map execAction . nub . sort $ if should then Create:actions else actions
+  mapM_ ($conf) acts
