@@ -36,7 +36,7 @@ instance PollModule THandle where
   getOutput (TH h) = do
     ts <- getTime h
     return
-      [ MonkyImage "clock"
+      [ MonkyImage "clock" '🕐'
       , MonkyPlain $ T.pack ts
       ]
 
@@ -60,7 +60,7 @@ instance PollModule FTHandle where
     t <- getHM h
     let (th, tm) = timeToXBM t
     return
-      [ MonkyImage $ sformat (int % "-" % int) th tm
+      [ MonkyImage (sformat (int % "-" % int) th tm) '🕐'
       , MonkyPlain . T.pack $ ts
       ]
 

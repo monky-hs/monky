@@ -27,7 +27,7 @@ data DzenOutput = DzenOutput Int Text
 
 doOut :: DzenOutput -> MonkyOut -> IO ()
 doOut _ (MonkyPlain t) = T.putStr t
-doOut (DzenOutput _ p) (MonkyImage path) = do
+doOut (DzenOutput _ p) (MonkyImage path _) = do
   T.putStr ("^i(" `T.append` p)
   T.putStr path
   T.putStr ".xbm) "

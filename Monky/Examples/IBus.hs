@@ -23,7 +23,6 @@ module Monky.Examples.IBus
   )
 where
 
-import Data.Text (Text)
 import qualified Data.Text as T
 import Data.IORef
 
@@ -42,30 +41,30 @@ import IBus
 import IBus.EngineDesc
 
 -- |The handle type for this module
-data IBusH = IBusH IBusClient [(String, Text)]
+data IBusH = IBusH IBusClient [(String, MonkyOut)]
 
 instance PollModule IBusH where
   getOutput (IBusH h m) = do
     engine <- try $ engineName <$> getIBusEngine h
     case engine of
       (Left e) -> return [MonkyPlain . T.pack $ clientErrorMessage e]
-      (Right x) -> return [MonkyImage $ remapEngine m x]
+      (Right x) -> return [remapEngine m x]
 
 instance EvtModule IBusH where
   startEvtLoop ih@(IBusH h m) r = do
     atomicWriteIORef r =<< getOutput ih
     void $ subscribeToEngine h $ \xs -> do
       let engine = head xs
-      atomicWriteIORef r [MonkyImage $ remapEngine m engine]
+      atomicWriteIORef r [remapEngine m engine]
 
 -- |Get an IBusH used by this module
 getIBusH
-  :: [(String, Text)] -- ^A mapping from engine names to display names for those engines
+  :: [(String, MonkyOut)] -- ^A mapping from engine names to display names for those engines
   -> IO IBusH -- ^The handle that can be given to 'pack'
 getIBusH m = fmap (`IBusH` m) iBusConnect
 
-remapEngine :: [(String, Text)] -> String -> Text
-remapEngine [] x = T.pack x
+remapEngine :: [(String, MonkyOut)] -> String -> MonkyOut
+remapEngine [] x = MonkyPlain $ T.pack x
 remapEngine ((l,r):xs) x = if l == x
   then r
   else remapEngine xs x

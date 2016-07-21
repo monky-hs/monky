@@ -49,7 +49,7 @@ data MonkyOut
   | MonkyHBar Int -- ^A horizontal bar, in pixel
   -- Temporary (FG,BG)
   | MonkyColor (Text, Text) MonkyOut -- ^Colorize the enclosed output TODO: Color format 
-  | MonkyImage Text -- ^Path to an image to display (for icons)
+  | MonkyImage Text Char -- ^Path to an image to display (for icons), or Unicode glyph that should be used
 
 -- |Class that output converters have to implement
 class MonkyOutput a where

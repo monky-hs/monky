@@ -62,7 +62,7 @@ printBar h =
   MonkyColor (cpuColor h, "#222222") (MonkyBar h)
 
 printXbm :: MonkyOut
-printXbm = MonkyImage "cpu"
+printXbm = MonkyImage "cpu" '🖩'
 
 printFrequency :: Float -> MonkyOut
 printFrequency = MonkyPlain . sformat (fixed 1 % "G")

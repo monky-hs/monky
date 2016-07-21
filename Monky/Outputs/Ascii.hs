@@ -31,7 +31,7 @@ barChar i
 
 doOut :: MonkyOut -> IO ()
 doOut (MonkyPlain t)   = T.putStr t
-doOut (MonkyImage _)   = return () -- Images are not supported :(
+doOut (MonkyImage _ _)   = return () -- Images are not supported :(
 doOut (MonkyBar p)     = putChar (barChar p)
 doOut (MonkyHBar p)    = putStr $ replicate (p `div` 10) '-'
 doOut (MonkyColor _ o) = doOut o
