@@ -133,12 +133,18 @@ changeDir c = do
 exampleFile :: String
 exampleFile = unlines
  [ "import Monky"
- , "import Monky.Modules\n"
+ , "import Monky.Modules"
+ , ""
  , "import Monky.Examples.CPU"
- , "import Monky.Examples.Memory\n"
- , "import Monky.Outputs.Ascii\n"
+ , "import Monky.Examples.Memory"
+ , ""
+ , "import Monky.Outputs.Ascii"
+ , ""
  , "main :: IO ()"
- , "main = startLoop getAsciiOut [pollPack 1 $getRawCPU, pollPack 1 getMemoryHandle]"
+ , "main = startLoop getAsciiOut"
+ , "  [ pollPack 1 $ getRawCPU"
+ , "  , pollPack 1 getMemoryHandle"
+ , "  ]"
  ]
 
 createExample :: Config -> IO ()
