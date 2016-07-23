@@ -12,63 +12,103 @@ Nearly equivalend example (image is missing):
 
 @
 pollPack 1 $ getCPUHandle' ScalingCur
-packCombi 1 $ getCombi (getFreqHandle ScalingCur) getRawCPU getTempHandle'
-pollPack 1 $ combine (getFreqHandle ScalingCur) `add` getRawCPU `add` getTempHandle'
+pollPack 1 $ (getFreqHandle ScalingCur) `combine` getRawCPU `combine` getTempHandle'
 @
 
-'combine' is the saner and better version, 'getCombi' mostly exists because I wanted to try making it.
-'combine' and 'add' can also be chained into pre/post packaging.
-
-It's important to use 'packCombi' with 'getCombi', instead of pollPack, since `getCombi`
-has an unusual type to support a variable number of arguments.
 -}
 module Monky.Examples.Combine
-  ( getCombi
-  , CombineHandle
-  , packCombi
-
+  ( CombiHandle
   , combine
-  , add
+
+  , EvtCombi
+  , combineE
+
+  , EPCombi
+  , combineF
+
+  , PECombi
+  , combineD
   )
 where
 
 import Monky.Modules
-import System.IO.Unsafe (unsafePerformIO)
+import Control.Concurrent (forkIO)
+import Control.Concurrent.MVar (MVar, withMVar, newMVar)
+import Data.IORef (IORef, readIORef, atomicWriteIORef, newIORef)
 
-data ComboMod = forall a . PollModule a => CM a
 
-class CombineType t where
-  spr :: [ComboMod] -> t
+data (PollModule a, PollModule b) => CombiHandle a b = C a b
 
-instance (PollModule t, CombineType r) => CombineType (IO t -> r) where
-  spr xs = \m -> spr (CM (unsafePerformIO m):xs)
+instance (PollModule a, PollModule b) => PollModule (CombiHandle a b) where
+  getOutput (C a b) = do
+    c <- getOutput a
+    d <- getOutput b
+    return (c ++ d)
+  initialize (C a b) = initialize a >> initialize b
 
-getCombiOut :: ComboMod -> IO [MonkyOut]
-getCombiOut (CM h) = getOutput h
+combine :: (PollModule a, PollModule b) => IO a -> IO b -> IO (CombiHandle a b)
+combine a b = do
+  c <- a
+  d <- b
+  return $ C c d
 
-combiInit :: ComboMod -> IO ()
-combiInit (CM m) = initialize m
+-- Module handle a, b. IORef for caching a, b. MVar to implement boolean, containing value doesn't matter
+data (EvtModule a, EvtModule b) => EvtCombi a b = EC a b (IORef [MonkyOut]) (IORef [MonkyOut]) (MVar Bool)
 
-newtype CombineHandle = CH [ComboMod]
+instance (EvtModule a, EvtModule b) => EvtModule (EvtCombi a b) where
+  startEvtLoop (EC a b r1 r2 m) act = do
+    _ <- forkIO $ startEvtLoop a (\out -> withMVar m $ \_ -> do
+      atomicWriteIORef r1 out
+      other <- readIORef r2
+      act (out ++ other))
+    startEvtLoop b (\out -> withMVar m $ \_ -> do
+      atomicWriteIORef r2 out
+      other <- readIORef r1
+      act (other ++ out))
 
-instance CombineType CombineHandle where
-  spr = CH . reverse
+combineE :: (EvtModule a, EvtModule b) => IO a -> IO b -> IO (EvtCombi a b)
+combineE a b = do
+  m1 <- a
+  m2 <- b
+  r1 <- newIORef []
+  r2 <- newIORef []
+  m <- newMVar True
+  return $ EC m1 m2 r1 r2 m
 
-instance PollModule CombineHandle where
-  getOutput (CH xs) = fmap concat $ mapM getCombiOut xs
-  initialize (CH xs) = mapM_ combiInit xs
+data (EvtModule a, PollModule b) => EPCombi a b = EP a b (IORef [MonkyOut])
 
-getCombi :: CombineType t => t
-getCombi = spr []
+instance (EvtModule a, PollModule b) => PollModule (EPCombi a b) where
+  initialize (EP a b r) = do
+    startEvtLoop a (atomicWriteIORef r)
+    initialize b
+  getOutput (EP _ b r) = do
+    o1 <- readIORef r
+    o2 <- getOutput b
+    return (o1 ++ o2)
 
-packCombi :: Int -> CombineHandle -> IO Modules
-packCombi i = pollPack i . return
+combineF :: (EvtModule a, PollModule b) => IO a -> IO b -> IO (EPCombi a b)
+combineF a b = do
+  m1 <- a
+  m2 <- b
+  r <- newIORef []
+  return $ EP m1 m2 r
 
-combine :: PollModule m => IO m -> IO CombineHandle
-combine = fmap (CH . return . CM)
 
-add :: PollModule m => IO CombineHandle -> IO m -> IO CombineHandle
-add cur iom = do
-  (CH xs) <- cur
-  m <- iom
-  return $ CH (xs ++ [CM m])
+data (PollModule a, EvtModule b) => PECombi a b = PE a b (IORef [MonkyOut])
+
+instance (PollModule a, EvtModule b) => PollModule (PECombi a b) where
+  initialize (PE a b r) = do
+    startEvtLoop b (atomicWriteIORef r)
+    initialize a
+  getOutput (PE a _ r) = do
+    o1 <- getOutput a
+    o2 <- readIORef r
+    return (o1 ++ o2)
+
+
+combineD :: (PollModule a, EvtModule b) => IO a -> IO b -> IO (PECombi a b)
+combineD a b = do
+  m1 <- a
+  m2 <- b
+  r <- newIORef []
+  return $ PE m1 m2 r

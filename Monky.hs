@@ -60,9 +60,7 @@ packMod x@(Evt (DW m)) = do
 
 getWrapperText :: Int -> ModuleWrapper -> IO [MonkyOut]
 getWrapperText tick (MWrapper (Poll (NMW m i)) r) = do
-  when (tick `mod` i == 0) $ do
-    o <- getOutput m
-    writeIORef r o
+  when (tick `mod` i == 0) (writeIORef r =<< getOutput m)
   readIORef r
 getWrapperText _ (MWrapper (Evt _) r) = readIORef r
 

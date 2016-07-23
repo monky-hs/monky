@@ -25,7 +25,12 @@ Maintainer: ongy
 Stability: testing
 Portability: linux
 
-use with: packPrepend <Prep> instead of normal pack
+The *Prepend/Append functions can be used instead of pollPack/evtPack.
+If you want to chain a prepended module into something else, use the raw Constructors.
+@
+packPrepend [MonkyPlain "CPU"] 1 $ getCPUHandle ScalingCur
+pack 1 $ Prep [MonkyPlain "CPU"] <$> getCPUHandle ScalingCur
+@
 -}
 
 module Monky.Examples.Prepend
@@ -38,8 +43,8 @@ module Monky.Examples.Prepend
   , EvtPrepHandle(..)
   , EvtPostHandle(..)
 
-  , evtPackPrep
-  , evtPackPost
+  , evtPrepend
+  , evtAppend
   )
 where
 
@@ -106,15 +111,15 @@ instance EvtModule EvtPostHandle where
   startEvtLoop (EvtPost x m) a =
     startEvtLoop m (\xs -> a (xs ++ x))
 
-evtPackPrep :: EvtModule a
-            => [MonkyOut]
-            -> IO a
-            -> IO Modules
-evtPackPrep x m = evtPack $ EvtPrep x <$> m
+evtPrepend :: EvtModule a
+           => [MonkyOut]
+           -> IO a
+           -> IO Modules
+evtPrepend x m = evtPack $ EvtPrep x <$> m
 
-evtPackPost :: EvtModule a
-            => [MonkyOut]
-            -> IO a
-            -> IO Modules
-evtPackPost x m = evtPack $ EvtPost x <$> m
+evtAppend :: EvtModule a
+          => [MonkyOut]
+          -> IO a
+          -> IO Modules
+evtAppend x m = evtPack $ EvtPost x <$> m
 
