@@ -1,0 +1,10 @@
+language: haskell
+
+ghc:
+#  - '7.10'
+  - 7.8
+  - 7.6
+
+#Explicitly install ibus-hs since we want to test optional stuff aswell
+#Overwrite the test script, since we don't have any tests
+script: cabal install -f ibus --dependencies-only && cabal configure -f ibus && cabal build

@@ -30,11 +30,12 @@ This may be renamed in the future when a general block-device module appears.
 module Monky.Disk.Btrfs
   ( BtrfsHandle
   , getBtrfsHandle
+  , getFSDevices
   )
 where
 
 import Monky.Utility
-import System.Directory (getDirectoryContents, doesDirectoryExist)
+import System.Directory (doesDirectoryExist)
 
 import Monky.Disk.Common
 
@@ -53,9 +54,6 @@ instance FsInfo BtrfsHandle where
   getFsUsed = getUsed
 
 
-blBasePath :: String
-blBasePath = "/sys/class/block/"
-
 fsBasePath :: String
 fsBasePath = "/sys/fs/btrfs/"
 
@@ -73,36 +71,24 @@ getUsed (BtrfsH _ d m s) = do
   dv <- readValue d
   mv <- readValue m
   sm <- readValue s
-  return $dv + mv + sm
+  return $ dv + mv + sm
 
-
--- Filter out the . and .. directory when listing files
-filterDirs :: [String] -> [String]
-filterDirs = filter (\f -> f /= "." && f /= "..")
-
-
-mapperToDev :: [String] -> IO [String]
-mapperToDev [] = return []
-mapperToDev (x:xs) = do
-  let path = blBasePath ++ x ++ "/slaves/"
-  tl <- mapperToDev xs
-  e <- doesDirectoryExist path
-  hd <- if e
-    then filterDirs <$> getDirectoryContents path
-    else return [x]
-  return (hd ++ tl)
-
-
-getBtrfsHandle' :: String -> IO (BtrfsHandle, [String])
-getBtrfsHandle' fs = do
+-- |Get the block devices used by a btrfs FileSystem. This resolves mappers as far as possible
+getFSDevices :: String -> IO [String]
+getFSDevices fs = do
   let devP = fsBasePath ++ fs ++ "/devices/"
-  devices <- mapperToDev =<< filterDirs <$> getDirectoryContents devP
-  sizes <- mapM (\dev -> fmap read $readFile (blBasePath ++ dev ++ "/size")) devices
+  concat <$> (mapM mapperToDev =<< listDirectory devP)
+
+
+getBtrfsHandle' :: String -> IO BtrfsHandle
+getBtrfsHandle' fs = do
+  devices <- getFSDevices fs
+  sizes <- mapM (\dev -> fmap read $ readFile (blBasePath ++ dev ++ "/size")) devices
   let size = sum sizes
   d <- fopen (fsBasePath ++ fs ++ "/allocation/data/bytes_used")
   m <- fopen (fsBasePath ++ fs ++ "/allocation/metadata/bytes_used")
   s <- fopen (fsBasePath ++ fs ++ "/allocation/system/bytes_used")
-  return (BtrfsH (size*sectorSize) d m s, devices)
+  return (BtrfsH (size*sectorSize) d m s)
 
 {-| Try to create a btfshanlde given the UUID
 
@@ -116,11 +102,14 @@ read/write rate for the file system.
 Due to compression and encryption the read/write rate on the block
 device may be quite different to the one that application see.
 -}
-getBtrfsHandle 
+getBtrfsHandle
   :: String -- ^The UUID of the file system to monitor
   -> IO (Maybe (BtrfsHandle, [String]))
 getBtrfsHandle fs = do
   e <- doesDirectoryExist (fsBasePath ++ fs)
   if e
-    then Just <$> getBtrfsHandle' fs
+    then do
+      h <- getBtrfsHandle' fs
+      devs <- getFSDevices fs
+      return $ Just (h, devs)
     else return Nothing

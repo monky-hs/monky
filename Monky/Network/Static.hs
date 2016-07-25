@@ -77,12 +77,21 @@ writePath = "/statistics/tx_bytes"
 statePath :: String
 statePath = "/operstate"
 
+-- Pure part of read/write rate calculation
+calculateRates :: Int -> Int -> Int -> Int -> POSIXTime -> POSIXTime -> (Int, Int)
+calculateRates oread nread owrite nwrite otime ntime =
+  let cread = oread - nread
+      cwrite = owrite - nwrite
+      ctime = otime - ntime in
+    ((cread * 8) `sdivBound` round ctime,
+     (cwrite * 8) `sdivBound` round ctime)
 
+-- IO Part of read/write rate calculation
 getReadWriteReal :: NetworkHandle -> IO (Int, Int)
 getReadWriteReal (NetH readf writef _ readref writeref timeref) = do
   nread <- readValue readf
   nwrite <- readValue writef
-  time <- getPOSIXTime
+  ntime <- getPOSIXTime
 
   oread <- readIORef readref
   owrite <- readIORef writeref
@@ -90,15 +99,11 @@ getReadWriteReal (NetH readf writef _ readref writeref timeref) = do
 
   writeIORef readref nread
   writeIORef writeref nwrite
-  writeIORef timeref time
+  writeIORef timeref ntime
 
-  let cread = oread - nread
-  let cwrite = owrite - nwrite
-  let ctime = otime - time
-  return ((cread * 8) `sdivBound` round ctime,
-    (cwrite * 8) `sdivBound` round ctime)
+  return $ calculateRates oread nread owrite nwrite otime ntime
 
-
+-- |Get the (read, write) rate of the network interface. This is averaged over the time between calls
 getReadWrite :: NetworkHandle -> IO (Maybe (Int, Int))
 getReadWrite h = do
   state <- getState h
@@ -107,8 +112,10 @@ getReadWrite h = do
     Unknown -> fmap Just . getReadWriteReal $ h
     _ -> return Nothing
 
-
-getNetworkHandle :: String -> IO NetworkHandle
+-- |Get a 'NetworkHandle'
+getNetworkHandle
+  :: String -- ^Name of the interface to monitor
+  -> IO NetworkHandle
 getNetworkHandle dev = do
   readf <- fopen $path ++ readPath
   writef <- fopen $path ++ writePath
@@ -118,7 +125,6 @@ getNetworkHandle dev = do
   timeref <- newIORef (0 :: POSIXTime)
   return $NetH readf writef statef readref writeref timeref
   where path = basePath ++ dev
-
 
 -- |Close a network handle after it is no longer needed (the device disappeared)
 closeNetworkHandle :: NetworkHandle -> IO ()

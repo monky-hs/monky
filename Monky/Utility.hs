@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2016 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -17,6 +17,7 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Utility
 Description : Provides utility functions
@@ -34,24 +35,31 @@ module Monky.Utility
  , File
  , readLine
  , readContent
- , convertUnit
- , convertUnitB
- , convertUnitSI
  , findLine
  , splitAtEvery
  , maybeOpenFile
  , sdivBound
  , sdivUBound
+ , listDirectory
  )
 where
 
 import System.IO
 import Data.List (isPrefixOf)
-import Text.Printf (printf)
 
 import Data.Maybe (fromMaybe)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
+
+#if MIN_VERSION_base(4,9,0)
+import System.Directory (listDirectory)
+#else
+import System.Directory (getDirectoryContents)
+
+listDirectory :: String -> IO [String]
+listDirectory = fmap (filter (not . ("." `isPrefixOf`))) . getDirectoryContents
+#endif
+
 
 class LineReadable a where
   hGetReadable :: Handle -> IO a
@@ -105,7 +113,6 @@ readLine (File h) = do
   hSeek h AbsoluteSeek 0
   hGetReadable h
 
-
 -- |Read a File as String line by line
 readStringLines :: Handle -> IO [String]
 readStringLines h = do
@@ -116,17 +123,15 @@ readStringLines h = do
       l <- hGetReadable h
       fmap (l:) $ readStringLines h
 
-
 -- |Read a File as ByteString line by line
 readBSLines :: Handle -> IO [ByteString]
 readBSLines h = fmap (BS.lines . BS.concat) $ readLines' []
   where
     readLines' ls = do
-      bytes <- BS.hGet h 512
-      if bytes == BS.empty
+      ret <- BS.hGet h 512
+      if ret == BS.empty
         then return $ reverse ls
-        else readLines' (bytes:ls)
-
+        else readLines' (ret:ls)
 
 -- |Rewind the file descriptor and read the complete file as lines
 readContent :: FileReadable a => File -> IO [a]
@@ -134,49 +139,11 @@ readContent (File h) = do
   hSeek h AbsoluteSeek 0
   hGetFile h
 
-
--- |Convert a number into a fixed length strings
-convertUnit :: Int -> String -> String -> String -> String -> String
-convertUnit = flip convertUnitI 1000 . fromIntegral
-
-
--- |Convert a number into a reasonable scale for binary units
-convertUnitB :: Integral a => a -> String -> String
-convertUnitB rate b = convertUnitI (fromIntegral rate) 1024 (' ':b) "ki" "Mi" "Gi"
-
-
--- |Convert a number into a reasonable scale for SI units
-convertUnitSI :: Integral a => a -> String -> String
-convertUnitSI rate b = convertUnitI (fromIntegral rate) 1000 b "k" "M" "G"
-
-
-convertUnitI :: Float -> Int -> String -> String -> String -> String -> String
-convertUnitI rate step bs ks ms gs
-  | rate < fromIntegral (kf       ) = printf "%4.0f%s" rate bs
-  | rate < fromIntegral (kf * 10  ) = printf "%4.2f%s" kv ks
-  | rate < fromIntegral (kf * 100 ) = printf "%4.1f%s" kv ks
-  | rate < fromIntegral (kf * 1000) = printf "%4.0f%s" kv ks
-  | rate < fromIntegral (mf * 10  ) = printf "%4.2f%s" mv ms
-  | rate < fromIntegral (mf * 100 ) = printf "%4.1f%s" mv ms
-  | rate < fromIntegral (mf * 1000) = printf "%4.0f%s" mv ms
-  | rate < fromIntegral (gf * 10  ) = printf "%4.2f%s" gv gs
-  | rate < fromIntegral (gf * 100 ) = printf "%4.1f%s" gv gs
-  | rate < fromIntegral (gf * 1000) = printf "%4.0f%s" gv gs
-  | otherwise = printf "%4.0f%s" gv gs
-  where
-    kf = 1  * step
-    mf = kf * step
-    gf = mf * step
-    kv = rate / fromIntegral kf
-    mv = rate / fromIntegral mf
-    gv = rate / fromIntegral gf
-
-
 -- |open a file read only
 fopen :: String -> IO File
 fopen = fmap File . flip openFile ReadMode
 
-
+-- |Close a file opened by 'fopen'
 fclose :: File -> IO ()
 fclose (File h) = hClose h
 

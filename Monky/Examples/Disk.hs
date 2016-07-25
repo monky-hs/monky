@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.Disk
 Description : An example module instance for the disk module
@@ -6,31 +7,34 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Monky.Examples.Disk ()
+module Monky.Examples.Disk
+  ( getDiskHandle
+  , DiskH
+  )
 where
 
-import Text.Printf (printf)
+import Formatting
 
-import Monky.Utility
+import Monky.Examples.Utility
 import Monky.Modules
-import Monky.Disk
+import Monky.Disk hiding (getDiskHandle)
+import qualified Monky.Disk as D (getDiskHandle)
+
+-- |The handle type for this module
+newtype DiskH = DH DiskHandle
+
+-- |Get a disk handle
+getDiskHandle
+  :: String -- ^The UUID of the device to monitor. It has to be mounted at monky startup!
+  -> IO DiskH
+getDiskHandle = fmap DH . D.getDiskHandle
 
 {- Disk module -}
-formatDiskText :: String -> Int -> Int -> Int -> String
-formatDiskText user dr dw df =
-  printf "%s %s" eins zwei
-  where
-    eins :: String
-    eins = printf ("^i(/home/" ++ user ++ "/.monky/xbm/diskette.xbm) %s") (convertUnit df "B" "k" "M" "G")
-    zwei :: String
-    zwei = printf "%s %s" (convertUnit dr  "B" "k" "M" "G") (convertUnit dw "B" "k" "M" "G")
-
-getDiskText :: String -> DiskHandle -> IO String
-getDiskText u dh = do
-  (dr, dw) <- getDiskReadWrite dh
-  df <- getDiskFree dh
-  return (formatDiskText u dr dw df)
-
--- |Example instance for disk module
-instance Module DiskHandle where
-  getText = getDiskText
+instance PollModule DiskH where
+  getOutput (DH dh) = do
+    (dr, dw) <- getDiskReadWrite dh
+    df <- getDiskFree dh
+    return
+      [ MonkyImage "diskette" ' '-- '🖪' also disabled for compat reasons
+      , MonkyPlain $ sformat (stext % " " % stext % " " % stext) (convertUnitSI df "B") (convertUnitSI dr "B" ) (convertUnitSI dw "B")
+      ]

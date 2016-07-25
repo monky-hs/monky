@@ -47,10 +47,6 @@ import Monky.Disk.Device
 data DiskHandle = DiskH FSI [File] [IORef Int] [IORef Int] (IORef POSIXTime)
 
 
-basePath :: String
-basePath = "/sys/class/block/"
-
-
 sectorSize :: Int
 sectorSize = 512
 
@@ -82,7 +78,7 @@ getDiskFree (DiskH (FSI h) _ _ _ _) = getFsFree h
 getBtrfsDH :: (BtrfsHandle, [String]) -> IO DiskHandle
 getBtrfsDH (h, devs) = do
   -- Open the stat file for each physical device
-  fs <- mapM (\dev -> fopen (basePath ++ dev ++ "/stat")) devs
+  fs <- mapM (\dev -> fopen (blBasePath ++ dev ++ "/stat")) devs
   -- this gets the right number of IORefs without number hacking
   wfs <- mapM (\_ -> newIORef 0) devs
   rfs <- mapM (\_ -> newIORef 0) devs
@@ -92,7 +88,7 @@ getBtrfsDH (h, devs) = do
 
 getBlockDH :: (BlockHandle, String) -> IO DiskHandle
 getBlockDH (h, dev) = do
-  f <- fopen (basePath ++ dev ++ "/stat")
+  f <- fopen (blBasePath ++ dev ++ "/stat")
   wf <- newIORef 0
   rf <- newIORef 0
   t <- newIORef 0

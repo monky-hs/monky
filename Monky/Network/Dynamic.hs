@@ -1,6 +1,18 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.Network.Dynamic
+Description : Allows access to information about they systems network
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module exports a handle to access dynamic network configurations.
+
+This will update when a new network interface appears or disappears.
+The value returned by this will be the sum over all interfaces.
+-}
 
 module Monky.Network.Dynamic
   ( getUHandles
@@ -32,7 +44,7 @@ import Control.Applicative ((<$>))
 #endif
 
 -- |A Wrapper than also carries the name, for comparision
-type NetHandle = (String, NetworkHandle)
+data NetHandle = NetHandle String NetworkHandle
 
 -- |The map we keep our handles in (the Int is the Interface ID on the system)
 type Handles = IntMap NetHandle
@@ -40,8 +52,8 @@ type Handles = IntMap NetHandle
 -- |The actual handel exposed and used by this module
 type UHandles = (IORef Handles, String -> Bool)
 
-instance {-# OVERLAPPING #-} Show NetHandle where
-  show (x, _) = x
+instance Show NetHandle where
+  show (NetHandle x _) = x
 
 
 -- |The fold function used for 'getMultiReadWrite' handling the IO and Maybe stuff
@@ -56,12 +68,10 @@ foldF h o = do
         Nothing -> return $ Just (r, w)
     Nothing -> o
 
-
 -- |Get the sum of all read/write rates from our network devices or Nothing if none is active
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite =
-  IM.foldr (\(_, v) -> foldF v) (return Nothing)
-
+  IM.foldr (\(NetHandle _ v) -> foldF v) (return Nothing)
 
 -- |Logic for adding a new device to our Handles
 gotNew :: Int -> String -> Handles -> IO Handles
@@ -69,23 +79,21 @@ gotNew index name m =
   case IM.lookup index m of
     Nothing -> do
       h <- getNetworkHandle name
-      return $IM.insert index (name, h) m
-    Just (x, v) -> if x == name
+      return $IM.insert index (NetHandle name h) m
+    Just (NetHandle x v) -> if x == name
       then return m
       else do
         h <- getNetworkHandle name
         closeNetworkHandle v
-        return $IM.adjust (const (name, h)) index m
-
+        return $IM.adjust (const (NetHandle name h)) index m
 
 -- |Logic for removing a handle form Handles after we lost the interface
 lostOld :: Int -> Handles -> IO Handles
 lostOld index m = case IM.lookup index m of
   Nothing -> return m
-  (Just (_, h)) ->
+  (Just (NetHandle _ h)) ->
     closeNetworkHandle h >>
     return (IM.delete index m)
-
 
 -- |The packet used to drump all current network devices
 requestPacket :: RoutePacket
@@ -94,7 +102,6 @@ requestPacket =
       header = Header eRTM_GETLINK flags 42 0
       msg = NLinkMsg 0 0 0 in
     Packet header msg M.empty
-
 
 -- |Read the interface name and index from 'RoutePacket'
 readInterface :: RoutePacket -> (Int, String)
@@ -105,7 +112,6 @@ readInterface (Packet _ msg attrs) =
     (fromIntegral index, names)
 readInterface x = error ("Something went wrong while getting interfaces: " ++ show x)
 
-
 -- |Get all current interfaces from our system
 getCurrentDevs :: IO [(Int, String)]
 getCurrentDevs = do
@@ -114,7 +120,6 @@ getCurrentDevs = do
   closeSocket sock
   return $map readInterface ifs
 
-
 -- |Get the 'Handles' wrapper for all current interfaces
 getNetworkHandles :: (String -> Bool) -> IO Handles
 getNetworkHandles f = do
@@ -122,7 +127,6 @@ getNetworkHandles f = do
   foldr build (return IM.empty) interfaces
   where build (index, dev) m =
           gotNew index dev =<< m
-
 
 -- |Handle an incomming rtneltink message and update the handle
 doUpdate :: UHandles -> RoutePacket -> IO ()
@@ -145,7 +149,6 @@ doUpdate (mr, f) (Packet hdr msg attrs)
 -- Ignore everything else
 doUpdate _ _ = return ()
 
-
 -- |Updater loop, it blocks on the netlink socker until it gets a message
 updaterLoop :: NetlinkSocket -> UHandles -> IO ()
 updaterLoop sock h = do
@@ -154,14 +157,12 @@ updaterLoop sock h = do
   mapM_ (doUpdate h) packet
   updaterLoop sock h
 
-
 -- |Start the update loop for adding/removing interfaces
 updater :: UHandles -> IO ()
 updater h = do
   sock <- makeSocket
   joinMulticastGroup sock 1
   updaterLoop sock h
-
 
 -- |Get the new handle this module exports and start its updater loop
 getUHandles

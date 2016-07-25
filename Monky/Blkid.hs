@@ -68,6 +68,7 @@ getAndFreeString ptr = do
   free ptr
   return ret
 
+
 maybeGetString :: CString -> IO (Maybe String)
 maybeGetString ptr = if ptr == nullPtr
     then return Nothing
