@@ -17,6 +17,7 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Modules
 Description : The module definition used by 'startLoop'
@@ -45,6 +46,11 @@ import Data.Text (Text)
 import qualified Data.Text.Encoding as E
 
 import Data.Serialize
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 -- |A data type to encode general output types
 data MonkyOut
