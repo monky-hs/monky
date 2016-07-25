@@ -16,10 +16,52 @@ version:             2.0.0.0
 -- template to work properly
 
 -- A short (one-line) description of the package.
-synopsis: A system stat collecting application
+synopsis: A system state collecting library and application
 
 -- A longer description of the package.
-description: monky is intended to be an alternative to conky, that is fully contained in one process and presents a user interface insipred by xmonad.
+description:
+  monky started as an alternative to conky, i3-status or similar, that's fully containing in one process.
+  Also making an effort to keep file descriptors or handles as long as possible.
+  monky 2.0 is the first version on hackage.
+  .
+  monky consists of multiple parts. A number of collection modules, output modules, "examples" and a helper application.
+  .
+    * collection modules
+    .
+        The collection modules are the core library. Collection modules export a handle that can
+        be used to get some detail about the system. They can be used without the other parts
+        of this package, but they are designed with monky in mind.
+    .
+    * output modules
+    .
+        Output modules take a monky specific output type and transform it into something that can be
+        displayed by some external application. That may be a statusbar (dzen2), the terminal,
+        a network port, that makes it accessible on another machine, or any other thing.
+    .
+    * examples
+    .
+        The examples are a group of modules, that use collection modules to create the output used
+        by the output modules. The flexibility of the examples varies greatly, some may are really
+        flexible, some are rather static. The intended usecase is for users to create their own
+        examples and use them, if they don't want to use the provided ones.
+        .
+        Later on, I want to create something like xmonad-contrib or a collection of user examples,
+        to provide better usability for users with few to no experience with haskell.
+    .
+    * helper application
+    .
+      The helper application is used to compile the actual output generator and can generate an
+      example configuration.
+  .
+  To generate an example configuration in /~\/.monky/ simply run `monky`.
+  Then modify /~\/.monky\/monky.hs/ to create your own configuration.
+  .
+  Modules can have two types. 'PollModule' and 'EvtModule'. 'PollModule's work by the main loop
+  asking the module to generate new output, while 'EvtModule's block until some event is received and
+  update their output on demand. Some handles are an instance of both, 'PollModule' and 'EvtModule'.
+  'EvtModule' should be preferred, since they induce less load on your system.
+  The monky main-loop does one "tick" every second. 'PollModules' are updated each /N/ ticks, where
+  /N/ is passed to 'pollPack'.
 
 -- The license under which the package is released.
 license:             LGPL-3
