@@ -101,7 +101,6 @@ readLine (File h) = do
   hSeek h AbsoluteSeek 0
   hGetReadable h
 
-
 -- |Read a File as String line by line
 readStringLines :: Handle -> IO [String]
 readStringLines h = do
@@ -111,7 +110,6 @@ readStringLines h = do
     else do
       l <- hGetReadable h
       fmap (l:) $ readStringLines h
-
 
 -- |Read a File as ByteString line by line
 readBSLines :: Handle -> IO [ByteString]
@@ -123,13 +121,11 @@ readBSLines h = fmap (BS.lines . BS.concat) $ readLines' []
         then return $ reverse ls
         else readLines' (ret:ls)
 
-
 -- |Rewind the file descriptor and read the complete file as lines
 readContent :: FileReadable a => File -> IO [a]
 readContent (File h) = do
   hSeek h AbsoluteSeek 0
   hGetFile h
-
 
 -- |open a file read only
 fopen :: String -> IO File

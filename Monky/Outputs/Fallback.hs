@@ -32,13 +32,13 @@ data WrapOuts = forall a . MonkyOutput a => WO a
 instance MonkyOutput WrapOuts where
   doLine (WO o) = doLine o
 
+
 chooseTerminalOut :: IO WrapOuts
 chooseTerminalOut = do
   l <- getLocaleEncoding
   if textEncodingName l == "UTF-8"
     then WO <$> getUtf8Out
     else WO <$> getAsciiOut
-
 
 {- | Wrapper for normal outputs that tries to find the best output
 

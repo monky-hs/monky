@@ -68,12 +68,10 @@ foldF h o = do
         Nothing -> return $ Just (r, w)
     Nothing -> o
 
-
 -- |Get the sum of all read/write rates from our network devices or Nothing if none is active
 getMultiReadWrite :: Handles -> IO (Maybe (Int, Int))
 getMultiReadWrite =
   IM.foldr (\(NetHandle _ v) -> foldF v) (return Nothing)
-
 
 -- |Logic for adding a new device to our Handles
 gotNew :: Int -> String -> Handles -> IO Handles
@@ -89,7 +87,6 @@ gotNew index name m =
         closeNetworkHandle v
         return $IM.adjust (const (NetHandle name h)) index m
 
-
 -- |Logic for removing a handle form Handles after we lost the interface
 lostOld :: Int -> Handles -> IO Handles
 lostOld index m = case IM.lookup index m of
@@ -98,7 +95,6 @@ lostOld index m = case IM.lookup index m of
     closeNetworkHandle h >>
     return (IM.delete index m)
 
-
 -- |The packet used to drump all current network devices
 requestPacket :: RoutePacket
 requestPacket =
@@ -106,7 +102,6 @@ requestPacket =
       header = Header eRTM_GETLINK flags 42 0
       msg = NLinkMsg 0 0 0 in
     Packet header msg M.empty
-
 
 -- |Read the interface name and index from 'RoutePacket'
 readInterface :: RoutePacket -> (Int, String)
@@ -117,7 +112,6 @@ readInterface (Packet _ msg attrs) =
     (fromIntegral index, names)
 readInterface x = error ("Something went wrong while getting interfaces: " ++ show x)
 
-
 -- |Get all current interfaces from our system
 getCurrentDevs :: IO [(Int, String)]
 getCurrentDevs = do
@@ -126,7 +120,6 @@ getCurrentDevs = do
   closeSocket sock
   return $map readInterface ifs
 
-
 -- |Get the 'Handles' wrapper for all current interfaces
 getNetworkHandles :: (String -> Bool) -> IO Handles
 getNetworkHandles f = do
@@ -134,7 +127,6 @@ getNetworkHandles f = do
   foldr build (return IM.empty) interfaces
   where build (index, dev) m =
           gotNew index dev =<< m
-
 
 -- |Handle an incomming rtneltink message and update the handle
 doUpdate :: UHandles -> RoutePacket -> IO ()
@@ -157,7 +149,6 @@ doUpdate (mr, f) (Packet hdr msg attrs)
 -- Ignore everything else
 doUpdate _ _ = return ()
 
-
 -- |Updater loop, it blocks on the netlink socker until it gets a message
 updaterLoop :: NetlinkSocket -> UHandles -> IO ()
 updaterLoop sock h = do
@@ -166,14 +157,12 @@ updaterLoop sock h = do
   mapM_ (doUpdate h) packet
   updaterLoop sock h
 
-
 -- |Start the update loop for adding/removing interfaces
 updater :: UHandles -> IO ()
 updater h = do
   sock <- makeSocket
   joinMulticastGroup sock 1
   updaterLoop sock h
-
 
 -- |Get the new handle this module exports and start its updater loop
 getUHandles

@@ -19,6 +19,8 @@ where
 import Formatting
 import qualified Data.Text as T
 
+import Control.Arrow ((***))
+
 import Monky.Modules
 import Monky.Time hiding (getTimeHandle)
 import qualified Monky.Time as MT (getTimeHandle)
@@ -42,9 +44,10 @@ instance PollModule THandle where
 
 {- Time Module -}
 timeToXBM :: (Int, Int) -> (Int, Int)
-timeToXBM (h, m) = (xh, xm)
-  where xh = h `mod` 12
-        xm = m `div` 15
+timeToXBM = (`mod` 12) *** (`div` 15)
+--timeToXBM (h, m) = (xh, xm)
+--  where xh = h `mod` 12
+--        xm = m `div` 15
 
 -- |Like 'THandle' but uses a fancy variant of clock images
 newtype FTHandle = FTH TimeHandle

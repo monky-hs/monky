@@ -129,7 +129,7 @@ getPollDescs h l = do
     c2 <- get_pdescs l h ptr count
     if count == c2
       then map  (\(POLLFD fd _ _) -> fd) <$> (peekArray (fromIntegral c2) ptr)
-      else return [] -- This should not happen
+      else error "libalsa returned more (or less) fds than it adveritses!"
 
 
 openMixer :: LibAlsa -> ExceptT Int IO MixerHandle
@@ -139,26 +139,29 @@ openMixer l = liftExceptT alloca $ \ptr -> do
      then throwE $ fromIntegral rval
      else liftIO (peek ptr)
 
+
 mixerAttach :: MixerHandle -> String -> LibAlsa -> ExceptT Int IO ()
 mixerAttach handle card l = do
-  rval <- liftIO(withCString card $ \ccard -> mixer_attach l handle ccard)
+  rval <- liftIO (withCString card $ mixer_attach l handle)
   if rval < 0
      then throwE $ fromIntegral rval
      else liftIO (return ())
 
+
 mixerRegister :: MixerHandle -> LibAlsa -> ExceptT Int IO ()
 mixerRegister handle l = do
-  rval <- liftIO(mixer_register l handle nullPtr nullPtr)
+  rval <- liftIO (mixer_register l handle nullPtr nullPtr)
   if rval < 0
      then throwE $ fromIntegral rval
-     else liftIO(return ())
+     else liftIO (return ())
+
 
 mixerLoad :: MixerHandle -> LibAlsa -> ExceptT Int IO ()
 mixerLoad handle l = do
-  rval <- liftIO(mixer_load l handle)
+  rval <- liftIO (mixer_load l handle)
   if rval < 0
      then throwE $ fromIntegral rval
-     else liftIO(return ())
+     else liftIO (return ())
 
 
 withSid :: LibAlsa -> (SidHandle -> IO a) -> IO a
@@ -175,7 +178,7 @@ withSid l fun = alloca $ \ptr -> do
 
 sidSet :: SidHandle -> Int -> String -> LibAlsa -> IO ()
 sidSet handle index name l = do
-  withCString name $ \cname -> sid_sname l handle cname
+  withCString name $ sid_sname l handle
   sid_sindex l handle $ fromIntegral index
 
 
@@ -183,6 +186,7 @@ getElem :: MixerHandle -> String -> Int -> LibAlsa -> IO ElemHandle
 getElem handle name index l = withSid l $ \sid -> do
   sidSet sid index name l
   elem_find l handle sid
+
 
 isMute :: ElemHandle -> LibAlsa -> IO Bool
 isMute handle l = alloca $ \ptr -> do
@@ -213,6 +217,7 @@ getMixerHandle card l = do
   mixerRegister handle l
   mixerLoad handle l
   return handle
+
 
 percentize :: Int -> Int -> Int -> Int
 percentize val lower upper = 100 * (val - lower) `div` (upper-lower)
@@ -257,6 +262,7 @@ getMute :: VOLHandle -> IO Bool
 getMute (VOLH _ _ _ _ muter _ _) = readIORef muter
 getMute Err = return True
 
+
 getVOLHandleInt :: Either Int MixerHandle -> LibAlsa -> IO VOLHandle
 getVOLHandleInt (Right handle) l = do
   ehandle <- getElem handle "Master" 0 l
@@ -279,14 +285,14 @@ isLoaded _ = True
 
 -- |Get PollFds for polling interface
 getPollFDs :: VOLHandle -> IO [Fd]
-getPollFDs (VOLH l h _ _ _ _ _) = map (\x -> Fd x) <$> (getPollDescs h l)
-getPollFDs Err =return []
+getPollFDs (VOLH l h _ _ _ _ _) = map Fd <$> getPollDescs h l
+getPollFDs Err = return []
 
 -- | Close the mixer handle and unload alsa library
 destroyVOLHandle :: VOLHandle -> IO ()
-destroyVOLHandle Err = return ()
 destroyVOLHandle (VOLH a m _ _ _ _ _) =
   mixer_close a m >> destroyLibAlsa a
+destroyVOLHandle Err = return ()
 
 {- |Create an 'VOLHandle'
 

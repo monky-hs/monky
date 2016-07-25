@@ -41,7 +41,7 @@ where
 
 import Data.Text (Text)
 
--- |An data type to encode general output types
+-- |A data type to encode general output types
 data MonkyOut
   = MonkyPlain Text -- ^Plaintext output
   | MonkyBar Int -- ^A Vertical bar, in %

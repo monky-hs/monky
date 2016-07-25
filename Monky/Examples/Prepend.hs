@@ -100,7 +100,9 @@ packAppend :: PollModule a
 packAppend x i m = pollPack i (Post x <$> m)
 
 
+-- |'EvtModule' prepend type
 data EvtPrepHandle = forall m . EvtModule m => EvtPrep [MonkyOut] m
+-- |'EvtModule' append type
 data EvtPostHandle = forall m . EvtModule m => EvtPost [MonkyOut] m
 
 instance EvtModule EvtPrepHandle where
@@ -111,12 +113,14 @@ instance EvtModule EvtPostHandle where
   startEvtLoop (EvtPost x m) a =
     startEvtLoop m (\xs -> a (xs ++ x))
 
+-- |'packPrepend' for 'EvtModule's
 evtPrepend :: EvtModule a
            => [MonkyOut]
            -> IO a
            -> IO Modules
 evtPrepend x m = evtPack $ EvtPrep x <$> m
 
+-- |'packAppend' for 'EvtModule's
 evtAppend :: EvtModule a
           => [MonkyOut]
           -> IO a

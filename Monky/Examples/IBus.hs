@@ -24,7 +24,6 @@ module Monky.Examples.IBus
 where
 
 import qualified Data.Text as T
-import Data.IORef
 
 #if MIN_VERSION_base(4,8,0)
 #else

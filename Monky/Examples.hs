@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2016 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -23,9 +23,11 @@ Maintainer  : ongy, moepi
 Stability   : testing
 Portability : Linux
 
-The general design for this module is to export a handle that has to be created
-at the begging and provide functions on this handle to gather inforamtion about
-the system.
+The general design for monky example modules is to export a handle that is created
+before the loop and provides functions on this handle to gather information about
+the system during the main loop.
 -}
 module Examples
 where
+
+-- this only exists for haddock documentation

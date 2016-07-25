@@ -171,13 +171,13 @@ getNumaPercent :: NumaHandle -> IO [Int]
 getNumaPercent (NumaHandle cpus h) =
   getPercent (\xs -> head xs `elem` cpus) h
 
-
 -- |get current CPU temperature
 getCPUTemp :: TempHandle -> IO Int
 getCPUTemp (TH Nothing) = return (-1)
 getCPUTemp (TH (Just f)) = do
   temp <- readValue f
   return (temp `div` 1000)
+
 
 getMax :: [Int] -> Int
 getMax = foldr max (-1)
@@ -190,7 +190,6 @@ getCPUMaxScalingFreq :: FreqHandle -> IO Float
 getCPUMaxScalingFreq (FH files) = do
   vals <- mapM readValue files
   return (fromIntegral (getMax vals) / 1000000)
-
 
 -- open the files to read the frequency from
 -- TODO: breaking use Mabye ScalingType instead of ScalingNone
@@ -216,11 +215,10 @@ getFreqNuma :: ScalingType -> NumaHandle -> IO FreqHandle
 getFreqNuma t (NumaHandle cpus _) =
   FH <$> getCPUFreqs t cpus
 
+
 getHandle :: String -> IO NumaHandle
 getHandle path = do
   getNumaHandle =<< getCPUs path
---  temp <- maybeOpenFile $pathTemp <$> xs
---  files <- getCPUFreqs t cpus
 
 -- |Raw-ish access to numa handle, this can be (ab)used to make your own filter on cpus
 getNumaHandle

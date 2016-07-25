@@ -22,7 +22,6 @@ import Formatting
 
 import Control.Monad (unless)
 import Control.Concurrent (threadWaitRead)
-import Data.IORef (IORef, atomicWriteIORef)
 import System.Posix.Types (Fd)
 import Monky.Modules
 

@@ -25,7 +25,7 @@ Stability   : testing
 Portability : Linux
 
 -}
-module Monky.Memory 
+module Monky.Memory
   ( MemoryHandle
   , getMemoryAvailable
   , getMemoryHandle

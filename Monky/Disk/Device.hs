@@ -32,15 +32,16 @@ since it needs to *find* the mount point to get information about the
 file system
 -}
 module Monky.Disk.Device
-  ( BlockHandle
-  , getBlockHandle )
+  ( BlockHandle(..)
+  , getBlockHandle
+
+  , devToMount
+  )
 where
 
 import System.Posix.StatVFS
-import Data.Maybe (listToMaybe, catMaybes)
+import Data.Maybe (listToMaybe)
 import Data.List (isSuffixOf)
-import System.Directory (getDirectoryContents)
-import System.Posix.Files (readSymbolicLink)
 
 import Monky.Blkid
 import Monky.Disk.Common
@@ -51,40 +52,21 @@ import Control.Applicative ((<$>))
 #endif
 
 
+{- |Get "the" mountpoint of a device. 
+
+Returns a mointpoint of a device. If there are multiple mountpoints, this will
+return the first one found.
+First one is mostly determined by order in /proc/mounts and should be the one
+that was mounted first (time since boot).
+-}
 devToMount :: String -> IO (Maybe String)
 devToMount dev = do
+  masters <- devToMapper dev
   mounts <- map (take 2 . words) . lines <$> readFile "/proc/mounts"
-  return . listToMaybe . map (!! 1) $filter isDev mounts
+  return . listToMaybe . map (!! 1) $ filter (isDev masters) mounts
   where
-    isDev = isSuffixOf ('/':dev) . head
-
-
-getMapperDevs :: IO [(String, String)]
-getMapperDevs = do
-  devs <- mapM readLink =<< filter isDev <$> getDirectoryContents "/dev/mapper/"
-  return $map getName devs
-  where
-    readLink l = (,) l <$> readSymbolicLink ("/dev/mapper/" ++ l)
-    isDev f = f /= "control" && f /= "." && f /= ".."
-    getName (d, p) = (d, reverse . takeWhile (/= '/') . reverse $p)
-
-
-isSlaveOf :: String -> String -> IO Bool
-isSlaveOf slave dev =
-  elem slave <$> getDirectoryContents ("/sys/block/" ++ dev ++ "/slaves/")
-
-
-devToMountM :: String -> IO (Maybe String)
-devToMountM dev = do
-  path <- devToMount dev
-  case path of
-    Nothing -> do
-      devs <- getMapperDevs
-      mdev <- mapM (\(l,m) -> dev `isSlaveOf` m >>= (\b -> return (if b then Just (l,m) else Nothing))) devs
-      rdev <- mapM (devToMountM . fst) $catMaybes mdev
-      return (listToMaybe $catMaybes rdev)
-    Just x -> return $Just x
-
+    isDev masters [x, _] = any (\master -> ('/':master) `isSuffixOf` x) masters
+    isDev _ _ = error "devToMount: How does take 2 not match [_, _]?"
 
 
 -- Size data metadata system
@@ -96,11 +78,11 @@ instance FsInfo BlockHandle where
   getFsFree = getFree
 
 
-
 getSize :: BlockHandle -> IO Int
 getSize (BlockH path) = do
   fstat <- statVFS path
   return $fromIntegral (fromIntegral (statVFS_blocks fstat) * statVFS_frsize fstat)
+
 
 getFree :: BlockHandle -> IO Int
 getFree (BlockH path) = do
@@ -110,7 +92,7 @@ getFree (BlockH path) = do
 
 getBlockHandle' :: String -> IO (Maybe (BlockHandle, String))
 getBlockHandle' dev = do
-  path <- devToMountM dev
+  path <- devToMount dev
   case path of
     Just x -> return $Just (BlockH x, dev)
     Nothing -> return Nothing

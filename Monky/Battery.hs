@@ -33,7 +33,15 @@ If it crashes monky for you setup please make a bug report with an
 -}
 
 module Monky.Battery
-(getBatteryHandle, getBatteryHandle', getCurrentStatus, getCurrentLevel, BatteryHandle, getTimeLeft, getLoading, BatteryState(..))
+  ( getBatteryHandle
+  , getBatteryHandle'
+  , getCurrentStatus
+  , getCurrentLevel
+  , BatteryHandle
+  , getTimeLeft
+  , getLoading
+  , BatteryState(..)
+  )
 where
 
 #if MIN_VERSION_base(4,8,0)
@@ -83,6 +91,7 @@ adpPath e  = "/sys/class/power_supply/"++ e ++"/online"
 getCurrentStatusInt :: File -> IO Int
 getCurrentStatusInt = readValue
 
+
 getCurrentStatusM :: BatteryHandle -> IO Int
 getCurrentStatusM (BatH (PowerNow _ _ _ adp) _) =
   getCurrentStatusInt adp
@@ -121,8 +130,8 @@ getTimeLeftInt n c f s adp = do
   full <- readValue f
   let gap = if online == 0 then now else full - now
   change <- readValue c
-  let avg = (change*20+s*80) `div` 100
-  return ( if avg >= 3600 then gap `div` (avg `div` 3600) else 0, avg)
+  let avg = (change * 20 + s * 80) `div` 100
+  return (if avg >= 3600 then gap `div` (avg `div` 3600) else 0, avg)
 
 -- |Get current loading speed in Watt/s
 getLoading :: BatteryHandle -> IO Float
@@ -145,8 +154,7 @@ getTimeLeft (BatH (PowerNow pnow enow efull adp) s)= do
 getTimeLeft (BatH (ChargeNow _ cnow cavg chnow chfull adp) s)= do
   c <- readIORef s
   (t, _) <- getTimeLeftInt chnow (fromMaybe cnow cavg) chfull c adp
-  return $(floor . sqrt $(fromIntegral t :: Float)) * 60
-
+  return $ (floor . sqrt $(fromIntegral t :: Float)) * 60
 
 -- |Create a power handle that uses the power_now file
 createPowerNowHandle :: String -> String -> IO BatteryHandle
@@ -163,14 +171,13 @@ createChargeNowHandle :: String -> String -> IO BatteryHandle
 createChargeNowHandle e b = do
   voltage_now <- fopen $ vnowPath b
   current_now <- fopen $ cnowPath b
-  exists <- doesFileExist $cavgPath e
+  exists <- doesFileExist $ cavgPath b
   current_avg <- if exists then Just <$> fopen (cavgPath b) else return Nothing
   charge_now <- fopen $ chnowPath b
   charge_full <- fopen $ chfullPath b
   adp_online <- fopen $ adpPath e
   ref <- newIORef (0 :: Int)
   return $BatH (ChargeNow voltage_now current_now current_avg charge_now charge_full adp_online) ref
-
 
 -- |Create a 'BatteryHandle'
 getBatteryHandle :: String  -- ^The name of the wall socket adapter used by the battery
@@ -181,7 +188,6 @@ getBatteryHandle e b = do
   if exists
     then createPowerNowHandle e b
     else createChargeNowHandle e b
-
 
 -- |Version which defaults to "BAT0"
 getBatteryHandle' :: String -> IO BatteryHandle

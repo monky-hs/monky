@@ -42,7 +42,7 @@ import Control.Applicative ((<$>))
 versionTH :: Q Exp
 versionTH = do
   content <- lines <$> runIO (readFile "monky.cabal")
-  let parts = map read $splitAtEvery "." $getVersionString content
-  returnQ . TupE $map (LitE . IntegerL) parts
+  let parts = map read $ splitAtEvery "." $ getVersionString content
+  returnQ . TupE $ map (LitE . IntegerL) parts
   where getVLine = head . filter ("version:" `isPrefixOf`)
         getVersionString = flip (!!) 1 . words . getVLine

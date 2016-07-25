@@ -95,10 +95,9 @@ library
 
   exposed-modules: Monky.Version Monky.Examples.Combine
   exposed-modules: Monky.Outputs.Dzen2 Monky.Outputs.Ascii Monky.Outputs.Utf8 Monky.Outputs.Fallback
-  exposed-modules: Monky.Examples.Plain
+  exposed-modules: Monky.Examples.Plain Monky.Disk.Common Monky.Blkid
 
-  other-modules: Monky.Template Monky.VersionTH Monky.Blkid
-  other-modules: Monky.Disk.Common
+  other-modules: Monky.Template Monky.VersionTH
 
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time

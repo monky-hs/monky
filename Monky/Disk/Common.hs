@@ -17,6 +17,7 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Disk.Common
 Description : Provides the common disk interfaces
@@ -31,8 +32,20 @@ module Monky.Disk.Common
   ( FSI(FSI)
   , FsInfo(..)
   , fsToFSI
+  
+  , blBasePath
+  , devToMapper
+  , mapperToDev
   )
 where
+
+import System.Directory (listDirectory, doesDirectoryExist)
+import Data.List (nub, sort)
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
 
 
 {-| Type class that should be instanciated by file system handlers
@@ -78,3 +91,29 @@ data FSI = forall a. FsInfo a => FSI a
 -- |Wrap a 'FsInfo' into an 'FSI'
 fsToFSI :: FsInfo a => a -> FSI
 fsToFSI = FSI
+
+-- |The base path of block devices on the system
+blBasePath :: String
+blBasePath = "/sys/class/block/"
+
+-- |Get the physical block devices supporting some device
+mapperToDev :: String -> IO [String]
+mapperToDev x = sort . nub <$> do
+  let path = blBasePath ++ x ++ "/slaves/"
+  e <- doesDirectoryExist path
+  if e
+    then do
+      rec <- mapM mapperToDev =<< listDirectory path
+      return $ concat rec
+    else return [x]
+
+-- |Get the "top most" virtual device(s) based on the physical device
+devToMapper :: String -> IO [String]
+devToMapper x = sort . nub <$> do
+  let path = blBasePath ++ x ++ "/holders/"
+  holders <- listDirectory path
+  if null holders
+    then return [x]
+    else do
+      rec <- mapM devToMapper holders
+      return $ concat rec

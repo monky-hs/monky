@@ -104,6 +104,7 @@ instance Storable IP4 where
 instance Show IP4 where
   show = showIP
 
+
 showIPIO :: IP4 -> IO String
 showIPIO ip = allocaBytes #{const INET_ADDRSTRLEN} (\str ->
   with ip (\ptr -> c_ntop #{const AF_INET} ptr str #{const INET_ADDRSTRLEN}) >> peekCString str)
@@ -112,6 +113,7 @@ showIPIO ip = allocaBytes #{const INET_ADDRSTRLEN} (\str ->
 showIP :: IP4 -> String
 showIP ip = unsafePerformIO (showIPIO ip)
 {-# NOINLINE showIP #-}
+
 
 parseIPIO :: String -> IO IP4
 parseIPIO xs =
@@ -149,13 +151,13 @@ data ConnHandle = ConnH String Int (IORef Bool)
 hasConn :: ConnHandle -> IO Bool
 hasConn (ConnH _ _ r) = readIORef r
 
+
 updateLoop :: ConnHandle -> IO ()
 updateLoop h@(ConnH ip port ref) = do
   writeIORef ref =<< tryConn ip port
   -- Sleep 1 second
   threadDelay (1000*1000)
   updateLoop h
-
 
 -- |Get a handle to check for connectivity
 getConnH

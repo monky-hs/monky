@@ -154,6 +154,7 @@ data Status = Status
 readText :: Integral a => Text -> a
 readText t = let (Right (x, _)) = R.decimal t in x
 
+
 rethrowSExcpt :: String -> IOError -> ExceptT String IO a
 rethrowSExcpt xs e = throwE (xs ++ ": " ++ show e)
 
@@ -185,28 +186,24 @@ tryConnect (x:xs) sock =
 
 
 doMPDConnInit :: MPDSock -> IO (Maybe String)
-doMPDConnInit s = join <$> timeout (500 * 1000) doInit
-  where
-    doInit = do
-      v <- BS.unpack <$> recv s 64
-      if "OK MPD " `isPrefixOf` v
-        then return . Just $drop 7 v
-        else return Nothing
-
+doMPDConnInit s = join <$> timeout (500 * 1000) (do
+  v <- BS.unpack <$> recv s 64
+  if "OK MPD " `isPrefixOf` v
+    then return . Just $ drop 7 v
+    else return Nothing)
 
 -- |Open one MPDSock connected to a host specified by one of the 'MPDInfo'
 -- or throw an exception (either ran out of hosts or something underlying failed)
 openMPDSocket :: [AddrInfo] -> ExceptT String IO MPDSock
 openMPDSocket [] = throwE "Could not open connection"
 openMPDSocket ys@(x:xs) = do
-  sock <- trySExcpt "socket" $openSocket x
+  sock <- trySExcpt "socket" $ openSocket x
   csock <- tryConnect ys sock
-  version <- trySExcpt "readInit" $doMPDConnInit csock
+  version <- trySExcpt "readInit" $ doMPDConnInit csock
   if isJust version
-    then liftIO $return csock
+    then liftIO $ return csock
     else liftIO (close sock) >> openMPDSocket xs
   where openSocket y = socket (addrFamily y) (addrSocketType y) (addrProtocol y)
-
 
 -- |Get a new 'MPDSocket'
 getMPDSocket
@@ -214,17 +211,19 @@ getMPDSocket
   -> String -- ^The port the server listens on
   -> IO (Either String MPDSocket)
 getMPDSocket host port = do
-  xs <- getAddrInfo (Just $defaultHints {addrFlags = [AI_V4MAPPED]}) (Just host) (Just port)
-  sock <- runExceptT $openMPDSocket xs
-  return $fmap MPDSocket sock
+  xs <- getAddrInfo (Just $ defaultHints {addrFlags = [AI_V4MAPPED]}) (Just host) (Just port)
+  sock <- runExceptT $ openMPDSocket xs
+  return $ fmap MPDSocket sock
 
 -- |Get the raw 'Fd' from the 'MPDSocket' for eventing api
 getMPDFd :: MPDSocket -> IO Fd
 getMPDFd (MPDSocket s) = return . Fd $fdSocket s
 
+
 recvMessage :: MPDSock -> ExceptT String IO [Text]
 recvMessage sock =
   trySExcpt "receive" $ T.lines . E.decodeUtf8 <$> recv sock 4096
+
 
 sendMessage :: MPDSock -> String -> ExceptT String IO ()
 sendMessage sock message = void $
@@ -235,7 +234,6 @@ sendMessage sock message = void $
 This does not filter out errors, error checking has to be done by the user.
 This does filter out the last OK though
 -}
-
 doQuery :: MPDSocket -> String -> ExceptT String IO [Text]
 doQuery (MPDSocket s) m = sendMessage s (m ++ "\n") >> (f <$> recvMessage s)
   where f = filter (/= "OK")
@@ -249,8 +247,8 @@ readOk (MPDSocket s) = runExceptT $ do
 {- |Go into MPDs 'idle' mode, this does return, but MPD wont time us out and
 will notify us if something happens
 -}
-goIdle 
-  :: MPDSocket 
+goIdle
+  :: MPDSocket
   -> String -- ^The string that should be send with idle (list of subsystems)
   -> IO (Either String ())
 goIdle (MPDSocket s) xs = runExceptT $ void $ sendMessage s ("idle" ++ xs ++ "\n")
@@ -275,28 +273,28 @@ parseStatusRec :: M.Map Text Text -> [Text] -> Status
 parseStatusRec m (x:xs) = let (key,value) = T.break (== ' ') x in
   parseStatusRec (M.insert (T.init key) (T.tail value) m) xs
 parseStatusRec m [] = Status
-  { volume = fromJust $getInt "volume"
-  , repeats = fromJust $getBool "repeat"
-  , random = fromJust $getBool "random"
-  , single = getBool "single"
-  , consume = getBool "consume"
-  , playlist = fromJust $getInt "playlist"
-  , playlistLength = fromJust $getInt "playlistlength"
-  , state = getState_ m
-  , song = getInt "song"
-  , songId = getInt "songid"
-  , nextSong = getInt "nextsong"
-  , nextSongId = getInt "nextsongid"
-  , time = fmap (readText . T.takeWhile (/= ':')) $getVal "time"
-  , elapsed = read . T.unpack <$> M.lookup "elapsed" m
-  , duration = getInt "duration"
-  , bitrate = getInt "bitrate"
-  , xfade = getInt "xfade"
-  , mixrAmpdb = fromJust . fmap readF $ getVal "mixrampdb"
-  , mixrAmpDelay = getInt "mixrampdelay"
-  , audio = getAudio m
-  , updating = getInt "updating_db"
-  , mpderror = M.lookup "error" m
+  { volume         = fromJust $ getInt "volume"
+  , repeats        = fromJust $ getBool "repeat"
+  , random         = fromJust $ getBool "random"
+  , single         = getBool "single"
+  , consume        = getBool "consume"
+  , playlist       = fromJust $ getInt "playlist"
+  , playlistLength = fromJust $ getInt "playlistlength"
+  , state          = getState_ m
+  , song           = getInt "song"
+  , songId         = getInt "songid"
+  , nextSong       = getInt "nextsong"
+  , nextSongId     = getInt "nextsongid"
+  , time           = fmap (readText . T.takeWhile (/= ':')) $getVal "time"
+  , elapsed        = read . T.unpack <$> M.lookup "elapsed" m
+  , duration       = getInt "duration"
+  , bitrate        = getInt "bitrate"
+  , xfade          = getInt "xfade"
+  , mixrAmpdb      = fromJust . fmap readF $ getVal "mixrampdb"
+  , mixrAmpDelay   = getInt "mixrampdelay"
+  , audio          = getAudio m
+  , updating       = getInt "updating_db"
+  , mpderror       = M.lookup "error" m
   }
   where getVal = flip M.lookup m
         getBool = fmap (== ("1" :: Text)) . getVal
@@ -312,37 +310,37 @@ parseSongInfoRec :: M.Map Text Text -> [Text] -> SongInfo
 parseSongInfoRec m (x:xs) = let (key, value) = T.break isSpace x in
   parseSongInfoRec (M.insert (T.init key) (T.tail value) m) xs
 parseSongInfoRec m [] = let tags = TagCollection {
-    tagArtist = M.lookup "Artist" m
-  , tagArtistSort = M.lookup "ArtistSort" m
-  , tagAlbum = M.lookup "Album" m
-  , tagAlbumSort = M.lookup "AlbumSort" m
-  , tagAlbumArtist = M.lookup "AlbumArtist" m
+    tagArtist          = M.lookup "Artist" m
+  , tagArtistSort      = M.lookup "ArtistSort" m
+  , tagAlbum           = M.lookup "Album" m
+  , tagAlbumSort       = M.lookup "AlbumSort" m
+  , tagAlbumArtist     = M.lookup "AlbumArtist" m
   , tagAlbumArtistSort = M.lookup "AlbumArtistSort" m
-  , tagTitle = M.lookup "Title" m
-  , tagTrack = M.lookup "Track" m
-  , tagName = M.lookup "Name" m
-  , tagGenre = M.lookup "Genre" m
-  , tagDate = M.lookup "Date" m
-  , tagComposer = M.lookup "Composer" m
-  , tagPerformer = M.lookup "Performer" m
-  , tagComment = M.lookup "Comment" m
-  , tagDisc = M.lookup "Disc" m
+  , tagTitle           = M.lookup "Title" m
+  , tagTrack           = M.lookup "Track" m
+  , tagName            = M.lookup "Name" m
+  , tagGenre           = M.lookup "Genre" m
+  , tagDate            = M.lookup "Date" m
+  , tagComposer        = M.lookup "Composer" m
+  , tagPerformer       = M.lookup "Performer" m
+  , tagComment         = M.lookup "Comment" m
+  , tagDisc            = M.lookup "Disc" m
 
-  , tagMArtistid = M.lookup "MUSICBRAINZ_ARTISTID" m
-  , tagMAlbumid = M.lookup "MUSICBRAINZ_ALBUMID" m
-  , tagMAlbumArtistid = M.lookup "MUSICBRAINZ_ALBUMARTISTID" m
-  , tagMTrackid = M.lookup "MUSICBRAINZ_TRACKID" m
+  , tagMArtistid       = M.lookup "MUSICBRAINZ_ARTISTID" m
+  , tagMAlbumid        = M.lookup "MUSICBRAINZ_ALBUMID" m
+  , tagMAlbumArtistid  = M.lookup "MUSICBRAINZ_ALBUMARTISTID" m
+  , tagMTrackid        = M.lookup "MUSICBRAINZ_TRACKID" m
   , tagMReleaseTrackid = M.lookup "MUSICBRAINZ_RELEASETRACKID" m
   } in
     SongInfo {
-      songFile = fromJust $M.lookup "file" m
-    , songRange = readT <$> M.lookup "Range" m
-    , songMTime = M.lookup "Last-Modified" m
-    , songTime = mRead "Time"
+      songFile     = fromJust $M.lookup "file" m
+    , songRange    = readT <$> M.lookup "Range" m
+    , songMTime    = M.lookup "Last-Modified" m
+    , songTime     = mRead "Time"
     , songDuration = readF <$> M.lookup "duration" m
-    , songTags = tags
-    , songPos = mRead "Pos"
-    , songInfoId = mRead "Id"
+    , songTags     = tags
+    , songPos      = mRead "Pos"
+    , songInfoId   = mRead "Id"
     , songPriority = mRead "Prio"
     }
   where readT xs =
@@ -362,8 +360,8 @@ parseStatus xs@(x:_) = if "ACK" `T.isPrefixOf` x
 -- |Get the current status or an error from the MPD server
 getMPDStatus :: MPDSocket -> IO (Either String Status)
 getMPDStatus s = do
-  resp <- runExceptT $doQuery s "status"
-  return $fmap parseStatus resp
+  resp <- runExceptT $ doQuery s "status"
+  return $ fmap parseStatus resp
 
 parseSongInfo :: [Text] -> SongInfo
 parseSongInfo [] = error "Called parseSongInfo with []"
@@ -374,5 +372,5 @@ parseSongInfo xs@(x:_) = if "ACK" `T.isPrefixOf` x
 -- |Get the information about the song currently beeing player from the MPD server
 getMPDSong :: MPDSocket -> IO (Either String SongInfo)
 getMPDSong s = do
-  resp <- runExceptT $doQuery s "currentsong"
-  return $fmap parseSongInfo resp
+  resp <- runExceptT $ doQuery s "currentsong"
+  return $ fmap parseSongInfo resp
