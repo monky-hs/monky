@@ -1,3 +1,21 @@
+{-
+    Copyright 2015,2016 Markus Ongyerth, Stephan Guenther
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.Battery
@@ -47,7 +65,7 @@ instance PollModule BatteryH where
     pow <- getLoading bh
     let h = s `div` 3600
         m = (s `mod` 3600) `div` 60
-    return 
+    return
       [ MonkyImage (batterySymbol online p) '🔋'
       , MonkyColor (batteryColor online p, "") $
         MonkyPlain $ sformat (fixed 1 % "W " % int % "% " % (left 2 ' ' %. int) % ":" % (left 2 '0' %. int)) pow p h m

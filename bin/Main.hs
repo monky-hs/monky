@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2016 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
