@@ -20,7 +20,7 @@ import Monky.Modules
 
 import qualified Data.Text.IO as T
 
--- |The output handle for dzen2 pipe
+-- |The output handle for a ascii pipe
 data AsciiOutput = AsciiOutput
 
 doOut :: MonkyOut -> IO ()

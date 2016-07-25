@@ -6,12 +6,15 @@ Stability   : testing
 Portability : Linux
 -}
 module Monky.Outputs.Show
+  ( getShowOut
+  , ShowOutput(..)
+  )
 where
 
 import System.IO (hFlush, stdout)
 import Monky.Modules
 
--- |The output handle for dzen2 pipe
+-- |The output handle for using show instance
 data ShowOutput = ShowOutput
 
 instance MonkyOutput ShowOutput where
@@ -20,6 +23,6 @@ instance MonkyOutput ShowOutput where
     putStr "\n"
     hFlush stdout
 
--- |Get an output handle for ascii formatting
+-- |Get an output handle for show formatting
 getShowOut :: IO ShowOutput
 getShowOut = return ShowOutput

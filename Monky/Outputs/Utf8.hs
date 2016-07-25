@@ -20,7 +20,7 @@ import Monky.Modules
 
 import qualified Data.Text.IO as T
 
--- |The output handle for dzen2 pipe
+-- |The output handle for a utf8 pipe
 data Utf8Output = Utf8Output
 
 barChar :: Int -> Char
@@ -68,6 +68,6 @@ instance MonkyOutput Utf8Output where
     putStr " | "
     doLine h xs
 
--- |Get an output handle for ascii formatting
+-- |Get an output handle for utf8 formatting
 getUtf8Out :: IO Utf8Output
 getUtf8Out = return Utf8Output
