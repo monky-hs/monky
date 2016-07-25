@@ -17,6 +17,7 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Utility
 Description : Provides utility functions
@@ -39,6 +40,7 @@ module Monky.Utility
  , maybeOpenFile
  , sdivBound
  , sdivUBound
+ , listDirectory
  )
 where
 
@@ -48,6 +50,16 @@ import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
+
+#if MIN_VERSION_base(4,9,0)
+import System.Directory (listDirectory)
+#else
+import System.Directory (getDirectoryContents)
+
+listDirectory :: String -> IO [String]
+listDirectory= fmap (filter (not . ("." `isPrefixOf`))) . getDirectoryContents
+#endif
+
 
 class LineReadable a where
   hGetReadable :: Handle -> IO a

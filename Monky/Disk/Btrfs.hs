@@ -35,7 +35,7 @@ module Monky.Disk.Btrfs
 where
 
 import Monky.Utility
-import System.Directory (listDirectory, doesDirectoryExist)
+import System.Directory (doesDirectoryExist)
 
 import Monky.Disk.Common
 

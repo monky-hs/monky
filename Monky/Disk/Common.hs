@@ -32,14 +32,15 @@ module Monky.Disk.Common
   ( FSI(FSI)
   , FsInfo(..)
   , fsToFSI
-  
+
   , blBasePath
   , devToMapper
   , mapperToDev
   )
 where
 
-import System.Directory (listDirectory, doesDirectoryExist)
+import Monky.Utility
+import System.Directory (doesDirectoryExist)
 import Data.List (nub, sort)
 
 #if MIN_VERSION_base(4,8,0)
@@ -61,7 +62,7 @@ class FsInfo a where
   -- |Get the bytes free on the file system
   getFsFree :: a -> IO Int
   getFsFree h = do
-    s <- getFsSize h 
+    s <- getFsSize h
     u <- getFsUsed h
     return (s - u)
   -- |Get the total size of the file system
