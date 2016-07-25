@@ -192,7 +192,6 @@ getCPUMaxScalingFreq (FH files) = do
   return (fromIntegral (getMax vals) / 1000000)
 
 -- open the files to read the frequency from
--- TODO: breaking use Mabye ScalingType instead of ScalingNone
 getCPUFreqs :: ScalingType -> [String] -> IO [File]
 getCPUFreqs ScalingMax = getCPUFreqsMax
 getCPUFreqs ScalingCur = getCPUFreqsCur

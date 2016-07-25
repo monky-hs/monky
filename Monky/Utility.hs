@@ -57,7 +57,7 @@ import System.Directory (listDirectory)
 import System.Directory (getDirectoryContents)
 
 listDirectory :: String -> IO [String]
-listDirectory= fmap (filter (not . ("." `isPrefixOf`))) . getDirectoryContents
+listDirectory = fmap (filter (not . ("." `isPrefixOf`))) . getDirectoryContents
 #endif
 
 

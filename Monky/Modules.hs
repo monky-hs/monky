@@ -58,6 +58,7 @@ data MonkyOut
   | MonkyBar Int -- ^A Vertical bar, in %
   | MonkyHBar Int -- ^A horizontal bar, in pixel
   -- Temporary (FG,BG)
+  -- Color format (and somewhat image) are not fix yet, so don't rely on them to much
   | MonkyColor (Text, Text) MonkyOut -- ^Colorize the enclosed output TODO: Color format
   | MonkyImage Text Char -- ^Path to an image to display (for icons), or Unicode glyph that should be used
   deriving (Show, Read)

@@ -69,8 +69,6 @@ instance PollModule PostHandle where
   getOutput  (Post t m) = (++t) <$> getOutput m
   initialize (Post _ m) = initialize m
 
--- TODO: Add EvtModule instance
-
 {-| Create a module that should be prepended with some string
 
 This allows you to prepend an instance of a module with a fixed
