@@ -54,11 +54,6 @@ import System.Process (system)
 
 import Options.Applicative
 
-#if MIN_VERSION_base(4,8,0)
-#else
-import Control.Applicative ((<$>))
-#endif
-
 data Action
   = Create
   | ForceCompile
