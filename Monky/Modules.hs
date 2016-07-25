@@ -39,7 +39,12 @@ module Monky.Modules
   )
 where
 
+import Control.Arrow ((***))
+import Data.Word (Word8)
 import Data.Text (Text)
+import qualified Data.Text.Encoding as E
+
+import Data.Serialize
 
 -- |A data type to encode general output types
 data MonkyOut
@@ -47,8 +52,9 @@ data MonkyOut
   | MonkyBar Int -- ^A Vertical bar, in %
   | MonkyHBar Int -- ^A horizontal bar, in pixel
   -- Temporary (FG,BG)
-  | MonkyColor (Text, Text) MonkyOut -- ^Colorize the enclosed output TODO: Color format 
+  | MonkyColor (Text, Text) MonkyOut -- ^Colorize the enclosed output TODO: Color format
   | MonkyImage Text Char -- ^Path to an image to display (for icons), or Unicode glyph that should be used
+  deriving (Show, Read)
 
 -- |Class that output converters have to implement
 class MonkyOutput a where
@@ -74,7 +80,7 @@ class PollModule a where
 -- |The class for eventing modules
 class EvtModule a where
   {- |Start your own event loop. The second argument is the consumer of your output.
-   
+
    Doing this in an opaque way gives a way to chain actions to your event handling
    -}
   startEvtLoop :: a -> ([MonkyOut] -> IO ()) -> IO ()
@@ -85,7 +91,7 @@ data PollModules = forall a . PollModule a => NMW a Int
 data EvtModules = forall a . EvtModule a => DW a
 
 -- |Wrapper around 'PollModules' and 'EvtModules' so we can pass all modules in one list to 'startLoop'
-data Modules 
+data Modules
   = Poll PollModules
   | Evt EvtModules
 
@@ -102,3 +108,39 @@ evtPack :: EvtModule a
         => IO a
         -> IO Modules
 evtPack = fmap (Evt . DW)
+
+-- "Official" Serialize instance for sending MonkyOuts over the network
+instance Serialize MonkyOut where
+  put (MonkyPlain t) = do
+    put (1 :: Word8)
+    put $ E.encodeUtf8 t
+  put (MonkyBar i) = do
+    put (2 :: Word8)
+    put i
+  put (MonkyHBar i) = do
+    put (3 :: Word8)
+    put i
+  put (MonkyColor c out) = do
+    put (4 :: Word8)
+    put $ E.encodeUtf8 *** E.encodeUtf8 $ c
+    put out
+  put (MonkyImage t c) = do
+    put (5 :: Word8)
+    put $ E.encodeUtf8 t
+    put c
+
+  get = do
+    t <- get :: Get Word8
+    case t of
+      1 -> MonkyPlain . E.decodeUtf8 <$> get
+      2 -> MonkyBar <$> get
+      3 -> MonkyHBar <$> get
+      4 -> do
+        c   <- get
+        out <- get
+        return $ MonkyColor (E.decodeUtf8 *** E.decodeUtf8 $ c) out
+      5 -> do
+          i <- E.decodeUtf8 <$> get
+          c <- get
+          return $ MonkyImage i c
+      _ -> fail ("Could not decode MonkyOut, got type: " ++ show t)
