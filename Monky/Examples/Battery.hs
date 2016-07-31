@@ -68,7 +68,7 @@ instance PollModule BatteryH where
     return
       [ MonkyImage (batterySymbol online p) '🔋'
       , MonkyColor (batteryColor online p, "") $
-        MonkyPlain $ sformat (fixed 1 % "W " % int % "% " % (left 2 ' ' %. int) % ":" % (left 2 '0' %. int)) pow p h m
+        MonkyPlain $ sformat ((left 4 ' ' %. fixed 1) % "W " % int % "% " % (left 2 ' ' %. int) % ":" % (left 2 '0' %. int)) pow p h m
       ]
 
 -- |The handle type for this module
