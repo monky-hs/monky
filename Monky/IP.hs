@@ -107,7 +107,7 @@ addressQuery fam =
   let flags = fNLM_F_REQUEST .|. fNLM_F_MATCH .|. fNLM_F_ROOT
       header = Header eRTM_GETADDR flags 0 0
       msg = NAddrMsg (familyToNum fam) 0 0 0 0
-      attrs = mempty
+      attrs = M.empty
       in
     Packet header msg attrs
 
