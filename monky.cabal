@@ -140,7 +140,8 @@ library
 
   exposed-modules: Monky.Outputs.Dzen2 Monky.Outputs.Ascii Monky.Outputs.Utf8
   exposed-modules: Monky.Outputs.Show  Monky.Outputs.Fallback Monky.Outputs.Serialize
-  exposed-modules: Monky.Examples.Modify
+  exposed-modules: Monky.Examples.Modify Monky.IP Monky.IP.Raw
+
   other-modules: Monky.Template Monky.VersionTH
 
 
