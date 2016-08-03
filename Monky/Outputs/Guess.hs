@@ -24,6 +24,11 @@ import Monky.Outputs.Show (getShowOut)
 import Monky.Outputs.Dzen2 (getDzenOut)
 import Monky.Outputs.Serialize (getSerializeOut)
 
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>))
+#endif
+
 data Output
   = Terminal
   | Process String
