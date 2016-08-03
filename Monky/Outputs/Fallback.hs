@@ -29,6 +29,7 @@ Portability : Linux
 module Monky.Outputs.Fallback
   ( WrapOuts
   , getFallbackOut
+  , chooseTerminalOut
   )
 where
 

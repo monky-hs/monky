@@ -138,7 +138,7 @@ library
   exposed-modules: Monky.Version Monky.Examples.Combine
   exposed-modules: Monky.Examples.Plain Monky.Disk.Common Monky.Blkid
 
-  exposed-modules: Monky.Outputs.Dzen2 Monky.Outputs.Ascii Monky.Outputs.Utf8
+  exposed-modules: Monky.Outputs.Dzen2 Monky.Outputs.Ascii Monky.Outputs.Utf8 Monky.Outputs.Guess
   exposed-modules: Monky.Outputs.Show  Monky.Outputs.Fallback Monky.Outputs.Serialize Monky.Outputs.I3
   exposed-modules: Monky.Examples.Modify Monky.IP Monky.IP.Raw
 
