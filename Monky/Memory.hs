@@ -56,24 +56,39 @@ getVal = fst . fromMaybe (error "Failed to read as int in memory module") .  BS.
 findLine :: ByteString -> [ByteString] -> Maybe ByteString
 findLine x = listToMaybe . filter (x `BS.isPrefixOf`)
 
--- |Return the memory available to processes
+{- |Return the memory available to userspace
+
+This is accurate (read from kernel) for current kernels.
+Old kernel (~3.13) estimates this. Old kernels may overestimate.
+-}
 getMemoryAvailable :: MemoryHandle -> IO Int
 getMemoryAvailable (MemoryH f) = do
   contents <- readContent f
-  return $getVal $fromMaybe "a 0" $findLine "MemAvailable" contents
+  let line =  findLine "MemAvailable" contents
+  case line of
+
+    Nothing -> do
+      let buffs = fromMaybe err $ findLine "Buffers" contents
+          cached = fromMaybe err $ findLine "Chached" contents
+      free <- getMemoryFree (MemoryH f)
+      return $ getVal buffs + getVal cached + free
+    (Just x) -> return . getVal $ x
+  where err = error "Could not find one of the fallback values for MemAvailable, please report this together with the content of /proc/meminfo"
 
 -- |Get the total amount of memory in the system
 getMemoryTotal :: MemoryHandle -> IO Int
 getMemoryTotal (MemoryH f) = do
   contents <- readContent f
-  return $getVal $fromMaybe "a 0" $findLine "MemTotal" contents
+  return . getVal . fromMaybe err . findLine "MemTotal" $ contents
+    where err = error "Could not find MemTotal in /proc/meminfo. Please report this bug with the content of /proc/meminfo"
 
 
 -- |Get the amount of memory rported as free by the kernel
 getMemoryFree :: MemoryHandle -> IO Int
 getMemoryFree (MemoryH f) = do
   contents <- readContent f
-  return . getVal . fromMaybe "a 0" . findLine "MemFree" $contents
+  return . getVal . fromMaybe err . findLine "MemFree" $ contents
+    where err = error "Could not find MemFree in /proc/meminfo. Please report this bug with the content of /proc/meminfo"
 
 -- |Get the amount of memory used by the kernel and processes
 getMemoryUsed :: MemoryHandle -> IO Int
