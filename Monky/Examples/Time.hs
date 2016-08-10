@@ -40,6 +40,7 @@ import qualified Data.Text as T
 import Control.Arrow ((***))
 
 import Monky.Modules
+import Monky.Examples.Images
 import Monky.Time hiding (getTimeHandle)
 import qualified Monky.Time as MT (getTimeHandle)
 
@@ -56,7 +57,7 @@ instance PollModule THandle where
   getOutput (TH h) = do
     ts <- getTime h
     return
-      [ MonkyImage "clock" '🕐'
+      [ timeImage
       , MonkyPlain $ T.pack ts
       ]
 
@@ -81,7 +82,7 @@ instance PollModule FTHandle where
     t <- getHM h
     let (th, tm) = timeToXBM t
     return
-      [ MonkyImage (sformat (int % "-" % int) th tm) '🕐'
+      [ fancyTimeImage (sformat (int % "-" % int) th tm)
       , MonkyPlain . T.pack $ ts
       ]
 

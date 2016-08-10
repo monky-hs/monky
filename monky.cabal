@@ -142,6 +142,7 @@ library
   exposed-modules: Monky.Outputs.Show  Monky.Outputs.Fallback Monky.Outputs.Serialize Monky.Outputs.I3
   exposed-modules: Monky.Examples.Modify Monky.IP Monky.IP.Raw
 
+  exposed-modules: Monky.Outputs.Unicode Monky.Examples.Images
   other-modules: Monky.Template Monky.VersionTH
 
 

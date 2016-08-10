@@ -1,8 +1,39 @@
+{-
+    Copyright 2016 Markus Ongyerth
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+Module      : Monky.Outputs.I3
+Description : Output module for i3-bar
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+This module provides the output generation for i3-bar outputs
+-}
 module Monky.Outputs.I3
+  ( I3Output
+  , getI3Output
+  )
 where
 
 import Monky.Modules
+import Monky.Outputs.Unicode
 
 import Control.Monad (unless)
 import Data.Text (Text)
@@ -10,30 +41,8 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.IO (hFlush, stdout)
 
+-- |Output handle for i3-bar
 data I3Output = I3Output
-
-barChar :: Int -> Char
-barChar i
-  | i <= 0                = ' '
-  | i < (100 `div` 8)     = '▁'
-  | i < (100 `div` 4)     = '▂'
-  | i < (100 `div` 8 * 3) = '▃'
-  | i < (100 `div` 2)     = '▄'
-  | i < (100 `div` 8 * 5) = '▅'
-  | i < (100 `div` 4 * 3) = '▆'
-  | i < (100 `div` 8 * 7) = '▇'
-  | otherwise             = '█'
-
-hBarChar :: Int -> Char
-hBarChar i
-  | i < (100 `div` 8)     = '▏'
-  | i < (100 `div` 4)     = '▎'
-  | i < (100 `div` 8 * 3) = '▍'
-  | i < (100 `div` 2)     = '▌'
-  | i < (100 `div` 8 * 5) = '▋'
-  | i < (100 `div` 4 * 3) = '▊'
-  | i < (100 `div` 8 * 7) = '▉'
-  | otherwise             = '█'
 
 i3Full :: Text -> Text
 i3Full xs = "\"full_text\": \"" `T.append` xs `T.append` "\""
@@ -83,7 +92,7 @@ instance MonkyOutput I3Output where
     hFlush stdout
 
 
-
+-- | Get output handle for i3-bar. This initializes the communication on generation
 getI3Output :: IO I3Output
 getI3Output = do
   putStrLn "{\"version\":1}" -- Static version thingy we have to print

@@ -37,6 +37,7 @@ import Data.Text (Text)
 import Data.Composition ((.:))
 
 import Monky.Modules
+import Monky.Examples.Images
 import Monky.Battery hiding (getBatteryHandle, getBatteryHandle')
 import qualified Monky.Battery as B (getBatteryHandle, getBatteryHandle')
 
@@ -66,7 +67,7 @@ instance PollModule BatteryH where
     let h = s `div` 3600
         m = (s `mod` 3600) `div` 60
     return
-      [ MonkyImage (batterySymbol online p) '🔋'
+      [ batteryImage (batterySymbol online p)
       , MonkyColor (batteryColor online p, "") $
         MonkyPlain $ sformat ((left 4 ' ' %. fixed 1) % "W " % int % "% " % (left 2 ' ' %. int) % ":" % (left 2 '0' %. int)) pow p h m
       ]
