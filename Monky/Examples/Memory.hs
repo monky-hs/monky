@@ -24,12 +24,18 @@ Maintainer  : ongy, moepi
 Stability   : testing
 Portability : Linux
 
+For older kernels the memory available value may be wrong.
+When not provided by the kernel it's computed as `free + cached + buffers`.
+If you find this to be to inacurate, use the version for memory free.
+But be aware, that free memory on linux can go close to zero because of io buffers.
 -}
 module Monky.Examples.Memory
   ( getMemoryHandle
   , getMemoryBarHandle
+  , getMemoryFreeHandle
 
   , MHandle
+  , MFHandle
   , MBHandle
   )
 where
@@ -43,7 +49,7 @@ import qualified Monky.Memory as M (getMemoryHandle)
 -- |Simple handle to display current memory available
 newtype MHandle = MH MemoryHandle
 
--- |Get the the memory handle
+-- |Get the the memory handle (available)
 getMemoryHandle :: IO MHandle
 getMemoryHandle = fmap MH $ M.getMemoryHandle
 
@@ -51,6 +57,23 @@ getMemoryHandle = fmap MH $ M.getMemoryHandle
 instance PollModule MHandle where
   getOutput (MH h) = do
     mp <- getMemoryAvailable h
+    return
+      [ MonkyImage "mem" '🐏'
+      , MonkyPlain $ convertUnitB (mp * 1024) "B"
+      ]
+
+
+-- |Simple handle to display current free memory
+newtype MFHandle = MFH MemoryHandle
+
+-- |Get the the memory handle (free)
+getMemoryFreeHandle :: IO MFHandle
+getMemoryFreeHandle = fmap MFH $ M.getMemoryHandle
+
+{- Memory Module -}
+instance PollModule MFHandle where
+  getOutput (MFH h) = do
+    mp <- getMemoryFree h
     return
       [ MonkyImage "mem" '🐏'
       , MonkyPlain $ convertUnitB (mp * 1024) "B"
