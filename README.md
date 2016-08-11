@@ -59,6 +59,10 @@ For the fancy clock example you will also need the `.xbm` files in this repo.
 ![Laptop-2.0](http://i.imgur.com/nQQ9ywX.jpg?1)
 [config](http://lpaste.net/170301)
 
+This is from ONE screenshot. i3bar is running in a Xephyr which runs on the same DISPLAY as dzen2 and terminal.
+from top to bottom: dzen2, urxvt, i3bar. This example demonstrates the new output modes (and guessOutput).
+It also showes, that horizontal bars only really work in dzen.
+Also terminal is missing colorization.
 ![PC-variaty](http://i.imgur.com/MUhvxY0.jpg?1)
 [config](http://lpaste.net/639572968845869056)
 [started](http://lpaste.net/1324624775158431744)
