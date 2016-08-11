@@ -127,7 +127,7 @@ chooseProcessOut
   -> IO GuessOut
 chooseProcessOut height path x
   | x == "dzen2" = GO <$> getDzenOut height path
-  | x == "i3-bar" = GO <$> getI3Output
+  | x == "i3bar" = GO <$> getI3Output
   | x `elem`networkOuts = GO <$> getSerializeOut
   | otherwise = GO <$> getShowOut
 
