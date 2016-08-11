@@ -24,7 +24,11 @@ Maintainer  : ongy
 Stability   : testing
 Portability : Linux
 
-This module provides the output generation for i3-bar outputs
+This module provides the output generation for i3-bar outputs.
+Do note, if you are using this output, you have to compile monky
+once before you are piping it to i3-bar.
+GHC will output something during compilation step, this can't be avoided
+by monky, this will break the output.
 -}
 module Monky.Outputs.I3
   ( I3Output

@@ -52,6 +52,7 @@ instance MonkyOutput WrapOuts where
   doLine (WO o) = doLine o
 
 
+-- |Lowerlevel access to guess which terminal out to use based on system encoding
 chooseTerminalOut :: IO WrapOuts
 chooseTerminalOut = do
   l <- getLocaleEncoding

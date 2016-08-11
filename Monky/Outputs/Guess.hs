@@ -1,6 +1,32 @@
+{-
+    Copyright 2016 Markus Ongyerth
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE CPP #-}
+{-|
+Module      : Monky.Outputs.Guess
+Description : Guess the output that should be used based on pipe
+Maintainer  : ongy
+Stability   : testing
+Portability : Linux
+
+-}
 module Monky.Outputs.Guess
   ( guessOutput
   , GuessOut
@@ -36,6 +62,7 @@ data Output
   | Other
   deriving (Eq, Ord, Show)
 
+-- | Type wrapper for this to work
 data GuessOut = forall a . MonkyOutput a => GO a
 
 instance MonkyOutput GuessOut where
@@ -104,6 +131,7 @@ chooseProcessOut height path x
   | x `elem`networkOuts = GO <$> getSerializeOut
   | otherwise = GO <$> getShowOut
 
+-- | Guess output based on isatty and other side of the stdout fd
 guessOutput
   :: Int -- ^Dzen height
   -> Text -- ^Dzen xbm path
