@@ -22,6 +22,7 @@ import Monky.Modules
 import Monky.Outputs.Fallback (chooseTerminalOut)
 import Monky.Outputs.Show (getShowOut)
 import Monky.Outputs.Dzen2 (getDzenOut)
+import Monky.Outputs.I3 (getI3Output)
 import Monky.Outputs.Serialize (getSerializeOut)
 
 #if MIN_VERSION_base(4,8,0)
@@ -99,6 +100,7 @@ chooseProcessOut
   -> IO GuessOut
 chooseProcessOut height path x
   | x == "dzen2" = GO <$> getDzenOut height path
+  | x == "i3-bar" = GO <$> getI3Output
   | x `elem`networkOuts = GO <$> getSerializeOut
   | otherwise = GO <$> getShowOut
 
