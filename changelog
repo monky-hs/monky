@@ -1,0 +1,9 @@
+2.0.1:
+  Add license headers where missing
+  Fix battery module padding
+  Fix memory handle for old kernels and add getMemoryFreeHandle
+  Add modify example
+  Add IP collectors (no example though)
+  Add guess output, to guess correct output
+  Add I3 output for i3-bar
+  some internal refactors

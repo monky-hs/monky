@@ -41,6 +41,7 @@ module Monky.Examples.Memory
 where
 
 import Monky.Examples.Utility
+import Monky.Examples.Images
 import Monky.Modules
 
 import Monky.Memory hiding (getMemoryHandle)
@@ -58,7 +59,7 @@ instance PollModule MHandle where
   getOutput (MH h) = do
     mp <- getMemoryAvailable h
     return
-      [ MonkyImage "mem" '🐏'
+      [ memoryImage
       , MonkyPlain $ convertUnitB (mp * 1024) "B"
       ]
 
@@ -107,7 +108,7 @@ newBar f (u, us) =
 getNMemoryOut :: MemoryHandle -> Float -> IO [MonkyOut]
 getNMemoryOut h f = do
   percents <- getUsagePercents h
-  return $ MonkyImage "mem" '🐏':newBar f percents
+  return $ memoryImage:newBar f percents
 
 instance PollModule MBHandle where
   getOutput (MBH f h) = getNMemoryOut h f

@@ -34,6 +34,7 @@ where
 import Formatting
 
 import Monky.Examples.Utility
+import Monky.Examples.Images
 import Monky.Modules
 import Monky.Disk hiding (getDiskHandle)
 import qualified Monky.Disk as D (getDiskHandle)
@@ -53,6 +54,6 @@ instance PollModule DiskH where
     (dr, dw) <- getDiskReadWrite dh
     df <- getDiskFree dh
     return
-      [ MonkyImage "diskette" ' '-- '🖪' also disabled for compat reasons
+      [ diskImage
       , MonkyPlain $ sformat (stext % " " % stext % " " % stext) (convertUnitSI df "B") (convertUnitSI dr "B" ) (convertUnitSI dw "B")
       ]

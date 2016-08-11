@@ -35,33 +35,12 @@ where
 
 import System.IO (hFlush, stdout)
 import Monky.Modules
+import Monky.Outputs.Unicode
 
 import qualified Data.Text.IO as T
 
 -- |The output handle for a utf8 pipe
 data Utf8Output = Utf8Output
-
-barChar :: Int -> Char
-barChar i
-  | i < (100 `div` 8)     = '▁'
-  | i < (100 `div` 4)     = '▂'
-  | i < (100 `div` 8 * 3) = '▃'
-  | i < (100 `div` 2)     = '▄'
-  | i < (100 `div` 8 * 5) = '▅'
-  | i < (100 `div` 4 * 3) = '▆'
-  | i < (100 `div` 8 * 7) = '▇'
-  | otherwise             = '█'
-
-hBarChar :: Int -> Char
-hBarChar i
-  | i < (100 `div` 8)     = '▏'
-  | i < (100 `div` 4)     = '▎'
-  | i < (100 `div` 8 * 3) = '▍'
-  | i < (100 `div` 2)     = '▌'
-  | i < (100 `div` 8 * 5) = '▋'
-  | i < (100 `div` 4 * 3) = '▊'
-  | i < (100 `div` 8 * 7) = '▉'
-  | otherwise             = '█'
 
 doOut :: MonkyOut -> IO ()
 doOut (MonkyPlain t)   = T.putStr t

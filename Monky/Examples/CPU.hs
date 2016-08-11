@@ -58,6 +58,7 @@ import Formatting
 import Data.List (intercalate)
 
 import Monky.Modules
+import Monky.Examples.Images
 import qualified Monky.CPU as C
 
 #if MIN_VERSION_base(4,8,0)
@@ -80,7 +81,7 @@ printBar h =
   MonkyColor (cpuColor h, "#262626") (MonkyBar h)
 
 printXbm :: MonkyOut
-printXbm = MonkyImage "cpu" ' '--'🖩' Disabled because of compile errors
+printXbm = cpuImage
 
 printFrequency :: Float -> MonkyOut
 printFrequency = MonkyPlain . sformat (fixed 1 % "G")
