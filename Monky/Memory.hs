@@ -69,7 +69,7 @@ getMemoryAvailable (MemoryH f) = do
 
     Nothing -> do
       let buffs = fromMaybe err $ findLine "Buffers" contents
-          cached = fromMaybe err $ findLine "Chached" contents
+          cached = fromMaybe err $ findLine "Cached" contents
       free <- getMemoryFree (MemoryH f)
       return $ getVal buffs + getVal cached + free
     (Just x) -> return . getVal $ x
