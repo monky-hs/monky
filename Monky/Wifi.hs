@@ -34,11 +34,15 @@ module Monky.Wifi
   , Interface
   , SSIDSocket
   , getWifiFd
+  , prepareEvents
 
+  , Signal(..)
   , WifiStats(..)
   , WifiConn(..)
   )
 where
+
+import Debug.Trace
 
 import Data.Bits ((.&.))
 import Data.Word (Word8, Word32)
@@ -75,13 +79,18 @@ data WifiConn
   | WifiDisconnect -- ^The current network was disconnectd
   | WifiConnect WifiStats -- ^A new connection was established
 
+-- |Signal type: http://lxr.free-electrons.com/source/net/wireless/nl80211.c#L6944
+data Signal
+  = SigMBM Word32 -- ^Signal MBM
+  | SigUNSPEC Word8 -- ^Strength 0-100 http://lxr.mein.io/source/iwinfo/api/nl80211.h#L3388
+
 -- |Wifi network connection information
 data WifiStats = WifiStats
   { wifiChannel :: Word8
   , wifiRates :: [Word32]
   , wifiName :: String
   , wifiFreq :: Word32
-  , wifiMBM :: Word32
+  , wifiSig :: Signal
   }
 
 -- Unsafe decode, we rely on kernel to be sensible
@@ -98,7 +107,13 @@ getBssAttrs attr = do
     (Left _)  -> Nothing
     (Right x) -> return x
 
+-- |Convert raw values from netlink
+getSignal :: Maybe Word32 -> Maybe Word8 -> Signal
+getSignal Nothing    (Just unspec) = SigUNSPEC unspec
+getSignal (Just mbm) Nothing       = SigMBM mbm
+getSignal x          y             = error ("Wifi signal is weird, should be either, got: " ++ show x ++ " and " ++ show y)
 
+-- |Get WifiStats from netlink message
 attrToStat :: NL80211Packet -> Maybe WifiStats
 attrToStat pack = do
   pattrs <- getBssAttrs $ packetAttributes pack
@@ -109,19 +124,20 @@ attrToStat pack = do
   rate <- M.lookup eWLAN_EID_SUPP_RATES attrs
 
   freq <- uDecode . M.lookup eNL80211_BSS_FREQUENCY $ pattrs
-  mbm <- uDecode . M.lookup eNL80211_BSS_SIGNAL_MBM $ pattrs
+  let mbm = uGetWord32 . M.lookup eNL80211_BSS_SIGNAL_MBM $ pattrs
+  let sig = uDecode . M.lookup eNL80211_BSS_SIGNAL_UNSPEC $ pattrs
 
   let bs = M.lookup eWLAN_EID_EXT_SUPP_RATES attrs
   let ratL = rate `BS.append` fromMaybe BS.empty bs
   let rates = map (\y -> fromIntegral (y .&. 0x7F) * (500000 :: Word32)) . BS.unpack $ ratL
 
-  return $ WifiStats channel rates name freq mbm
+  return $ WifiStats channel rates name freq $getSignal mbm sig
 
 -- |Get the stats of a currently connected wifi network
 getCurrentWifiStats :: SSIDSocket -> Interface -> IO (Maybe WifiStats)
 getCurrentWifiStats s i = do
   wifis <- getConnectedWifi s i
-  return $ attrToStat =<< listToMaybe wifis
+  return $ attrToStat =<< listToMaybe (trace ("conn: " ++ show wifis) wifis)
 
 
 -- |Get only the name of the currently connected wifi
@@ -167,10 +183,13 @@ gotReadable s i = do
               else return WifiNone
           else return WifiNone
 
+-- |Subscribe to multicast group
+prepareEvents :: SSIDSocket -> IO ()
+prepareEvents s = joinMulticastByName s "mlme"
 
--- |Get a netlink socket bound to nl80211 mlme Group
+-- |Get a netlink socket bound to nl80211
+-- Before this is used event based, call 'prepareEvents'
 getSSIDSocket :: IO SSIDSocket
 getSSIDSocket = do
   s <- makeNL80211Socket
-  joinMulticastByName s "mlme"
   return s
