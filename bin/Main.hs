@@ -51,6 +51,7 @@ import System.Exit (ExitCode(..), exitFailure)
 import System.IO (withFile, IOMode(..), hPutStr, hPutStrLn, stderr)
 import System.Posix.Process (executeFile)
 import System.Process (system)
+import Data.Monoid ((<>))
 
 import Options.Applicative
 
