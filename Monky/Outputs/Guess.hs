@@ -41,7 +41,6 @@ import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes)
 import System.Directory (getDirectoryContents)
 import System.IO (hIsTerminalDevice, stdout)
-import System.IO.Error (IOError)
 import System.Posix.Files (readSymbolicLink)
 
 import Monky.Modules
