@@ -65,7 +65,7 @@ data PulseH = PulseH (Maybe String)
 -- |Format a given sink to the output string.
 printSink :: ([MonkyOut] -> IO ()) -> Sinkinfo -> IO ()
 printSink fun sink = do
-    let norm = 0x10000
+    let norm = 0x10000 :: Double
     let (CVolume vol) = siVolume sink
     let mute = siMute sink
     -- this is taken from pulseaudio pa_volume_snprint, +- rounding this is
@@ -130,26 +130,26 @@ instance EvtModule PulseH where
     startEvtLoop (PulseH server) fun = startPulseMaybe (fun [MonkyPlain "None"]) server fun
 
 
-startSyncPulse
-    :: IO Bool
-startSyncPulse = do
-    impl <- getMainloopImpl
-    cxt <- getContext impl "monky" -- should we get the exe name?
-    var <- newEmptyMVar
-    setStateCallback cxt $ do
-        state <- getContextState cxt
-        case state of
-            ContextFailed -> do
-                hPutStrLn stderr "Could not connect to pulse :("
-                quitLoop impl (-1)
-                putMVar var False
-            ContextReady ->
-                putMVar var True
-            _ -> return ()
-    _ <- connectContext cxt Nothing []
-    _ <- forkIO . void $ doLoop impl
-    -- Should we care?
-    readMVar var
+--startSyncPulse
+--    :: IO Bool
+--startSyncPulse = do
+--    impl <- getMainloopImpl
+--    cxt <- getContext impl "monky" -- should we get the exe name?
+--    var <- newEmptyMVar
+--    setStateCallback cxt $ do
+--        state <- getContextState cxt
+--        case state of
+--            ContextFailed -> do
+--                hPutStrLn stderr "Could not connect to pulse :("
+--                quitLoop impl (-1)
+--                putMVar var False
+--            ContextReady ->
+--                putMVar var True
+--            _ -> return ()
+--    _ <- connectContext cxt Nothing []
+--    _ <- forkIO . void $ doLoop impl
+--    -- Should we care?
+--    readMVar var
 
 -- This (most of it) should move into pulseaudio package, not doing that yet.
 -- instance PollModule PulseH where
