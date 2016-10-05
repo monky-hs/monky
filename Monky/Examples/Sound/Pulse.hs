@@ -18,6 +18,7 @@
 -}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
 {-|
 Module      : Monky.Examples.Sound.Pulse
 Description : Integration example for pulseaudio library.
@@ -57,6 +58,11 @@ import System.IO (hPutStrLn, stderr)
 import Data.Word (Word32)
 import Data.List (genericLength)
 import Formatting
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative ((<$>), (<*>))
+#endif
 
 -- |Pulse handle.
 -- This module uses continuations, the handle is not really used

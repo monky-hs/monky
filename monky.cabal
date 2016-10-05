@@ -98,7 +98,7 @@ Flag ibus
 
 Flag pulse
   Description: enable pulse example
-  Default: true
+  Default: True
 
 Source-repository head
   type:       git
