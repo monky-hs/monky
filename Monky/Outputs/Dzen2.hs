@@ -29,10 +29,11 @@ This module provides the output generation for piping into a dzen2 bar
 module Monky.Outputs.Dzen2
   ( DzenOutput
   , getDzenOut
+  , getDzenOut'
   )
 where
 
-import Data.Composition ((.:))
+import System.Directory(getCurrentDirectory)
 import System.IO (hFlush, stdout)
 import Monky.Modules
 
@@ -86,4 +87,14 @@ getDzenOut
   :: Int -- ^The height of your dzen bar in pixel (required for block-drawing)
   -> Text -- ^Path to the directory cointaining your .xbm files.
   -> IO DzenOutput
-getDzenOut = return .: DzenOutput
+getDzenOut h = return . DzenOutput h . flip T.append "/"
+
+
+-- |Get the output handle for dzen2 formatting. Will asume your .xbm files are
+-- |in <monkydir>/xbm/
+getDzenOut'
+    :: Int -- ^The height of your dzen bar in pixel (for block drawing)
+    -> IO DzenOutput
+getDzenOut' h = do
+    pwd <- getCurrentDirectory
+    getDzenOut h (T.pack pwd `T.append` "/xbm/")
