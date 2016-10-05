@@ -96,6 +96,10 @@ Flag ibus
   Description: enable ibus example
   Default: False
 
+Flag pulse
+  Description: enable pulse example
+  Default: true
+
 Source-repository head
   type:       git
   location:   https://github.com/monky-hs/monky
@@ -135,7 +139,6 @@ library
   exposed-modules: Monky.Examples.Connectivity Monky.Network.Dynamic
   exposed-modules: Monky.Network.Static Monky.Examples.File Monky.Examples.Utility
   exposed-modules: Monky.Examples.Sound.Alsa  Monky.Examples.Alsa 
-  exposed-modules: Monky.Examples.Sound.Pulse
 
   exposed-modules: Monky.Version Monky.Examples.Combine
   exposed-modules: Monky.Examples.Plain Monky.Disk.Common Monky.Blkid
@@ -152,7 +155,7 @@ library
   build-depends:       text, unix, network, mtl, transformers, text
   build-depends:       template-haskell, containers, stm, statvfs
   build-depends:       bytestring, netlink, cereal, formatting, composition
-  build-depends:       env-locale >= 1.0.0.1, pulseaudio
+  build-depends:       env-locale >= 1.0.0.1
 
   -- force double-conversion version for old ghc/library?
   if impl(ghc < 7.8)
@@ -167,6 +170,10 @@ library
   if flag(ibus)
     build-depends: ibus-hs, dbus
     exposed-modules: Monky.Examples.IBus
+
+  if flag(pulse)
+    build-depends: pulseaudio
+    exposed-modules: Monky.Examples.Sound.Pulse
 
   ghc-options:         -Wall
   extra-libraries:     
