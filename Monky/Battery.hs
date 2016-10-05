@@ -131,7 +131,7 @@ getTimeLeftInt n c f s adp = do
   let gap = if online == 0 then now else full - now
   change <- readValue c
   let avg = (change * 20 + s * 80) `div` 100
-  return (if avg >= 3600 then gap `div` (avg `div` 3600) else 0, avg)
+  return (sdivUBound gap (avg `div` 3600) 0, avg)
 
 -- |Get current loading speed in Watt/s
 getLoading :: BatteryHandle -> IO Float

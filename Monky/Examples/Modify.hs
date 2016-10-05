@@ -47,6 +47,7 @@ module Monky.Examples.Modify
   , IOModifyHandle
   , getIOModifyHandle
 
+  , changeImage
   )
 where
 
@@ -62,7 +63,7 @@ data ModifyHandle a = MH ([MonkyOut] -> [MonkyOut]) a
 
 -- |Get a handle to purely modify another modules output
 getModifyHandle :: ([MonkyOut] -> [MonkyOut]) -> IO a -> IO (ModifyHandle a)
-getModifyHandle fun = fmap (MH fun)
+getModifyHandle = fmap . MH
 
 instance PollModule a => PollModule (ModifyHandle a) where
   initialize (MH _ m) = initialize m
@@ -85,3 +86,8 @@ instance PollModule a => PollModule (IOModifyHandle a) where
 
 instance EvtModule a => EvtModule (IOModifyHandle a) where
   startEvtLoop (IOMH fun m) f = startEvtLoop m (\e -> f =<< fun e)
+
+-- |Change the replacemant char in an monky image (if your font doesn't support it), returns initial value if not an image
+changeImage :: Char -> MonkyOut -> MonkyOut
+changeImage c (MonkyImage x _) = MonkyImage x c
+changeImage _ x                = x

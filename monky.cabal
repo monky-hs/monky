@@ -147,7 +147,7 @@ library
 
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time
-  build-depends:       text, unix, network, mtl, transformers, text
+  build-depends:       text, unix, network, mtl, transformers
   build-depends:       template-haskell, containers, stm, statvfs
   build-depends:       bytestring, netlink, cereal, formatting, composition
   build-depends:       env-locale >= 1.0.0.1

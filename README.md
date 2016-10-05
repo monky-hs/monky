@@ -86,7 +86,7 @@ Also terminal is missing colorization.
 # Why monky for status generation
 
 * + On my machine, monky tends to use less cpu time than others, which is relevant for laptops
-* - monky takes a fair amount of disk space (ghc dependency) and has bigger binaries (mostly ghc RTS)
+* - monky takes a fair amount of disk space (ghc dependency) and has larger binaries (mostly ghc RTS)
 
 ## Why use monky instead of conky?
 
