@@ -1,3 +1,13 @@
+2.1.0:
+  Add pulseaudio support and deprecate old Alsa Example location
+  Fix Battery colours (only <20 worked earlier)
+  Add changeImage to Monky.Examples.Modify
+  Dzen2 Output:
+    Automatically add '/' to the end of xbm path
+    Add getDzenOut' to use ./xbm/ for xbm path
+  Fix Guess output i3bar detection
+  Couple of documentation changes and refactors
+
 2.0.1:
   Add license headers where missing
   Fix battery module padding
