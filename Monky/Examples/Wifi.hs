@@ -22,8 +22,13 @@ Description : An example module instance for the wifi module
 Maintainer  : ongy
 Stability   : experimental
 Portability : Linux
+
+FormatSignal only makes sense when used in a pollModule. But even in pollModule
+context updates may take a while because of some buffering by drivers or
+netlink subsystem.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 module Monky.Examples.Wifi
   ( getWifiHandle
@@ -33,6 +38,8 @@ module Monky.Examples.Wifi
 where
 
 import Formatting
+import Data.Word (Word32, Word8)
+import Data.Int (Int32)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Maybe (fromMaybe)
@@ -56,7 +63,7 @@ data WifiFormat
   | FormatRates -- ^Print the current network max supported rate (always 54Mbit/s for me)
   | FormatName -- ^Print the ESSID of the current network, may look weird because SSIDs are
   | FormatFreq -- ^Print the frequency the current network sends on (related to channel)
-  | FormatMBM -- ^I think something something signal strength
+  | FormatSignal -- ^Print link quality (0-100)
   | FormatText Text -- ^Print a plaintext string
 
 getFun :: WifiFormat -> WifiStats -> Text
@@ -64,11 +71,26 @@ getFun FormatChannel    = sformat int . wifiChannel
 getFun FormatRates      = flip convertUnitSI "B" . maximum . wifiRates
 getFun FormatName       = T.pack . wifiName
 getFun FormatFreq       = sformat int . wifiFreq
-getFun FormatMBM        = sformat int . wifiMBM
+getFun FormatSignal     = sformat int . doStrength . wifiSig
 getFun (FormatText str) = const str
 
 getFunction :: [WifiFormat] -> WifiStats -> Text
 getFunction xs = T.concat . (\a -> map (($ a) . getFun) xs)
+
+-- |Do the calculation for MBM
+-- This is taken from NetworkManager
+doMBM :: Word32 -> Word8
+doMBM e =
+  let noiseFloor = -90
+      signalMax  = -20
+      work :: Int32 = fromIntegral e
+      clamped :: Float = min signalMax $ max noiseFloor $ fromIntegral $ work `div` 100
+      in floor (100 - 70 * ((signalMax - clamped) / (signalMax - noiseFloor)))
+
+-- Helper for FormatSignal that splits signal types
+doStrength :: Signal -> Word8
+doStrength (SigMBM mbm) = doMBM mbm
+doStrength (SigUNSPEC unspec) = unspec
 
 -- |Get a wifi handle
 getWifiHandle
@@ -93,6 +115,7 @@ getEventOutput (WH s i f d) = do
 instance EvtModule WifiHandle where
   startEvtLoop h@(WH s _ _ _) r = do
     r =<< getOutput h
+    prepareEvents s
     loopFd h (getWifiFd s) r getEventOutput
 
 instance PollModule WifiHandle where
