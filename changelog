@@ -7,6 +7,9 @@
     Add getDzenOut' to use ./xbm/ for xbm path
   Fix Guess output i3bar detection
   Couple of documentation changes and refactors
+  Wifi collector:
+    Fix PollModule instance
+    Fix signal strength/quality handling
 
 2.0.1:
   Add license headers where missing
