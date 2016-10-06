@@ -97,7 +97,7 @@ Flag ibus
   Default: False
 
 Flag pulse
-  Description: enable pulse example
+  Description: enable pulse example (7.6 disabled because travis)
   Default: True
 
 Source-repository head
@@ -171,9 +171,10 @@ library
     build-depends: ibus-hs, dbus
     exposed-modules: Monky.Examples.IBus
 
-  if flag(pulse)
-    build-depends: pulseaudio
-    exposed-modules: Monky.Examples.Sound.Pulse
+  if impl(ghc >= 7.8)
+    if flag(pulse)
+      build-depends: pulseaudio
+      exposed-modules: Monky.Examples.Sound.Pulse
 
   ghc-options:         -Wall
   extra-libraries:     
