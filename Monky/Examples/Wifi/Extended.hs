@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NumDecimals #-}
 module Monky.Examples.Wifi.Extended
 where
 
@@ -51,14 +52,14 @@ getExtFun Bitrate info = -- Bitrate is in TXRate
         Nothing -> "No Rate"
         Just x -> maybe
             "No Bitrate"
-            (flip convertUnitSI "Hz" . (* 1000))
+            (flip convertUnitSI "b" . (* 1e5))
             (rateBitrate x)
 getExtFun BitrateMin info = -- Bitrate from RX/TX Rate
     let tx = rateBitrate =<< staTXRate info
         rx = rateBitrate =<< staRXRate info
     in case min <$> rx <*> tx of
         Nothing -> "No rates"
-        Just x -> sformat int x
+        Just x -> convertUnitSI (x * 1e5) "b"
 getExtFun ExtSignal info =
     case staSignalMBM info of
         Nothing -> "No strength"
