@@ -43,8 +43,6 @@ module Monky.Wifi
   )
 where
 
-import Debug.Trace
-
 import Data.Bits ((.&.))
 import Data.Word (Word8, Word32)
 import Data.Maybe (listToMaybe, fromMaybe)
@@ -145,7 +143,7 @@ attrToStat pack = do
 getCurrentWifiStats :: SSIDSocket -> Interface -> IO (Maybe WifiStats)
 getCurrentWifiStats (SSIDSocket _ s) i = do
   wifis <- getConnectedWifi s i
-  return $ attrToStat =<< listToMaybe (trace ("conn: " ++ show wifis) wifis)
+  return $ attrToStat =<< listToMaybe  wifis
 
 
 -- |Get only the name of the currently connected wifi
