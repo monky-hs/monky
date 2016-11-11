@@ -32,8 +32,15 @@ netlink subsystem.
 {-# LANGUAGE CPP #-}
 module Monky.Examples.Wifi
   ( getWifiHandle
+  , getWifiHandle'
+
+    -- TODO: rename
+  , getFunction
+  , doMBM
+
   , WifiHandle
   , WifiFormat(..)
+  , WifiStats
   )
 where
 
@@ -48,6 +55,10 @@ import Monky.Modules
 import Monky.Examples.Utility
 import Monky.Wifi
 
+import System.Linux.Netlink.GeNetlink.NL80211 (NL80211Packet)
+
+import System.IO.Unsafe (unsafeInterleaveIO)
+
 #if MIN_VERSION_base(4,8,0)
 #else
 import Control.Applicative ((<$>))
@@ -55,7 +66,7 @@ import Control.Applicative ((<$>))
 
 -- Socket Interface Conversion Offline
 -- |The handle type for this module
-data WifiHandle = WH SSIDSocket Interface (WifiStats -> Text) Text
+data WifiHandle = WH SSIDSocket Interface ((WifiStats, Maybe NL80211Packet) -> Text) Text
 
 -- |A typesafe version of a format string
 data WifiFormat
@@ -98,17 +109,28 @@ getWifiHandle
   -> Text -- ^Text that should be displayed when wifi is disconnected
   -> String -- ^Name of the interface
   -> IO WifiHandle
-getWifiHandle f d n = do
-  let fun = getFunction f
-  s <- getSSIDSocket
-  i <- fromMaybe (error ("Could not find interface: " ++ n)) <$> getInterface s n
-  return (WH s i fun d)
+getWifiHandle f d n =
+  getWifiHandle' (getFunction f . fst) d n
+
+-- | Lower level version of 'getWifiHandle' if you need exted information.
+getWifiHandle'
+    :: ((WifiStats, Maybe NL80211Packet) -> Text)
+    -> Text
+    -> String
+    -> IO WifiHandle
+getWifiHandle' f d n = do
+    s <- getSSIDSocket
+    i <- fromMaybe (error ("Could not find interface: " ++ n)) <$> getInterface s n
+    return (WH s i f d)
+
 
 getEventOutput :: WifiHandle -> IO [MonkyOut]
 getEventOutput (WH s i f d) = do
   new <- gotReadable s i
   case new of
-    (WifiConnect x) -> return [MonkyPlain $ f x]
+    (WifiConnect x) -> do
+        ext <- unsafeInterleaveIO $ getExtendedWifi s i x
+        return [MonkyPlain $ f (x, ext)]
     WifiNone -> return []
     WifiDisconnect -> return [MonkyPlain d]
 
@@ -121,4 +143,8 @@ instance EvtModule WifiHandle where
 instance PollModule WifiHandle where
   getOutput (WH s i f d) = do
     ret <- getCurrentWifiStats s i
-    return [MonkyPlain $ maybe d f ret]
+    case ret of
+      Nothing -> return [MonkyPlain d]
+      Just x -> do
+        ext <- unsafeInterleaveIO $ getExtendedWifi s i x
+        return [MonkyPlain $ f (x, ext)]
