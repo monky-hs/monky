@@ -116,18 +116,17 @@ getCPUFreqsMax = mapM (fopen . pathMaxScaling)
 
 
 -- | Check if thermal zone is x86_pkg_temp
-isType :: String -> String -> Bool
-isType t xs = unsafePerformIO $do
-  str <- readFile (thermalBaseP ++ xs ++ "/type")
-  return (str == t)
+checkType :: (String -> Bool) ->  String -> Bool
+checkType f xs = unsafePerformIO $ do
+    f <$> readFile (thermalBaseP ++ xs ++ "/type")
 
 -- | Get the filter function for the thermal zone getter
 thermalGuesser :: String -> Bool
 thermalGuesser =
     let (ma, mi) = getKernelVersion
      in if ma <= 3 && mi <= 13
-           then isType "pkg_temp\n"
-           else isType "x86_pkg_temp\n"
+           then checkType ("pkg-temp-" `isPrefixOf`)
+           else checkType (== "x86_pkg_temp\n")
 
 -- | Try to guess the thermal zones
 guessThermalZones :: IO [String]
