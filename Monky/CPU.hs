@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015-2017 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -115,16 +115,24 @@ getCPUFreqsMax :: [String] -> IO [File]
 getCPUFreqsMax = mapM (fopen . pathMaxScaling)
 
 
--- |Check if thermal zone is x86_pkg_temp
-isX86PkgTemp :: String -> Bool
-isX86PkgTemp xs = unsafePerformIO $do
+-- | Check if thermal zone is x86_pkg_temp
+isType :: String -> String -> Bool
+isType t xs = unsafePerformIO $do
   str <- readFile (thermalBaseP ++ xs ++ "/type")
-  return (str == "x86_pkg_temp\n")
+  return (str == t)
 
--- |Try to guess the thermal zones
+-- | Get the filter function for the thermal zone getter
+thermalGuesser :: String -> Bool
+thermalGuesser =
+    let (ma, mi) = getKernelVersion
+     in if ma <= 3 && mi <= 13
+           then isType "pkg_temp\n"
+           else isType "x86_pkg_temp\n"
+
+-- | Try to guess the thermal zones
 guessThermalZones :: IO [String]
 guessThermalZones = do
-  filter isX86PkgTemp . filter ("thermal_zone" `isPrefixOf`) <$> tzones
+  filter thermalGuesser . filter ("thermal_zone" `isPrefixOf`) <$> tzones
   where tzones = getDirectoryContents thermalBaseP
 
 -- |Tries to guess the thermal zone based on type

@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.1.1.0
+version:             2.1.1.1
 
 -- The ABOVE LINE has to stay AS IS (except for version changes) for the
 -- template to work properly
@@ -149,7 +149,7 @@ library
   exposed-modules: Monky.Examples.Modify Monky.IP Monky.IP.Raw
 
   exposed-modules: Monky.Outputs.Unicode Monky.Examples.Images
-  other-modules: Monky.Template Monky.VersionTH
+  other-modules: Monky.Template Monky.VersionTH Monky.CUtil
 
 
   build-depends:       base >=4.6.0.1 && <=5, directory, time
