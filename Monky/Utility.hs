@@ -47,6 +47,7 @@ module Monky.Utility
     )
 where
 
+import Data.Word (Word)
 import qualified Monky.CUtil as C
 import System.IO
 import System.IO.Unsafe (unsafePerformIO)
@@ -189,5 +190,5 @@ getUname = unsafePerformIO C.uname
 getKernelVersion :: (Word, Word)
 getKernelVersion =
     let txt = T.splitOn (T.pack ".") . C._uRelease $ getUname
-        (Right major: Right minor:_) = T.decimal <$> txt
+        (Right major: Right minor:_) = fmap T.decimal txt
      in (fst major, fst minor)
