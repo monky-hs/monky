@@ -33,6 +33,7 @@ module Monky.CUtil
     )
 where
 
+import Data.Word (Word)
 import Foreign.Ptr
 import Foreign.C.Types
 
@@ -41,6 +42,8 @@ import qualified Data.Text.Foreign as T
 
 import Foreign.Storable
 import Foreign.Marshal.Alloc
+
+import Control.Applicative ((<$>), (<*>))
 
 #include <sys/utsname.h>
 
