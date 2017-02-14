@@ -1,0 +1,14 @@
+resolver: lts-8.0
+
+packages:
+- '.'
+# Dependency packages to be pulled from upstream that are not in the resolver
+extra-deps:
+- env-locale-1.0.0.1
+- netlink-1.0.0.4
+- statvfs-0.2
+
+# Override default flag values for local packages and extra-deps
+flags:
+  monky:
+    pulse: false
