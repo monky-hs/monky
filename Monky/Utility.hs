@@ -1,5 +1,5 @@
 {-
-    Copyright 2015,2016 Markus Ongyerth, Stephan Guenther
+    Copyright 2015-2017 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -28,26 +28,34 @@ Portability : Linux
 This module provides utility functions used in monky modules
 -}
 module Monky.Utility
- ( readValue
- , readValues
- , fopen
- , fclose
- , File
- , readLine
- , readContent
- , findLine
- , splitAtEvery
- , maybeOpenFile
- , sdivBound
- , sdivUBound
- , listDirectory
- )
+    ( readValue
+    , readValues
+    , fopen
+    , fclose
+    , File
+    , readLine
+    , readContent
+    , findLine
+    , splitAtEvery
+    , maybeOpenFile
+    , sdivBound
+    , sdivUBound
+    , listDirectory
+    , C.UName
+    , getUname
+    , getKernelVersion
+    )
 where
 
+import Data.Word (Word)
+import qualified Monky.CUtil as C
 import System.IO
+import System.IO.Unsafe (unsafePerformIO)
 import Data.List (isPrefixOf)
 
 import Data.Maybe (fromMaybe)
+import qualified Data.Text as T
+import qualified Data.Text.Read as T
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
 
@@ -172,3 +180,15 @@ sdivUBound _ 0 d = d
 sdivUBound x y _ = x `div` y
 
 infixl 7 `sdivBound`, `sdivUBound`
+
+-- This should never change while we are on the same kernel
+-- | Get the kernel name/version/release and so forth
+getUname :: C.UName
+getUname = unsafePerformIO C.uname
+
+-- | Get the kernel version as (major, minor)
+getKernelVersion :: (Word, Word)
+getKernelVersion =
+    let txt = T.splitOn (T.pack ".") . C._uRelease $ getUname
+        (Right major: Right minor:_) = fmap T.decimal txt
+     in (fst major, fst minor)
