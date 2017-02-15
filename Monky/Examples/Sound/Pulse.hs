@@ -38,13 +38,12 @@ module Monky.Examples.Sound.Pulse
 where
 
 import Monky.Modules
-import Data.Maybe (fromMaybe)
 import Control.Monad (void)
-import Control.Concurrent.MVar
-import Control.Concurrent
+import Control.Monad.IO.Class
 
 import System.Environment (getProgName)
 
+import Sound.Pulse
 import Sound.Pulse.Context
 import Sound.Pulse.Mainloop
 import Sound.Pulse.Mainloop.Simple
@@ -83,32 +82,22 @@ printSink fun sink = do
         else sformat ((left 3 ' ' %. int) % "%") (round rvol :: Int)
     fun [MonkyPlain str]
 
--- |Start the subscription loop that will give us the updates.
-startLoop :: Context -> ([MonkyOut] -> IO ()) -> Sinkinfo -> IO ()
-startLoop cxt cfun info = do 
-    void $ subscribeEvents cxt [SubscriptionMaskSink] fun
-    printSink cfun info
-    where fun :: ((SubscriptionEventFacility, SubscriptionEventType) -> Word32 -> IO ())
-          fun _ 0 = void $ getContextSinkByIndex cxt (siIndex info) (printSink cfun)
-          fun _ _ = return ()
+-- | Find the index of our sink and register the event handler
+startLoopM :: Maybe String -> ([MonkyOut] -> IO ()) -> Pulse ()
+startLoopM str fun = do
+    name <- maybe (defaultSinkName <$> getServerInfoM) return str
+    sink <- getContextSinkByNameM name
+    void $ subscribeEventsM [SubscriptionMaskSink] (sub $ siIndex sink)
+    liftIO $ printSink fun sink
+    where sub :: Word32 -> Context -> ((SubscriptionEventFacility, SubscriptionEventType) -> Word32 -> IO ())
+          sub i cxt _ 0 = void $ getContextSinkByIndex cxt i (printSink fun)
+          sub _ _   _ _ = return ()
 
--- |Use the name (string) to find the index, print once and find the main loop
-startWithName :: Context -> String -> ([MonkyOut] -> IO ()) -> IO ()
-startWithName cxt name fun = void $ getContextSinkByName cxt name (startLoop cxt fun)
-
--- |Get the default sink and start the main loop
-getDefaultSink :: Context -> ([MonkyOut] -> IO ()) -> IO ()
-getDefaultSink cxt cfun = void $ getServerInfo cxt fun
-    where fun :: ServerInfo -> IO ()
-          fun serv = let name = defaultSinkName serv
-                     in startWithName cxt name cfun
-
--- |Try to start pulse loop. silently fail!
+-- | Try to start pulse loop. silently fail!
 startPulse :: Maybe String -> ([MonkyOut] -> IO ()) -> IO ()
 startPulse = startPulseMaybe (return ())
 
-
--- |Connect to pulse server and try to start the main loop for this module.
+-- | Connect to pulse server and try to start the main loop for this module.
 startPulseMaybe
     :: IO () -- ^The continuation if everything fails
     -> Maybe String -- ^Sink to use (Nothing for default)
@@ -124,9 +113,8 @@ startPulseMaybe ret sinkName fun = do
             ContextFailed -> do
                 hPutStrLn stderr "Could not connect to pulse :("
                 quitLoop impl (-1)
-            ContextReady -> fromMaybe
-                (getDefaultSink cxt fun )
-                (startWithName cxt <$> sinkName <*> return fun)
+            ContextReady ->
+                runPulse_ cxt (startLoopM sinkName fun)
             _ -> return ()
     _ <- connectContext cxt Nothing []
     _ <- doLoop impl
