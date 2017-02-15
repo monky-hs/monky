@@ -33,9 +33,9 @@ To use them, get the handle at the beginning of you application and hand it to
 other functions later on.
 -}
 module Monky
-  ( startLoop
-  , startLoopT
-  )
+    ( startLoop
+    , startLoopT
+    )
 where
 
 import System.Timeout
@@ -64,13 +64,13 @@ packMod mvar x@(Evt (DW m)) = do
 
 getWrapperText :: Int -> ModuleWrapper -> IO [MonkyOut]
 getWrapperText tick (MWrapper (Poll (NMW m i)) r) = do
-  when (tick `mod` i == 0) (writeIORef r =<< getOutput m)
-  readIORef r
+    when (tick `mod` i == 0) (writeIORef r =<< getOutput m)
+    readIORef r
 getWrapperText _ (MWrapper (Evt _) r) = readIORef r
 
 doMonkyLine :: MonkyOutput o => Int -> o -> [ModuleWrapper] -> IO ()
 doMonkyLine t o xs =
-  doLine o =<< mapM (getWrapperText t) xs
+    doLine o =<< mapM (getWrapperText t) xs
 
 doCachedLine :: MonkyOutput o => o -> [ModuleWrapper] -> IO ()
 doCachedLine out xs =
@@ -92,9 +92,9 @@ waitTick limit mvar out xs = do
 
 mainLoop :: MonkyOutput o => Int -> MVar Bool -> Int -> o -> [ModuleWrapper] -> IO ()
 mainLoop l r t o xs = do
-  doMonkyLine t o xs
-  waitTick l r o xs
-  mainLoop l r (t+1) o xs
+    doMonkyLine t o xs
+    waitTick l r o xs
+    mainLoop l r (t+1) o xs
 
 {- | Start the mainLoop of monky. With custom tick timer (in μs)
 
