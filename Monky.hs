@@ -43,7 +43,7 @@ import Data.Time.Clock.POSIX
 import Control.Concurrent.MVar
 import Data.IORef (IORef, readIORef, writeIORef, newIORef, atomicWriteIORef)
 import Monky.Modules
-import Control.Monad (when)
+import Control.Monad (when, void)
 import Control.Concurrent (forkIO)
 
 
@@ -59,7 +59,7 @@ packMod mvar x@(Evt (DW m)) = do
     sref <- newIORef []
     _ <- forkIO . startEvtLoop m $ \val -> do
         atomicWriteIORef sref val
-        putMVar mvar True
+        void $ tryPutMVar mvar True
     return $ MWrapper x sref
 
 getWrapperText :: Int -> ModuleWrapper -> IO [MonkyOut]
