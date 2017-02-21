@@ -7,8 +7,29 @@ monky is an application to feed status bars (like dzen2/i3bar) with a lines to d
 If you have any more questions or suggestions, come and join us (or rather me) on freenode at #monky.
 
 # Install
- * Clone this repo
- * Run `cabal install`. This installs a **monky** executable in *~/.cabal/bin*.
+
+## Sources
+
+  * Clone and cd into repo directory
+
+### Cabal
+
+  * `cabal install`
+  * binary is installed into `~/.cabal/bin`
+
+### Stack
+
+  * `stack install cabal-install`
+  * `stack init --solver`
+  * `stack build`
+  * Run via stack: `stack exec --stack-yaml /path/to/repo/stack.yaml monky`
+
+## Package managers
+
+### Gentoo
+
+  * `layman -a haskell`
+  * `emerge -av dev-haskell/monky`
 
 # How to
  * Install (well that's obvious)
