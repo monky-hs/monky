@@ -64,6 +64,7 @@ doOut h (MonkyColor (f, b) (MonkyBar p)) = do
   T.putStr ("^bg(" `T.append` f `T.append` ")^fg(" `T.append` b `T.append` ")")
   doOut h (MonkyBar p)
   T.putStr "^bg()^fg()"
+doOut h (MonkyColor ("", "") o) = doOut h o
 doOut h (MonkyColor (f, b) o) = do
   T.putStr ("^bg(" `T.append` b `T.append` ")^fg(" `T.append` f `T.append` ")")
   doOut h o
