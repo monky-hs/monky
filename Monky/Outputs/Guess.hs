@@ -19,6 +19,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Outputs.Guess
 Description : Guess the output that should be used based on pipe
@@ -30,6 +31,7 @@ Portability : Linux
 module Monky.Outputs.Guess
   ( guessOutput
   , GuessOut
+  , guessOutput'
   )
 where
 
@@ -46,7 +48,7 @@ import System.Posix.Files (readSymbolicLink)
 import Monky.Modules
 import Monky.Outputs.Fallback (chooseTerminalOut)
 import Monky.Outputs.Show (getShowOut)
-import Monky.Outputs.Dzen2 (getDzenOut)
+import Monky.Outputs.Dzen2 (getDzenOut'')
 import Monky.Outputs.I3 (getI3Output)
 import Monky.Outputs.Serialize (getSerializeOut)
 
@@ -122,10 +124,11 @@ getOutputType = do
 chooseProcessOut
   :: Int
   -> Text
+  -> MonkyOut
   -> String
   -> IO GuessOut
-chooseProcessOut height path x
-  | x == "dzen2" = GO <$> getDzenOut height path
+chooseProcessOut height path divider x
+  | x == "dzen2" = GO <$> getDzenOut'' height path divider
   | x == "i3bar" = GO <$> getI3Output
   | x `elem`networkOuts = GO <$> getSerializeOut
   | otherwise = GO <$> getShowOut
@@ -135,9 +138,18 @@ guessOutput
   :: Int -- ^Dzen height
   -> Text -- ^Dzen xbm path
   -> IO GuessOut
-guessOutput height path = do
+guessOutput height path = guessOutput' height path $ MonkyPlain " | "
+
+-- | Guess output based on isatty and other side of the stdout fd
+guessOutput'
+  :: Int -- ^Dzen height
+  -> Text -- ^Dzen xbm path
+  -> MonkyOut -- ^The Divider to use
+  -> IO GuessOut
+guessOutput' height path divider = do
   out <- getOutputType
   case out of
     Terminal -> GO <$> chooseTerminalOut
     Other -> {- for other we just use show -} GO <$> getShowOut
-    (Process x) -> chooseProcessOut height path x
+    (Process x) -> chooseProcessOut height path divider x
+

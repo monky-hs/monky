@@ -17,7 +17,6 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE EmptyDataDecls #-}
 {-|
 Module      : Monky.Outputs.Ascii
 Description : Output module for Ascii
@@ -30,6 +29,7 @@ This module provides the output generation for ascii outputs
 module Monky.Outputs.Ascii
   ( AsciiOutput
   , getAsciiOut
+  , getAsciiOut'
   )
 where
 
@@ -39,7 +39,7 @@ import Monky.Modules
 import qualified Data.Text.IO as T
 
 -- |The output handle for a ascii pipe
-data AsciiOutput = AsciiOutput
+data AsciiOutput = AsciiOutput MonkyOut
 
 doOut :: MonkyOut -> IO ()
 doOut (MonkyPlain t)   = T.putStr t
@@ -57,11 +57,17 @@ instance MonkyOutput AsciiOutput where
     doSegment x
     putStr "\n"
     hFlush stdout
-  doLine h (x:xs) = do
+  doLine h@(AsciiOutput d) (x:xs) = do
     doSegment x
-    putStr " | "
+    doOut d
     doLine h xs
 
--- |Get an output handle for ascii formatting
+-- |Get an output handle for ascii formatting. Divider Defaults to " | "
 getAsciiOut :: IO AsciiOutput
-getAsciiOut = return AsciiOutput
+getAsciiOut = getAsciiOut' $ MonkyPlain " | "
+
+-- |Get an output handle for ascii formatting
+getAsciiOut'
+  :: MonkyOut -- ^The Divider
+  -> IO AsciiOutput
+getAsciiOut' = return . AsciiOutput
