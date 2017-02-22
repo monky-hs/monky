@@ -57,7 +57,7 @@ import Control.Applicative ((<$>))
 
 data Cache
 
-importLib "LibBlkid" "libblkid.so"
+importLib "LibBlkid" "libblkid.so.1"
   [ ( "c_evt", "blkid_evaluate_tag", "CString -> CString -> Ptr Cache -> IO CString")
   , ( "c_evs", "blkid_evaluate_spec", "CString -> Ptr Cache -> IO CString")
   ]

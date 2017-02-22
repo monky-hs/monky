@@ -96,7 +96,7 @@ type SidHandleAlloc = Ptr SidHandle
 data Elem
 type ElemHandle = Ptr Elem
 
-importLib "LibAlsa" "libasound.so"
+importLib "LibAlsa" "libasound.so.2"
   [ ("mixer_open", "snd_mixer_open", "MixerHandleAlloc -> Int -> IO CInt")
   , ("mixer_attach", "snd_mixer_attach", "MixerHandle -> CString -> IO CInt")
   , ("mixer_register", "snd_mixer_selem_register", "MixerHandle -> Ptr RegOpt -> Ptr MClass -> IO CInt")
