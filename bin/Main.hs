@@ -43,6 +43,7 @@ module Main
   )
 where
 
+import GHC.IO.Handle (hDuplicate)
 import Monky.Version (getVersion)
 import Control.Monad (when, unless)
 import Data.List (isSuffixOf, nub, sort)
@@ -50,7 +51,7 @@ import System.Directory
 import System.Exit (ExitCode(..), exitFailure)
 import System.IO (withFile, IOMode(..), hPutStr, hPutStrLn, stderr)
 import System.Posix.Process (executeFile)
-import System.Process (system)
+import System.Process (shell, waitForProcess, CreateProcess(..), createProcess, StdStream(..))
 import Data.Monoid ((<>))
 
 import Options.Applicative
@@ -153,12 +154,20 @@ shouldCreate = do
   files <- getDirectoryContents "."
   return $ "monky.hs" `notElem` files
 
+runGHC :: Config -> IO ExitCode
+runGHC c = do
+    let com = "ghc " ++ compilerFlags ++ " monky.hs -o " ++ exeName c
+    let proc = shell com
+    file <- hDuplicate stderr
+    (_, _, _, h) <- createProcess proc { std_out = UseHandle file }
+    waitForProcess h
+
 
 compile :: Config -> IO ()
 compile c = unless (confNoCompile c) $ do
   exists <- doesFileExist "monky.hs"
   when exists $ do
-    ret <- system ("ghc " ++ compilerFlags ++ " monky.hs -o " ++ exeName c)
+    ret <- runGHC c
     case ret of
       (ExitFailure _) -> do
         hPutStrLn stderr "Compilation failed"

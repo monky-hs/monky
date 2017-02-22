@@ -51,6 +51,10 @@ data I3Output = I3Output
 i3Full :: Text -> Text
 i3Full xs = "\"full_text\": \"" `T.append` xs `T.append` "\""
 
+makeColor :: Text -> Text -> Text
+makeColor "" _ = ""
+makeColor x y = T.concat [ ", \"", y, "\": \"", x, "\"" ]
+
 getOut :: MonkyOut -> Text
 getOut (MonkyPlain t)   = i3Full t
 getOut (MonkyImage _ c)   = i3Full $ T.singleton c -- Images are not supported :(
@@ -58,11 +62,8 @@ getOut (MonkyBar p)     = i3Full $ T.singleton (barChar p)
 getOut (MonkyHBar p)    = i3Full $ T.pack (replicate (p `div` 10) '█') `T.append` (T.singleton $ hBarChar (p `mod` 10 * 10))
 getOut (MonkyColor (f, b) o) = T.concat
   [ getOut o
-  , ", \"color\": \""
-  , f
-  , "\", \"background\": \""
-  , b
-  , "\""
+  , makeColor f "color"
+  , makeColor b "background"
   ]
 
 doSegment :: [MonkyOut] -> IO ()
