@@ -1,5 +1,12 @@
 2.1.3:
-	Add option to change section divider in Dzen2, Ascii, Utf8 and Guess out.
+  Add option to change section divider in Dzen2, Ascii, Utf8 and Guess out.
+
+2.1.2:
+  Add the startLoopT with a tick timer
+  Revamp event system to trigger a new line print
+  make the thermal_zone guesser better with old kernels
+  update Pulse code for new library version
+  Add output modifier
 
 2.1.0:
   Add pulseaudio support and deprecate old Alsa Example location
