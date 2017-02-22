@@ -30,7 +30,7 @@ module Monky.Outputs.Dzen2
   ( DzenOutput
   , getDzenOut
   , getDzenOut'
-  , getDzenOut''
+  , getDzenOutDiv
   )
 where
 
@@ -102,9 +102,9 @@ getDzenOut' h = do
     getDzenOut h (T.pack pwd `T.append` "/xbm/")
 
 -- |Get an output handle for dzen2 formatting
-getDzenOut''
+getDzenOutDiv
     :: Int -- ^The height of your dzen bar in pixel (required for block-drawing)
     -> Text -- ^Path to the directory containing your .xbm files.
     -> MonkyOut -- ^Divider
     -> IO DzenOutput
-getDzenOut'' h p d = return $ DzenOutput h (T.append p "/") d
+getDzenOutDiv h p d = return $ DzenOutput h (T.append p "/") d
