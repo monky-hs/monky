@@ -43,10 +43,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 -- |The output handle for dzen2 pipe
-data DzenOutput = DzenOutput
-    Int -- ^The height of the Dzen bar
-    Text -- ^Path to the xbm folder
-    MonkyOut -- ^Segment Divider
+data DzenOutput = DzenOutput Int Text MonkyOut
 
 doOut :: DzenOutput -> MonkyOut -> IO ()
 doOut _ (MonkyPlain t) = T.putStr t
