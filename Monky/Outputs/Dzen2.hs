@@ -84,7 +84,7 @@ instance MonkyOutput DzenOutput where
     doLine h xs
 
 -- |Get an output handle for dzen2 formatting
--- |Assumes " | " as divider
+-- Assumes @" | "@ as divider
 getDzenOut
   :: Int -- ^The height of your dzen bar in pixel (required for block-drawing)
   -> Text -- ^Path to the directory cointaining your .xbm files.
@@ -93,7 +93,7 @@ getDzenOut h p = return $ DzenOutput h (T.append p "/") $ MonkyPlain " | "
 
 
 -- |Get the output handle for dzen2 formatting. Will asume your .xbm files are
--- |in <monkydir>/xbm/
+-- in \<monkydir\>\/xbm\/
 getDzenOut'
     :: Int -- ^The height of your dzen bar in pixel (for block drawing)
     -> IO DzenOutput
