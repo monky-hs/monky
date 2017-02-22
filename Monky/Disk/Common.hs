@@ -42,6 +42,7 @@ where
 import Monky.Utility
 import System.Directory (doesDirectoryExist)
 import Data.List (nub, sort)
+import System.Posix.Files
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -111,7 +112,10 @@ mapperToDev x = sort . nub <$> do
 -- |Get the "top most" virtual device(s) based on the physical device
 devToMapper :: String -> IO [String]
 devToMapper x = sort . nub <$> do
-  let path = blBasePath ++ x ++ "/holders/"
+  let devPath = "/dev/mapper/" ++ x
+  link <- isSymbolicLink <$> getSymbolicLinkStatus devPath
+  dev <- if link then (reverse . takeWhile (/= '/') . reverse <$> readSymbolicLink devPath) else (return x)
+  let path = blBasePath ++ dev ++ "/holders/"
   holders <- listDirectory path
   if null holders
     then return [x]
