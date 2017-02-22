@@ -43,6 +43,7 @@ module Main
   )
 where
 
+import GHC.IO.Handle (hDuplicate)
 import Monky.Version (getVersion)
 import Control.Monad (when, unless)
 import Data.List (isSuffixOf, nub, sort)
@@ -50,7 +51,7 @@ import System.Directory
 import System.Exit (ExitCode(..), exitFailure)
 import System.IO (withFile, IOMode(..), hPutStr, hPutStrLn, stderr)
 import System.Posix.Process (executeFile)
-import System.Process (shell, waitForProcess, CreateProcess(..), createProcess_, StdStream(..))
+import System.Process (shell, waitForProcess, CreateProcess(..), createProcess, StdStream(..))
 import Data.Monoid ((<>))
 
 import Options.Applicative
@@ -157,7 +158,8 @@ runGHC :: Config -> IO ExitCode
 runGHC c = do
     let com = "ghc " ++ compilerFlags ++ " monky.hs -o " ++ exeName c
     let proc = shell com
-    (_, _, _, h) <- createProcess_ "ghc" proc { std_out = UseHandle stderr }
+    file <- hDuplicate stderr
+    (_, _, _, h) <- createProcess proc { std_out = UseHandle file }
     waitForProcess h
 
 
