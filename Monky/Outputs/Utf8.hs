@@ -29,7 +29,7 @@ This module provides the output generation for utf8 outputs
 module Monky.Outputs.Utf8
   ( Utf8Output
   , getUtf8Out
-  , getUtf8Out'
+  , getUtf8OutDiv
   )
 where
 
@@ -67,11 +67,11 @@ instance MonkyOutput Utf8Output where
 
 -- |Get an output handle for utf8 formatting. Divider defaults to @" | "@
 getUtf8Out :: IO Utf8Output
-getUtf8Out = getUtf8Out' $ MonkyPlain " | "
+getUtf8Out = getUtf8OutDiv $ MonkyPlain " | "
 
 
 -- |Get an output handle for utf8 formatting.
-getUtf8Out'
+getUtf8OutDiv
   :: MonkyOut -- ^The divider between segments
   -> IO Utf8Output
-getUtf8Out' = return . Utf8Output
+getUtf8OutDiv = return . Utf8Output

@@ -29,7 +29,7 @@ This module provides the output generation for ascii outputs
 module Monky.Outputs.Ascii
   ( AsciiOutput
   , getAsciiOut
-  , getAsciiOut'
+  , getAsciiOutDiv
   )
 where
 
@@ -64,10 +64,10 @@ instance MonkyOutput AsciiOutput where
 
 -- |Get an output handle for ascii formatting. Divider Defaults to @" | "@
 getAsciiOut :: IO AsciiOutput
-getAsciiOut = getAsciiOut' $ MonkyPlain " | "
+getAsciiOut = getAsciiOutDiv $ MonkyPlain " | "
 
 -- |Get an output handle for ascii formatting
-getAsciiOut'
+getAsciiOutDiv
   :: MonkyOut -- ^The Divider
   -> IO AsciiOutput
-getAsciiOut' = return . AsciiOutput
+getAsciiOutDiv = return . AsciiOutput

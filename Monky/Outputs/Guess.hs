@@ -31,7 +31,7 @@ Portability : Linux
 module Monky.Outputs.Guess
   ( guessOutput
   , GuessOut
-  , guessOutput'
+  , guessOutputDiv
   )
 where
 
@@ -48,7 +48,7 @@ import System.Posix.Files (readSymbolicLink)
 import Monky.Modules
 import Monky.Outputs.Fallback (chooseTerminalOut)
 import Monky.Outputs.Show (getShowOut)
-import Monky.Outputs.Dzen2 (getDzenOut'')
+import Monky.Outputs.Dzen2 (getDzenOutDiv)
 import Monky.Outputs.I3 (getI3Output)
 import Monky.Outputs.Serialize (getSerializeOut)
 
@@ -128,7 +128,7 @@ chooseProcessOut
   -> String
   -> IO GuessOut
 chooseProcessOut height path divider x
-  | x == "dzen2" = GO <$> getDzenOut'' height path divider
+  | x == "dzen2" = GO <$> getDzenOutDiv height path divider
   | x == "i3bar" = GO <$> getI3Output
   | x `elem`networkOuts = GO <$> getSerializeOut
   | otherwise = GO <$> getShowOut
@@ -138,15 +138,15 @@ guessOutput
   :: Int -- ^Dzen height
   -> Text -- ^Dzen xbm path
   -> IO GuessOut
-guessOutput height path = guessOutput' height path $ MonkyPlain " | "
+guessOutput height path = guessOutputDiv height path $ MonkyPlain " | "
 
 -- | Guess output based on isatty and other side of the stdout fd
-guessOutput'
+guessOutputDiv
   :: Int -- ^Dzen height
   -> Text -- ^Dzen xbm path
   -> MonkyOut -- ^The Divider to use
   -> IO GuessOut
-guessOutput' height path divider = do
+guessOutputDiv height path divider = do
   out <- getOutputType
   case out of
     Terminal -> GO <$> chooseTerminalOut
