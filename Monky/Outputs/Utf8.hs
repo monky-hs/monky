@@ -17,7 +17,6 @@
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE EmptyDataDecls #-}
 {-|
 Module      : Monky.Outputs.Utf8
 Description : Output module for utf8
@@ -30,6 +29,7 @@ This module provides the output generation for utf8 outputs
 module Monky.Outputs.Utf8
   ( Utf8Output
   , getUtf8Out
+  , getUtf8OutDiv
   )
 where
 
@@ -40,11 +40,11 @@ import Monky.Outputs.Unicode
 import qualified Data.Text.IO as T
 
 -- |The output handle for a utf8 pipe
-data Utf8Output = Utf8Output
+data Utf8Output = Utf8Output MonkyOut
 
 doOut :: MonkyOut -> IO ()
 doOut (MonkyPlain t)   = T.putStr t
-doOut (MonkyImage _ c)   = putChar c -- Images are not supported :(
+doOut (MonkyImage _ c) = putChar c -- Images are not supported :(
 doOut (MonkyBar p)     = putChar (barChar p)
 doOut (MonkyHBar p)    = do
   putStr $ replicate (p `div` 10) '█'
@@ -60,11 +60,18 @@ instance MonkyOutput Utf8Output where
     doSegment x
     putStr "\n"
     hFlush stdout
-  doLine h (x:xs) = do
+  doLine h@(Utf8Output d) (x:xs) = do
     doSegment x
-    putStr " | "
+    doOut d
     doLine h xs
 
--- |Get an output handle for utf8 formatting
+-- |Get an output handle for utf8 formatting. Divider defaults to @" | "@
 getUtf8Out :: IO Utf8Output
-getUtf8Out = return Utf8Output
+getUtf8Out = getUtf8OutDiv $ MonkyPlain " | "
+
+
+-- |Get an output handle for utf8 formatting.
+getUtf8OutDiv
+  :: MonkyOut -- ^The divider between segments
+  -> IO Utf8Output
+getUtf8OutDiv = return . Utf8Output
