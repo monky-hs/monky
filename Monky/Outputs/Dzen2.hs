@@ -30,6 +30,7 @@ module Monky.Outputs.Dzen2
   ( DzenOutput
   , getDzenOut
   , getDzenOut'
+  , getDzenOut''
   )
 where
 
@@ -42,19 +43,22 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 -- |The output handle for dzen2 pipe
-data DzenOutput = DzenOutput Int Text
+data DzenOutput = DzenOutput
+    Int -- ^The height of the Dzen bar
+    Text -- ^Path to the xbm folder
+    MonkyOut -- ^Segment Divider
 
 doOut :: DzenOutput -> MonkyOut -> IO ()
 doOut _ (MonkyPlain t) = T.putStr t
-doOut (DzenOutput _ p) (MonkyImage path _) = do
+doOut (DzenOutput _ p _) (MonkyImage path _) = do
   T.putStr ("^i(" `T.append` p)
   T.putStr path
   T.putStr ".xbm) "
-doOut (DzenOutput h _) (MonkyBar p) = do
+doOut (DzenOutput h _ _) (MonkyBar p) = do
   T.putStr "^p(3)^p(_TOP)^r(6x"
   putStr . show $ h - div (h * p) 100
   T.putStr ")^pa()"
-doOut (DzenOutput h _) (MonkyHBar p) = do
+doOut (DzenOutput h _ _) (MonkyHBar p) = do
   T.putStr "^r("
   putStr . show $ p
   T.putStr ("x" `T.append` (T.pack . show $ h `div` 2) `T.append` ")")
@@ -77,17 +81,18 @@ instance MonkyOutput DzenOutput where
     doSegment h x
     putStr "\n"
     hFlush stdout
-  doLine h (x:xs) = do
+  doLine h@(DzenOutput _ _ d) (x:xs) = do
     doSegment h x
-    putStr " | "
+    doOut h d
     doLine h xs
 
 -- |Get an output handle for dzen2 formatting
+-- |Assumes " | " as divider
 getDzenOut
   :: Int -- ^The height of your dzen bar in pixel (required for block-drawing)
   -> Text -- ^Path to the directory cointaining your .xbm files.
   -> IO DzenOutput
-getDzenOut h = return . DzenOutput h . flip T.append "/"
+getDzenOut h p = return $ DzenOutput h (T.append p "/") $ MonkyPlain " | "
 
 
 -- |Get the output handle for dzen2 formatting. Will asume your .xbm files are
@@ -98,3 +103,11 @@ getDzenOut'
 getDzenOut' h = do
     pwd <- getCurrentDirectory
     getDzenOut h (T.pack pwd `T.append` "/xbm/")
+
+-- |Get an output handle for dzen2 formatting
+getDzenOut''
+    :: Int -- ^The height of your dzen bar in pixel (required for block-drawing)
+    -> Text -- ^Path to the directory containing your .xbm files.
+    -> MonkyOut -- ^Divider
+    -> IO DzenOutput
+getDzenOut'' h p d = return $ DzenOutput h (T.append p "/") d
