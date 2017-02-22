@@ -62,7 +62,7 @@ instance MonkyOutput AsciiOutput where
     doOut d
     doLine h xs
 
--- |Get an output handle for ascii formatting. Divider Defaults to " | "
+-- |Get an output handle for ascii formatting. Divider Defaults to @" | "@
 getAsciiOut :: IO AsciiOutput
 getAsciiOut = getAsciiOut' $ MonkyPlain " | "
 

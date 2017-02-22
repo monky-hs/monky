@@ -65,7 +65,7 @@ instance MonkyOutput Utf8Output where
     doOut d
     doLine h xs
 
--- |Get an output handle for utf8 formatting. Divider defaults to " | "
+-- |Get an output handle for utf8 formatting. Divider defaults to @" | "@
 getUtf8Out :: IO Utf8Output
 getUtf8Out = getUtf8Out' $ MonkyPlain " | "
 
