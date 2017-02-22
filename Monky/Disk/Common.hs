@@ -36,6 +36,7 @@ module Monky.Disk.Common
   , blBasePath
   , devToMapper
   , mapperToDev
+  , getRealDev
   )
 where
 
@@ -98,10 +99,20 @@ fsToFSI = FSI
 blBasePath :: String
 blBasePath = "/sys/class/block/"
 
+-- | Get the real device (e.g. dm-0) that's behind a device name
+getRealDev :: String -> IO String
+getRealDev dev = do
+  let devPath = "/dev/mapper/" ++ dev
+  link <- isSymbolicLink <$> getSymbolicLinkStatus devPath
+  if link
+     then reverse . takeWhile (/= '/') . reverse <$> readSymbolicLink devPath
+     else return dev
+
 -- |Get the physical block devices supporting some device
 mapperToDev :: String -> IO [String]
 mapperToDev x = sort . nub <$> do
-  let path = blBasePath ++ x ++ "/slaves/"
+  dev <- getRealDev x
+  let path = blBasePath ++ dev ++ "/slaves/"
   e <- doesDirectoryExist path
   if e
     then do
@@ -112,9 +123,7 @@ mapperToDev x = sort . nub <$> do
 -- |Get the "top most" virtual device(s) based on the physical device
 devToMapper :: String -> IO [String]
 devToMapper x = sort . nub <$> do
-  let devPath = "/dev/mapper/" ++ x
-  link <- isSymbolicLink <$> getSymbolicLinkStatus devPath
-  dev <- if link then (reverse . takeWhile (/= '/') . reverse <$> readSymbolicLink devPath) else (return x)
+  dev <- getRealDev x
   let path = blBasePath ++ dev ++ "/holders/"
   holders <- listDirectory path
   if null holders

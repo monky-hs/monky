@@ -93,8 +93,9 @@ getFree (BlockH path) = do
 getBlockHandle' :: String -> IO (Maybe (BlockHandle, String))
 getBlockHandle' dev = do
   path <- devToMount dev
+  block <- getRealDev dev
   case path of
-    Just x -> return $Just (BlockH x, dev)
+    Just x -> return $Just (BlockH x, block)
     Nothing -> return Nothing
 
 {- |Get a fs handle for 'normal' devices
