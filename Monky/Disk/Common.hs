@@ -40,8 +40,9 @@ module Monky.Disk.Common
   )
 where
 
+import Data.Bits
 import Monky.Utility
-import System.Directory (doesDirectoryExist)
+import System.Directory (doesDirectoryExist, doesFileExist)
 import Data.List (nub, sort)
 import System.Posix.Files
 
@@ -99,14 +100,25 @@ fsToFSI = FSI
 blBasePath :: String
 blBasePath = "/sys/class/block/"
 
+statToMM :: FileStatus -> (Int, Int)
+statToMM stat =
+    let both = fromIntegral . specialDeviceID $ stat
+     in (both `shiftR` 8, both .&. 8)
+
 -- | Get the real device (e.g. dm-0) that's behind a device name
 getRealDev :: String -> IO String
 getRealDev dev = do
   let devPath = "/dev/mapper/" ++ dev
-  link <- isSymbolicLink <$> getSymbolicLinkStatus devPath
-  if link
-     then reverse . takeWhile (/= '/') . reverse <$> readSymbolicLink devPath
-     else return dev
+  exists <- doesFileExist devPath
+  if exists
+    then do
+      stat <- getSymbolicLinkStatus devPath
+      if isSymbolicLink stat
+        then reverse . takeWhile (/= '/') . reverse <$> readSymbolicLink devPath
+        else if isBlockDevice stat
+             then return ("dm-" ++ (show . snd $ statToMM stat))
+             else error "The disk resolution is a bit buggy currently"
+    else return dev
 
 -- |Get the physical block devices supporting some device
 mapperToDev :: String -> IO [String]
