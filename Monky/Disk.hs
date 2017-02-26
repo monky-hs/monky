@@ -31,6 +31,7 @@ module Monky.Disk
   , getDiskReadWrite
   , getDiskFree
   , getDiskHandle
+  , getDiskHandleTag
   )
 where
 
@@ -75,10 +76,10 @@ getDiskFree :: DiskHandle -> IO Int
 getDiskFree (DiskH (FSI h) _ _ _ _) = getFsFree h
 
 
-getBtrfsDH :: (BtrfsHandle, [String]) -> IO DiskHandle
+getBtrfsDH :: (BtrfsHandle, [Dev]) -> IO DiskHandle
 getBtrfsDH (h, devs) = do
   -- Open the stat file for each physical device
-  fs <- mapM (\dev -> fopen (blBasePath ++ dev ++ "/stat")) devs
+  fs <- mapM (\(Dev dev) -> fopen (blBasePath ++ dev ++ "/stat")) devs
   -- this gets the right number of IORefs without number hacking
   wfs <- mapM (\_ -> newIORef 0) devs
   rfs <- mapM (\_ -> newIORef 0) devs
@@ -86,8 +87,8 @@ getBtrfsDH (h, devs) = do
   return (DiskH (FSI h) fs wfs rfs t)
 
 
-getBlockDH :: (BlockHandle, String) -> IO DiskHandle
-getBlockDH (h, dev) = do
+getBlockDH :: (BlockHandle, Dev) -> IO DiskHandle
+getBlockDH (h, Dev dev) = do
   f <- fopen (blBasePath ++ dev ++ "/stat")
   wf <- newIORef 0
   rf <- newIORef 0
@@ -95,15 +96,19 @@ getBlockDH (h, dev) = do
   return (DiskH (FSI h) [f] [wf] [rf] t)
 
 
--- |Get the disk handle
+-- | Get a disk handle from uuid. This special-cases btrfs.
 getDiskHandle :: String -> IO DiskHandle
 getDiskHandle uuid = do
 -- First try btrfs file systems
   btrfs <- getBtrfsHandle uuid
   case btrfs of
     (Just x) -> getBtrfsDH x
-    Nothing -> do
-      block <- getBlockHandle uuid
-      case block of
+    Nothing -> getDiskHandleTag "UUID" uuid
+
+-- | Get the disk handle from a user chosen blkid tag.
+getDiskHandleTag :: String -> String -> IO DiskHandle
+getDiskHandleTag t v = do
+    block <- getBlockHandleTag t v
+    case block of
         Just x -> getBlockDH x
         Nothing -> error "Disk currently does not support your setup"
