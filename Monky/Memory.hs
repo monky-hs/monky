@@ -44,7 +44,7 @@ import qualified Data.ByteString.Char8 as BS
 
 
 -- |The memory handle used for all functions
-data MemoryHandle = MemoryH File
+newtype MemoryHandle = MemoryH File
 
 path :: String
 path = "/proc/meminfo"
@@ -86,8 +86,8 @@ getMemoryTotal (MemoryH f) = do
 -- |Get the amount of memory rported as free by the kernel
 getMemoryFree :: MemoryHandle -> IO Int
 getMemoryFree (MemoryH f) = do
-  contents <- readContent f
-  return . getVal . fromMaybe err . findLine "MemFree" $ contents
+    contents <- readContent f
+    return . getVal . fromMaybe err . findLine "MemFree" $ contents
     where err = error "Could not find MemFree in /proc/meminfo. Please report this bug with the content of /proc/meminfo"
 
 -- |Get the amount of memory used by the kernel and processes
@@ -103,7 +103,7 @@ getMemoryStats (MemoryH f) = do
   let avail = getVal . fromMaybe "a 0" . findLine "MemAvailable" $ contents
       total = getVal . fromMaybe "a 0" . findLine "MemTotal" $ contents
       free = getVal . fromMaybe "a 0" . findLine "MemFree" $ contents
-      used = (total - avail)
+      used = total - avail
   return (total, avail, free, used)
 
 
