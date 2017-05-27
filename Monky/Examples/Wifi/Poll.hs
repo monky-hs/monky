@@ -60,14 +60,25 @@ import Control.Applicative ((<|>), (<$>), (<*>), pure)
 -- | The type for polling wifi information
 data WifiPollHandle = WH SSIDSocket Interface ((WifiStats, Maybe NL80211Packet) -> Text) Text
 
+-- TODO: Find out which of RX and TX is which from *our* side and document it
+-- | Helper type for WifiFormat to specify direction
+data Direction
+    -- | Use TX information
+    = DirTX
+    -- | Use TX information
+    | DirRX
+    deriving (Show, Eq)
+
 -- | Enum-ish type for converting Wifi information to text
 data WifiFormat
     -- | The MCSIndex for our connection
-    = FormatMCSIndex
+    = FormatMCS Direction
+    -- | The minimum MCSIndex for our connection
+    | FormatMCSMin
     -- | The Signal width (in MHz)
     | FormatWifiWidth
-    -- | The TX Bitrate of our station
-    | FormatBitrate
+    -- | The Bitrate of our connection
+    | FormatBitrate Direction
     -- | Minimum of TX/RX Bitrate for this station
     | FormatBitrateMin
     -- | Signal strength from other source
@@ -90,6 +101,9 @@ doMBM e =
       clamped = min signalMax $ max noiseFloor $ e
    in fromIntegral $ 100 - (signalMax - clamped)
 
+getFromDir :: Direction -> StaInfo -> Maybe StaRate
+getFromDir DirTX = staTXRate
+getFromDir DirRX = staRXRate
 
 pollToEvt :: WifiFormat -> E.WifiFormat
 pollToEvt FormatChannel  = E.FormatChannel
@@ -99,12 +113,19 @@ pollToEvt (FormatText t) = E.FormatText t
 pollToEvt x = error $ "Tried to convert " ++ show x ++ "to Evt? This really shouldn't ever happen"
 
 getExtFun :: WifiFormat -> (WifiStats, StaInfo) -> Text
-getExtFun FormatMCSIndex (_, info) = -- MCS is in the TXRate
-    case staTXRate info of
+getExtFun (FormatMCS dir) (_, info) =
+    case getFromDir dir info of
         Nothing -> "No Rate"
         Just x -> case rateMCS x <|> rateVHTMCS x of
             Nothing -> "No MCS"
             Just y -> sformat int y
+getExtFun FormatMCSMin (_, info) = fromMaybe "No Rate" $ do
+    rx <- staRXRate info
+    tx <- staTXRate info
+    rmcs <- getMCS rx
+    tmcs <- getMCS tx
+    pure . sformat int $ min rmcs tmcs
+    where getMCS x = rateMCS x <|> rateVHTMCS x
 getExtFun FormatWifiWidth (_, info) = -- Width is also in TXRate
     case staTXRate info of
         Nothing -> "No Rate"
@@ -115,8 +136,8 @@ getExtFun FormatWifiWidth (_, info) = -- Width is also in TXRate
             Width40MHz -> "40MHz"
             Width80MHz -> "80MHz"
             Width160MHz -> "160MHz"
-getExtFun FormatBitrate (_, info) = -- Bitrate is in TXRate
-    case staTXRate info of
+getExtFun (FormatBitrate dir) (_, info) = -- Bitrate is in TXRate
+    case getFromDir dir info of
         Nothing -> "No Rate"
         Just x -> maybe
             "No Bitrate"
