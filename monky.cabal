@@ -135,7 +135,8 @@ library
   exposed-modules: Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory
   exposed-modules: Monky.Disk.Btrfs Monky.Disk.Device
   exposed-modules: Monky.Examples.Prepend Monky.Connectivity
-  exposed-modules: Monky.Wifi Monky.Examples.Wifi Monky.Examples.Wifi.Extended
+  exposed-modules: Monky.Wifi Monky.Examples.Wifi Monky.Examples.Wifi.Poll
+  exposed-modules: Monky.Examples.Wifi.Event
   exposed-modules: Monky.Examples.Connectivity Monky.Network.Dynamic
   exposed-modules: Monky.Network.Static Monky.Examples.File Monky.Examples.Utility
   exposed-modules: Monky.Examples.Sound.Alsa  Monky.Examples.Alsa 
