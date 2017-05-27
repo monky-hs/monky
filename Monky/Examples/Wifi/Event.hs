@@ -16,6 +16,17 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-|
+Module      : Monky.Examples.Wifi.Event
+Description : The event based wifi module interface
+Maintainer  : ongy
+Stability   : experimental
+Portability : Linux
+
+This module provides the event based interface to wifi information.
+It is rather limited because of some technical stuff with 802.11.
+If you need more information about your wifi use the "Monky.Exmaple.Wifi.Poll" module.
+-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
@@ -56,6 +67,7 @@ data WifiFormat
   | FormatFreq -- ^Print the frequency the current network sends on (related to channel)
   | FormatText Text -- ^Print a plaintext string
 
+-- | Apply the 'WifiFormat' to show some 'WifiStats' information as text.
 getTextify :: WifiFormat -> WifiStats -> Text
 getTextify FormatChannel    = sformat int . wifiChannel
 getTextify FormatName       = T.pack . wifiName

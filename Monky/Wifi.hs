@@ -193,6 +193,7 @@ getStation :: NL80211Socket -> Word32 -> ByteString -> IO [NL80211Packet]
 getStation s i m = query s eNL80211_CMD_GET_STATION False attrs
     where attrs = M.fromList [(eNL80211_ATTR_IFINDEX, runPut . putWord32host $ i), (eNL80211_ATTR_MAC, m)]
 
+-- | Get some additional information about the currently connected wifi
 getExtendedWifi :: SSIDSocket -> Interface -> WifiStats -> IO (Maybe NL80211Packet)
 getExtendedWifi (SSIDSocket _ s) i stats =
     listToMaybe <$> getStation s i (wifiBSSID stats)

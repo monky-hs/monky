@@ -19,6 +19,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NumDecimals #-}
+{-|
+Module      : Monky.Examples.Wifi.Poll
+Description : The polling api for wifi information
+Maintainer  : ongy
+Stability   : experimental
+Portability : Linux
+
+This provides polling access to wifi information.
+For the event based version look at "Monky.Examples.Wifi.Event"
+-}
 module Monky.Examples.Wifi.Poll
     ( WifiFormat (..)
     , WifiPollHandle
@@ -47,8 +57,10 @@ import qualified Data.Text as T
 
 import Control.Applicative ((<|>), (<$>), (<*>), pure)
 
+-- | The type for polling wifi information
 data WifiPollHandle = WH SSIDSocket Interface ((WifiStats, Maybe NL80211Packet) -> Text) Text
 
+-- | Enum-ish type for converting Wifi information to text
 data WifiFormat
     -- | The MCSIndex for our connection
     = FormatMCSIndex

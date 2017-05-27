@@ -19,14 +19,11 @@
 
 {-|
 Module      : Monky.Examples.Wifi
-Description : An example module instance for the wifi module
+Description : Backwards compatability module for "Monky.Examples.Wifi.Event"
 Maintainer  : ongy
 Stability   : experimental
 Portability : Linux
 
-FormatSignal only makes sense when used in a pollModule. But even in pollModule
-context updates may take a while because of some buffering by drivers or
-netlink subsystem.
 -}
 module Monky.Examples.Wifi
   ( getWifiHandle
