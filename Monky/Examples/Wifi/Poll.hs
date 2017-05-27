@@ -45,7 +45,7 @@ import System.Linux.Netlink.GeNetlink.NL80211.StaInfo
 import Data.Text (Text)
 import qualified Data.Text as T
 
-import Control.Applicative ((<|>), (<$>), (<*>))
+import Control.Applicative ((<|>), (<$>), (<*>), pure)
 
 data WifiPollHandle = WH SSIDSocket Interface ((WifiStats, Maybe NL80211Packet) -> Text) Text
 
