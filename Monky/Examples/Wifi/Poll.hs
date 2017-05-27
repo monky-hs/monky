@@ -64,7 +64,6 @@ data WifiFormat
     | FormatSignalAverage
 
     | FormatChannel -- ^Print the current networks channel
-    | FormatRates -- ^Print the current network max supported rate (always 54Mbit/s for me)
     | FormatName -- ^Print the ESSID of the current network, may look weird because SSIDs are
     | FormatFreq -- ^Print the frequency the current network sends on (related to channel)
     | FormatText Text -- ^Print a plaintext string
@@ -82,7 +81,6 @@ doMBM e =
 
 pollToEvt :: WifiFormat -> E.WifiFormat
 pollToEvt FormatChannel  = E.FormatChannel
-pollToEvt FormatRates    = E.FormatRates
 pollToEvt FormatName     = E.FormatName
 pollToEvt FormatFreq     = E.FormatFreq
 pollToEvt (FormatText t) = E.FormatText t

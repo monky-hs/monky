@@ -52,14 +52,12 @@ data WifiEvtHandle = WH SSIDSocket Interface (WifiStats -> Text) Text
 -- |A typesafe version of a format string
 data WifiFormat
   = FormatChannel -- ^Print the current networks channel
-  | FormatRates -- ^Print the current network max supported rate (always 54Mbit/s for me)
   | FormatName -- ^Print the ESSID of the current network, may look weird because SSIDs are
   | FormatFreq -- ^Print the frequency the current network sends on (related to channel)
   | FormatText Text -- ^Print a plaintext string
 
 getTextify :: WifiFormat -> WifiStats -> Text
 getTextify FormatChannel    = sformat int . wifiChannel
-getTextify FormatRates      = flip convertUnitSI "B" . maximum . wifiRates
 getTextify FormatName       = T.pack . wifiName
 getTextify FormatFreq       = sformat int . wifiFreq
 getTextify (FormatText str) = const str
