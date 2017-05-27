@@ -28,9 +28,12 @@ module Monky.Examples.Wifi.Poll
     )
 where
 
+import Debug.Trace
+
+import Data.Int (Int8)
+
 import Data.Maybe (fromMaybe)
-import Data.Int (Int32)
-import Data.Word (Word32, Word8)
+import Data.Word (Word8)
 import Formatting
 import Monky.Examples.Utility
 import qualified Monky.Examples.Wifi.Event as E
@@ -69,13 +72,12 @@ data WifiFormat
 
 -- |Do the calculation for MBM
 -- This is taken from NetworkManager
-doMBM :: Word32 -> Word8
+doMBM :: Int8 -> Word8
 doMBM e =
   let noiseFloor = -90
       signalMax  = -20
-      work :: Int32 = fromIntegral e
-      clamped :: Float = min signalMax $ max noiseFloor $ fromIntegral $ work `div` 100
-      in floor (100 - 70 * ((signalMax - clamped) / (signalMax - noiseFloor)))
+      clamped = min signalMax $ max noiseFloor $ e
+   in fromIntegral $ 100 - (signalMax - clamped)
 
 
 pollToEvt :: WifiFormat -> E.WifiFormat
@@ -119,7 +121,7 @@ getExtFun FormatBitrateMin (_, info) = -- Bitrate from RX/TX Rate
 getExtFun FormatSignal (_, info) =
     case staSignalMBM info of
         Nothing -> "No strength"
-        Just x -> sformat int . doMBM $ fromIntegral x
+        Just x -> sformat int . doMBM . traceShowId $ fromIntegral x
 getExtFun FormatSignalAverage (_, info) =
     case staSignalMBMA info of
         Nothing -> "No strength"
