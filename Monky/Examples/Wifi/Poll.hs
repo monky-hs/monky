@@ -32,6 +32,7 @@ For the event based version look at "Monky.Examples.Wifi.Event"
 module Monky.Examples.Wifi.Poll
     ( WifiFormat (..)
     , WifiPollHandle
+    , Direction(..)
 
     , getWifiHandle
     , getWifiHandle'
