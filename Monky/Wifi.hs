@@ -35,14 +35,13 @@ module Monky.Wifi
   , SSIDSocket
   , getWifiFd
   , prepareEvents
+  , getExtendedWifi
 
   , Signal(..)
   , WifiStats(..)
   , WifiConn(..)
   )
 where
-
-import Debug.Trace
 
 import Data.Bits ((.&.))
 import Data.Word (Word8, Word32)
@@ -62,6 +61,7 @@ import Data.ByteString (ByteString)
 
 import Data.Serialize (Serialize, decode)
 import Data.Serialize.Get (runGet, getWord32host)
+import Data.Serialize.Put (runPut, putWord32host)
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -70,8 +70,12 @@ import Control.Applicative ((<$>))
 
 -- |The interface identifier
 type Interface = Word32
+
 -- |The socket type for this module
-type SSIDSocket = NL80211Socket
+-- The first socket is general operation/event based
+-- the seconds socket will be used to get extended information.
+-- We use 2 sockets, to not get event/request mixed up.
+data SSIDSocket = SSIDSocket NL80211Socket NL80211Socket
 
 -- |Enum for connection change
 data WifiConn
@@ -91,6 +95,7 @@ data WifiStats = WifiStats
   , wifiName :: String
   , wifiFreq :: Word32
   , wifiSig :: Signal
+  , wifiBSSID :: ByteString
   }
 
 -- Unsafe decode, we rely on kernel to be sensible
@@ -124,6 +129,7 @@ attrToStat pack = do
   rate <- M.lookup eWLAN_EID_SUPP_RATES attrs
 
   freq <- uDecode . M.lookup eNL80211_BSS_FREQUENCY $ pattrs
+  ssid <- M.lookup eNL80211_BSS_BSSID pattrs
   let mbm = uGetWord32 . M.lookup eNL80211_BSS_SIGNAL_MBM $ pattrs
   let sig = uDecode . M.lookup eNL80211_BSS_SIGNAL_UNSPEC $ pattrs
 
@@ -131,13 +137,13 @@ attrToStat pack = do
   let ratL = rate `BS.append` fromMaybe BS.empty bs
   let rates = map (\y -> fromIntegral (y .&. 0x7F) * (500000 :: Word32)) . BS.unpack $ ratL
 
-  return $ WifiStats channel rates name freq $getSignal mbm sig
+  return $ WifiStats channel rates name freq (getSignal mbm sig) ssid
 
 -- |Get the stats of a currently connected wifi network
 getCurrentWifiStats :: SSIDSocket -> Interface -> IO (Maybe WifiStats)
-getCurrentWifiStats s i = do
+getCurrentWifiStats (SSIDSocket _ s) i = do
   wifis <- getConnectedWifi s i
-  return $ attrToStat =<< listToMaybe (trace ("conn: " ++ show wifis) wifis)
+  return $ attrToStat =<< listToMaybe  wifis
 
 
 -- |Get only the name of the currently connected wifi
@@ -147,21 +153,21 @@ getCurrentWifi s i = fmap wifiName <$> getCurrentWifiStats s i
 
 -- |Get the interface id by name
 getInterface :: SSIDSocket -> String -> IO (Maybe Interface)
-getInterface s n = do
+getInterface (SSIDSocket s _) n = do
   interfaces <- getInterfaceList s
   return $ snd <$> listToMaybe (filter ((==) n . fst) interfaces)
 
 
 -- |get the raw fd for eventing
 getWifiFd :: SSIDSocket -> Fd
-getWifiFd = getFd
+getWifiFd (SSIDSocket s _) = getFd s
 
 -- We are only looking for ESSID right now, if we want to
 -- make this module more general, we will have to extend the
 -- return type of this function
 -- |This should be called when the fd returned by 'getWifiFd' got readable
 gotReadable :: SSIDSocket -> Interface -> IO WifiConn
-gotReadable s i = do
+gotReadable b@(SSIDSocket s _) i = do
 -- we only care for ESSID and connect updates are a single message
 -- so this *should* be fine
   ps <- getPacket s
@@ -172,7 +178,7 @@ gotReadable s i = do
       let cmd = genlCmd . genlDataHeader . packetCustom $ packet
       if cmd == eNL80211_CMD_CONNECT
         then do
-          wifi <- getCurrentWifiStats s i
+          wifi <- getCurrentWifiStats b i
           return $ case wifi of
             Nothing -> WifiDisconnect
             Just x -> WifiConnect x
@@ -183,13 +189,23 @@ gotReadable s i = do
               else return WifiNone
           else return WifiNone
 
+getStation :: NL80211Socket -> Word32 -> ByteString -> IO [NL80211Packet]
+getStation s i m = query s eNL80211_CMD_GET_STATION False attrs
+    where attrs = M.fromList [(eNL80211_ATTR_IFINDEX, runPut . putWord32host $ i), (eNL80211_ATTR_MAC, m)]
+
+-- | Get some additional information about the currently connected wifi
+getExtendedWifi :: SSIDSocket -> Interface -> WifiStats -> IO (Maybe NL80211Packet)
+getExtendedWifi (SSIDSocket _ s) i stats =
+    listToMaybe <$> getStation s i (wifiBSSID stats)
+
 -- |Subscribe to multicast group
 prepareEvents :: SSIDSocket -> IO ()
-prepareEvents s = joinMulticastByName s "mlme"
+prepareEvents (SSIDSocket s _) = joinMulticastByName s "mlme"
 
 -- |Get a netlink socket bound to nl80211
 -- Before this is used event based, call 'prepareEvents'
 getSSIDSocket :: IO SSIDSocket
 getSSIDSocket = do
   s <- makeNL80211Socket
-  return s
+  e <- makeNL80211Socket
+  return $ SSIDSocket s e

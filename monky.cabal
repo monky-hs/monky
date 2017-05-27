@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.1.3.1
+version:             2.2.0.0
 
 -- The ABOVE LINE has to stay AS IS (except for version changes) for the
 -- template to work properly
@@ -135,7 +135,8 @@ library
   exposed-modules: Monky.Examples.Battery Monky.Examples.CPU Monky.Examples.Disk Monky.Examples.Network Monky.Examples.Time Monky.Examples.Memory
   exposed-modules: Monky.Disk.Btrfs Monky.Disk.Device
   exposed-modules: Monky.Examples.Prepend Monky.Connectivity
-  exposed-modules: Monky.Wifi Monky.Examples.Wifi
+  exposed-modules: Monky.Wifi Monky.Examples.Wifi Monky.Examples.Wifi.Poll
+  exposed-modules: Monky.Examples.Wifi.Event
   exposed-modules: Monky.Examples.Connectivity Monky.Network.Dynamic
   exposed-modules: Monky.Network.Static Monky.Examples.File Monky.Examples.Utility
   exposed-modules: Monky.Examples.Sound.Alsa  Monky.Examples.Alsa 
