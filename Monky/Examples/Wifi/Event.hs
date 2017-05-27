@@ -41,7 +41,7 @@ import Monky.Wifi
 
 #if MIN_VERSION_base(4,8,0)
 #else
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), pure)
 #endif
 
 -- Socket Interface Conversion Offline
