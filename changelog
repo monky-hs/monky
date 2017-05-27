@@ -1,3 +1,9 @@
+2.2:
+  Rework the wifi examples.
+    Split Evt and Poll modules for wifi
+    Significantly expanded Poll module
+  Some style changes in Memory module
+
 2.1.3.1:
   Change library paths for dlopen so they work with gentoo (are fixed?)
 
