@@ -66,7 +66,7 @@ import Data.Serialize.Put (runPut, putWord32host)
 
 #if MIN_VERSION_base(4,8,0)
 #else
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), pure)
 #endif
 
 -- |The interface identifier
