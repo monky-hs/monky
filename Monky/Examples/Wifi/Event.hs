@@ -34,6 +34,9 @@ module Monky.Examples.Wifi.Event
   ( getWifiHandle
   , getWifiHandle'
 
+  , guessWifiHandle
+  , guessWifiHandle'
+
   , getTextify
 
   , WifiEvtHandle
@@ -96,6 +99,28 @@ getWifiHandle' f d n = do
     s <- getSSIDSocket
     i <- fromMaybe (error ("Could not find interface: " ++ n)) <$> getInterface s n
     return (WH s i f d)
+
+-- | Lower level version of 'guessWifiHandle' for more control
+guessWifiHandle'
+    :: (WifiStats -> Text)
+    -> Text -- ^Text that should be displayed when wifi is disconnected
+    -> IO WifiEvtHandle
+guessWifiHandle' f d = do
+    s <- getSSIDSocket
+    i <- fromMaybe (error "Couldn't find any NL80211 interface") <$> guessInterface s
+    return (WH s i f d)
+
+{- | Get a wifi handle, guess the interface
+
+Guess isn't quite the right word here. This asks the NL80211 subsystem for a
+list of devices and picks the first one.
+-}
+guessWifiHandle
+    :: [WifiFormat] -- ^Format "String" for output generation
+    -> Text -- ^Text that should be displayed when wifi is disconnected
+    -> IO WifiEvtHandle
+guessWifiHandle f d =
+    guessWifiHandle' (getFunction f) d
 
 getEventOutput :: WifiEvtHandle -> IO [MonkyOut]
 getEventOutput (WH s i f d) = do

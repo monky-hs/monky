@@ -29,6 +29,7 @@ module Monky.Wifi
   ( getCurrentWifi
   , getCurrentWifiStats
   , getInterface
+  , guessInterface
   , gotReadable
   , getSSIDSocket
   , Interface
@@ -157,6 +158,10 @@ getInterface (SSIDSocket s _) n = do
   interfaces <- getInterfaceList s
   return $ snd <$> listToMaybe (filter ((==) n . fst) interfaces)
 
+guessInterface :: SSIDSocket -> IO (Maybe Interface)
+guessInterface (SSIDSocket s _) = do
+    interfaces <- getInterfaceList s
+    pure $ snd <$> listToMaybe interfaces
 
 -- |get the raw fd for eventing
 getWifiFd :: SSIDSocket -> Fd

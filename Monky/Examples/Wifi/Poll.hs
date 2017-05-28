@@ -36,10 +36,11 @@ module Monky.Examples.Wifi.Poll
 
     , getWifiHandle
     , getWifiHandle'
+
+    , guessWifiHandle
+    , guessWifiHandle'
     )
 where
-
-import Debug.Trace
 
 import Data.Int (Int8)
 
@@ -153,7 +154,7 @@ getExtFun FormatBitrateMin (_, info) = -- Bitrate from RX/TX Rate
 getExtFun FormatSignal (_, info) =
     case staSignalMBM info of
         Nothing -> "No strength"
-        Just x -> sformat int . doMBM . traceShowId $ fromIntegral x
+        Just x -> sformat int . doMBM $ fromIntegral x
 getExtFun FormatSignalAverage (_, info) =
     case staSignalMBMA info of
         Nothing -> "No strength"
@@ -184,7 +185,7 @@ instance PollModule WifiPollHandle where
             ext <- getExtendedWifi s i x
             pure . pure . MonkyPlain $ f (x, ext)
 
--- | Lower level version of 'getWifiHandle' if you need exted information.
+-- | Lower level version of 'getWifiHandle' for more level of control
 getWifiHandle'
     :: ((WifiStats, Maybe NL80211Packet) -> Text)
     -> Text
@@ -203,3 +204,25 @@ getWifiHandle
   -> IO WifiPollHandle
 getWifiHandle f d n =
   getWifiHandle' (getCombiFun f) d n
+
+-- | Lower level version of 'guessWifiHandle' for more control
+guessWifiHandle'
+    :: ((WifiStats, Maybe NL80211Packet) -> Text)
+    -> Text -- ^Text that should be displayed when wifi is disconnected
+    -> IO WifiPollHandle
+guessWifiHandle' f d = do
+    s <- getSSIDSocket
+    i <- fromMaybe (error "Couldn't find any NL80211 interface") <$> guessInterface s
+    return (WH s i f d)
+
+{- | Get a wifi handle, guess the interface
+
+Guess isn't quite the right word here. This asks the NL80211 subsystem for a
+list of devices and picks the first one.
+-}
+guessWifiHandle
+    :: [WifiFormat] -- ^Format "String" for output generation
+    -> Text -- ^Text that should be displayed when wifi is disconnected
+    -> IO WifiPollHandle
+guessWifiHandle f d =
+    guessWifiHandle' (getCombiFun f) d
