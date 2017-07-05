@@ -140,6 +140,7 @@ library
   exposed-modules: Monky.Examples.Connectivity Monky.Network.Dynamic
   exposed-modules: Monky.Network.Static Monky.Examples.File Monky.Examples.Utility
   exposed-modules: Monky.Examples.Sound.Alsa  Monky.Examples.Alsa 
+  exposed-modules: Monky.Examples.Tminus
 
   exposed-modules: Monky.Version Monky.Examples.Combine
   exposed-modules: Monky.Examples.Plain Monky.Disk.Common Monky.Blkid
@@ -153,7 +154,7 @@ library
   other-modules: Monky.Template Monky.VersionTH Monky.CUtil
 
 
-  build-depends:       base >=4.6.0.1 && <=5, directory, time
+  build-depends:       base >=4.6.0.1 && <=5, directory, time, old-time
   build-depends:       text, unix, network, mtl, transformers
   build-depends:       template-haskell, containers, stm, statvfs
   build-depends:       bytestring, netlink >= 1.1, cereal, formatting, composition
