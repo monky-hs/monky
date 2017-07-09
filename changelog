@@ -2,6 +2,7 @@
   Remove trace output from Wifi strength calculation
   Add guessWifiOutput functions
   Add the TMinus example
+  Improve the MPD module with getMPDHandleF
 
 2.2:
   Rework the wifi examples.

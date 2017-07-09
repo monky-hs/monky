@@ -1,5 +1,5 @@
 {-
-    Copyright 2015,2016 Markus Ongyerth
+    Copyright 2015-2017 Markus Ongyerth
 
     This file is part of Monky.
 
@@ -16,6 +16,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with Monky.  If not, see <http://www.gnu.org/licenses/>.
 -}
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Monky.Examples.MPD
 Description : An example module instance for the MPD module
@@ -30,6 +31,7 @@ Portability : Linux
 module Monky.Examples.MPD
   ( MPDHandle
   , getMPDHandle
+  , getMPDHandleF
   )
 where
 
@@ -37,7 +39,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 
 import Data.IORef
-import Data.Maybe (fromMaybe)
 import System.IO (hPutStrLn, stderr)
 import System.Posix.Types (Fd)
 
@@ -50,32 +51,34 @@ import Monky.Examples.Utility
 import Control.Applicative ((<$>))
 #endif
 
-getPlayingSong :: State -> MPDSocket -> IO (Either String SongInfo)
-getPlayingSong Playing s = getMPDSong s
-getPlayingSong _ _ = return (Left "Not playing")
+type ConvertFun = (State, Maybe SongInfo) -> Text
 
-
-extractTitle :: SongInfo -> Maybe Text
-extractTitle = tagTitle . songTags
-
-
-getSongTitle :: MPDSocket -> IO Text
-getSongTitle sock = getMPDStatus sock >>= getSong
+getSongTitle :: MPDSocket -> ConvertFun -> IO Text
+-- TODO: Clean this up a bit. Probably do notation?
+getSongTitle sock fun = (fmap state <$> getMPDStatus sock) >>= getSong
   where getSong (Left x) = return . T.pack $ x
-        getSong (Right status) = getTitle <$> getPlayingSong (state status) sock
-        getTitle (Left x) = T.pack x
-        getTitle (Right x) = fromMaybe "No Title" $extractTitle x
+        getSong (Right Playing) = do
+            info <- getMPDSong sock
+            case info of
+                Right x -> pure $ fun (Playing, Just x)
+                Left x -> pure $ T.pack x
+        getSong (Right x) = pure $ fun (x, Nothing)
 
 
 -- |The handle for this example
-data MPDHandle = MPDHandle String String (IORef (Maybe MPDSocket))
+data MPDHandle = MPDHandle
+    { _host :: String
+    , _port :: String
+    , _sock :: IORef (Maybe MPDSocket)
+    , _convert :: ConvertFun
+    }
 
 
 -- TODO ignoring errors is never a good idea
-getEvent :: MPDSocket -> IO Text
-getEvent s = do
+getEvent :: MPDSocket -> ConvertFun -> IO Text
+getEvent s fun = do
   _ <- readOk s
-  t <- getSongTitle s
+  t <- getSongTitle s fun
   _ <- goIdle s " player"
   return t
 
@@ -88,14 +91,14 @@ getFd s = do
 
 
 instance PollModule MPDHandle where
-  getOutput (MPDHandle _ _ s) = do
+  getOutput (MPDHandle _ _ s f) = do
     r <- readIORef s
     case r of
       Nothing -> return [MonkyPlain "Broken"]
       (Just x) -> do
-        ret <- getSongTitle x
+        ret <- getSongTitle x f
         return [MonkyPlain ret]
-  initialize (MPDHandle h p r) = do
+  initialize (MPDHandle h p r _) = do
     s <- getMPDSocket h p
     case s of
       (Right x) -> writeIORef r (Just x)
@@ -103,7 +106,7 @@ instance PollModule MPDHandle where
 
 
 instance EvtModule MPDHandle where
-  startEvtLoop h@(MPDHandle _ _ s) fun = do
+  startEvtLoop h@(MPDHandle _ _ s f) fun = do
     initialize h
     fun =<< getOutput h
     r <- readIORef s
@@ -111,13 +114,29 @@ instance EvtModule MPDHandle where
       Nothing -> hPutStrLn stderr "Could not initialize MPDHandle :("
       (Just x) -> do
         [fd] <- getFd x
-        loopFd x fd fun (fmap (\y -> [MonkyPlain y]) . getEvent)
+        loopFd x fd fun (fmap (\y -> [MonkyPlain y]) . flip getEvent f)
 
+defaultConvert :: (State, Maybe SongInfo) -> Text
+defaultConvert (Playing, Just x) = case tagTitle . songTags $ x of
+    Nothing -> "Can't extract song title"
+    Just y -> y
+defaultConvert (Playing, Nothing) = "Can't extract song"
+defaultConvert _ = "Not Playing"
 
 -- |Get an 'MPDHandle' (server has to be running when this is executed)
 getMPDHandle
   :: String -- ^The host to connect to
- -> String  -- ^The port to connect to
- -> IO MPDHandle
-getMPDHandle h p = MPDHandle h p <$> newIORef Nothing
+  -> String  -- ^The port to connect to
+  -> IO MPDHandle
+getMPDHandle h p =
+    MPDHandle h p <$> newIORef Nothing <*> pure defaultConvert
 
+-- | Get the 'MPDHandle' with a custom conversion function. You will need to
+-- import `Monky.MPD` to get the definitions into scope
+getMPDHandleF
+    :: String -- ^The host to connect to
+    -> String -- ^The port to connect to
+    -> ConvertFun -- ^The function to extract the text
+    -> IO MPDHandle
+getMPDHandleF h p f =
+    MPDHandle h p <$> newIORef Nothing <*> pure f
