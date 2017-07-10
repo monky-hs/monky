@@ -51,15 +51,18 @@ timeToSeconds :: [Int] -> Int
 timeToSeconds l = sum (zipWith (*) l [3600, 60, 1])
 
 diffTime :: Int -> Int -> Int
-diffTime a b = abs (a - b)
+diffTime a b
+    | a < b = a + (86400 - b)
+    | otherwise = a - b
 
 getCurrent :: TargetTime -> IO [MonkyOut]
 getCurrent (TargetTime target) = do
     now <- getCurrentTime
     timezone <- getCurrentTimeZone
     let (TimeOfDay hour minute second) = localTimeOfDay $ utcToLocalTime timezone now
-    let nowSeconds = timeToSeconds [hour, minute, (floor second)]
-    let delta = diffTime (timeToSeconds target) nowSeconds
+        nowSeconds = timeToSeconds [hour, minute, (floor second)]
+        targetSeconds = timeToSeconds target
+        delta = diffTime targetSeconds nowSeconds
     pure $ [ MonkyPlain . T.pack $ renderSecs (toInteger delta) ]
 
 instance PollModule TargetTime where
