@@ -1,3 +1,21 @@
+{-
+    Copyright 2017 Donat Khabibullaev
+
+    This file is part of Monky.
+
+    Monky is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Monky is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with Monky.  If not, see <http://www.gnu.org/licenses/>.
+-}
 {-|
 Module      : Monky.Examples.Tminus
 Description : Countdown clock for a specific time of day
@@ -51,15 +69,18 @@ timeToSeconds :: [Int] -> Int
 timeToSeconds l = sum (zipWith (*) l [3600, 60, 1])
 
 diffTime :: Int -> Int -> Int
-diffTime a b = abs (a - b)
+diffTime a b
+    | a < b = a + (86400 - b)
+    | otherwise = a - b
 
 getCurrent :: TargetTime -> IO [MonkyOut]
 getCurrent (TargetTime target) = do
     now <- getCurrentTime
     timezone <- getCurrentTimeZone
     let (TimeOfDay hour minute second) = localTimeOfDay $ utcToLocalTime timezone now
-    let nowSeconds = timeToSeconds [hour, minute, (floor second)]
-    let delta = diffTime (timeToSeconds target) nowSeconds
+        nowSeconds = timeToSeconds [hour, minute, (floor second)]
+        targetSeconds = timeToSeconds target
+        delta = diffTime targetSeconds nowSeconds
     pure $ [ MonkyPlain . T.pack $ renderSecs (toInteger delta) ]
 
 instance PollModule TargetTime where
