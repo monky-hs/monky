@@ -3,6 +3,10 @@
   Add guessWifiOutput functions
   Add the TMinus example
   Improve the MPD module with getMPDHandleF
+  Set Disk module up for gentoo hardened
+  Set Disk module to use Integer instead of Int for large files (or small Ints)
+  Add getValueI to Monky.Utility to read Integers
+  Set convertUnit to use Double instead of Int for more precision
 
 2.2:
   Rework the wifi examples.
