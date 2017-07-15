@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2017 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -115,26 +115,26 @@ implement to be usable.
 -}
 class FsInfo a where
   -- |Get the bytes free on the file system
-  getFsFree :: a -> IO Int
+  getFsFree :: a -> IO Integer
   getFsFree h = do
     s <- getFsSize h
     u <- getFsUsed h
     return (s - u)
   -- |Get the total size of the file system
-  getFsSize :: a -> IO Int
+  getFsSize :: a -> IO Integer
   getFsSize h = do
     u <- getFsUsed h
     f <- getFsFree h
     return (u + f)
   -- |Get the bytes used by the file system
-  getFsUsed :: a -> IO Int
+  getFsUsed :: a -> IO Integer
   getFsUsed h = do
     s <- getFsSize h
     f <- getFsFree h
     return (s - f)
   -- |Get all data, might be more efficient
   -- (Size, Free, Used)
-  getFsAll :: a -> IO (Int, Int, Int)
+  getFsAll :: a -> IO (Integer, Integer, Integer)
   getFsAll h = do
     s <- getFsSize h
     f <- getFsFree h
@@ -152,6 +152,7 @@ fsToFSI = FSI
 blBasePath :: String
 blBasePath = "/sys/class/block/"
 
+-- | Go from the FileStatus record to Major and Minor device number
 statToMM :: FileStatus -> (Int, Int)
 statToMM stat =
     let both = fromIntegral . specialDeviceID $ stat

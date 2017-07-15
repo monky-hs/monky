@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2017 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -79,16 +79,16 @@ instance FsInfo BlockHandle where
   getFsFree = getFree
 
 
-getSize :: BlockHandle -> IO Int
+getSize :: BlockHandle -> IO Integer
 getSize (BlockH path) = do
   fstat <- statVFS path
-  return $fromIntegral (fromIntegral (statVFS_blocks fstat) * statVFS_frsize fstat)
+  return $ (fromIntegral $ statVFS_blocks fstat) * (fromIntegral $ statVFS_frsize fstat)
 
 
-getFree :: BlockHandle -> IO Int
+getFree :: BlockHandle -> IO Integer
 getFree (BlockH path) = do
   fstat <- statVFS path
-  return $fromIntegral (fromIntegral (statVFS_bavail fstat) * statVFS_frsize fstat)
+  return $ (fromIntegral $ statVFS_bavail fstat) * (fromIntegral $ statVFS_frsize fstat)
 
 
 getBlockHandle' :: Dev -> IO (Maybe (BlockHandle, Dev))

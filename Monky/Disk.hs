@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2017 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -72,7 +72,7 @@ getDiskReadWrite (DiskH _ fs readrefs writerefs timeref) = do
 
 
 -- |Get the space left on the disk
-getDiskFree :: DiskHandle -> IO Int
+getDiskFree :: DiskHandle -> IO Integer
 getDiskFree (DiskH (FSI h) _ _ _ _) = getFsFree h
 
 
