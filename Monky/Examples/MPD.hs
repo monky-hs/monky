@@ -48,7 +48,7 @@ import Monky.Examples.Utility
 
 #if MIN_VERSION_base(4,8,0)
 #else
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), pure, (<*>))
 #endif
 
 type ConvertFun = (State, Maybe SongInfo) -> Text
