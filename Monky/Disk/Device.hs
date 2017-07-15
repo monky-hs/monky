@@ -115,6 +115,6 @@ getBlockHandleTag t fs = do
   dev <- evaluateTag t fs
   case dev of
     Just x -> do
-        y <- labelToDev (Label x)
+        y <- labelToDev (Label . reverse . takeWhile (/= '/') . reverse $ x)
         getBlockHandle' y
     Nothing -> return Nothing
