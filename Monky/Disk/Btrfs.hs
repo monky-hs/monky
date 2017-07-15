@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2017 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -47,7 +47,7 @@ import Control.Applicative ((<$>))
 
 -- Size data metadata system
 -- |The FsInfo exported by this module
-data BtrfsHandle = BtrfsH Int File File File
+data BtrfsHandle = BtrfsH Integer File File File
 
 instance FsInfo BtrfsHandle where
   getFsSize = return . getSize
@@ -58,32 +58,33 @@ fsBasePath :: String
 fsBasePath = "/sys/fs/btrfs/"
 
 
-sectorSize :: Int
+sectorSize :: Num a => a
 sectorSize = 512
 
 
-getSize :: BtrfsHandle -> Int
+getSize :: BtrfsHandle -> Integer
 getSize (BtrfsH s _ _ _) = s
 
 
-getUsed :: BtrfsHandle -> IO Int
+getUsed :: BtrfsHandle -> IO Integer
 getUsed (BtrfsH _ d m s) = do
-  dv <- readValue d
-  mv <- readValue m
-  sm <- readValue s
+  dv <- readValueI d
+  mv <- readValueI m
+  sm <- readValueI s
   return $ dv + mv + sm
 
--- |Get the block devices used by a btrfs FileSystem. This resolves mappers as far as possible
-getFSDevices :: String -> IO [String]
+-- | Get the block devices used by a btrfs FileSystem. This resolves mappers as far as possible
+getFSDevices :: String -> IO [Dev]
 getFSDevices fs = do
-  let devP = fsBasePath ++ fs ++ "/devices/"
-  concat <$> (mapM mapperToDev =<< listDirectory devP)
+    let devP = fsBasePath ++ fs ++ "/devices/"
+    devices <- map Label <$> listDirectory devP
+    concat <$> mapM mapperToDev devices
 
 
 getBtrfsHandle' :: String -> IO BtrfsHandle
 getBtrfsHandle' fs = do
   devices <- getFSDevices fs
-  sizes <- mapM (\dev -> fmap read $ readFile (blBasePath ++ dev ++ "/size")) devices
+  sizes <- mapM (\(Dev dev) -> fmap read $ readFile (blBasePath ++ dev ++ "/size")) devices
   let size = sum sizes
   d <- fopen (fsBasePath ++ fs ++ "/allocation/data/bytes_used")
   m <- fopen (fsBasePath ++ fs ++ "/allocation/metadata/bytes_used")
@@ -104,7 +105,7 @@ device may be quite different to the one that application see.
 -}
 getBtrfsHandle
   :: String -- ^The UUID of the file system to monitor
-  -> IO (Maybe (BtrfsHandle, [String]))
+  -> IO (Maybe (BtrfsHandle, [Dev]))
 getBtrfsHandle fs = do
   e <- doesDirectoryExist (fsBasePath ++ fs)
   if e

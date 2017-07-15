@@ -1,5 +1,5 @@
 {-
-    Copyright 2016 Markus Ongyerth
+    Copyright 2016,2017 Markus Ongyerth
 
     This file is part of Monky.
 
@@ -72,7 +72,7 @@ convertUnitB rate b = convertUnitT (fromIntegral rate) 1024 (" " `T.append` b) "
 convertUnitSI :: Integral a => a -> Text -> Text
 convertUnitSI rate b = convertUnitT (fromIntegral rate) 1000 b "k" "M" "G"
 
-convertUnitT :: Float -> Int -> Text -> Text -> Text -> Text -> Text
+convertUnitT :: Double -> Int -> Text -> Text -> Text -> Text -> Text
 convertUnitT rate step bs ks ms gs
   | rate < fromIntegral (kf       ) = sformat ((left 4 ' ' %. fixed 0) % stext) rate bs
   | rate < fromIntegral (kf * 10  ) = sformat ((left 4 ' ' %. fixed 2) % stext) kv ks

@@ -29,6 +29,7 @@ This module provides utility functions used in monky modules
 -}
 module Monky.Utility
     ( readValue
+    , readValueI
     , readValues
     , fopen
     , fclose
@@ -106,6 +107,15 @@ readValue (File h) = do
   line <- hGetReadable h
   let value = fmap fst $ BS.readInt line
   return . fromMaybe (error ("Failed to read value from file:" ++ show h)) $ value
+
+-- |Read the first line of the file and convert it into an 'Integer'
+readValueI :: File -> IO Integer
+readValueI (File h) = do
+  hSeek h AbsoluteSeek 0
+  line <- hGetReadable h
+  let value = fmap fst $ BS.readInteger line
+  return . fromMaybe (error ("Failed to read value from file:" ++ show h)) $ value
+
 
 -- |Read the first line of the file and convert the words in it into 'Int's
 readValues :: File -> IO [Int]

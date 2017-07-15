@@ -27,6 +27,7 @@ Portability : Linux
 -}
 module Monky.Examples.Disk
   ( getDiskHandle
+  , getDiskHandleTag
   , DiskH
   )
 where
@@ -36,23 +37,30 @@ import Formatting
 import Monky.Examples.Utility
 import Monky.Examples.Images
 import Monky.Modules
-import Monky.Disk hiding (getDiskHandle)
-import qualified Monky.Disk as D (getDiskHandle)
+import Control.Applicative ((<$>))
+import qualified Monky.Disk as D
 
 -- |The handle type for this module
-newtype DiskH = DH DiskHandle
+newtype DiskH = DH D.DiskHandle
 
--- |Get a disk handle
+-- |Get a disk handle by uuid. This special cases btrfs
 getDiskHandle
   :: String -- ^The UUID of the device to monitor. It has to be mounted at monky startup!
   -> IO DiskH
 getDiskHandle = fmap DH . D.getDiskHandle
 
+-- |Get a disk handle from a given tag
+getDiskHandleTag
+  :: String -- ^Which tag to give to libblkid
+  -> String -- ^The value of the tag
+  -> IO DiskH
+getDiskHandleTag t v = DH <$> D.getDiskHandleTag t v
+
 {- Disk module -}
 instance PollModule DiskH where
   getOutput (DH dh) = do
-    (dr, dw) <- getDiskReadWrite dh
-    df <- getDiskFree dh
+    (dr, dw) <- D.getDiskReadWrite dh
+    df <- D.getDiskFree dh
     return
       [ diskImage
       , MonkyPlain $ sformat (stext % " " % stext % " " % stext) (convertUnitSI df "B") (convertUnitSI dr "B" ) (convertUnitSI dw "B")

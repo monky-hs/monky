@@ -1,5 +1,5 @@
 {-
-    Copyright 2015 Markus Ongyerth, Stephan Guenther
+    Copyright 2015,2017 Markus Ongyerth, Stephan Guenther
 
     This file is part of Monky.
 
@@ -34,6 +34,7 @@ file system
 module Monky.Disk.Device
   ( BlockHandle(..)
   , getBlockHandle
+  , getBlockHandleTag
 
   , devToMount
   )
@@ -59,13 +60,13 @@ return the first one found.
 First one is mostly determined by order in /proc/mounts and should be the one
 that was mounted first (time since boot).
 -}
-devToMount :: String -> IO (Maybe String)
+devToMount :: Dev -> IO (Maybe String)
 devToMount dev = do
   masters <- devToMapper dev
   mounts <- map (take 2 . words) . lines <$> readFile "/proc/mounts"
   return . listToMaybe . map (!! 1) $ filter (isDev masters) mounts
   where
-    isDev masters [x, _] = any (\master -> ('/':master) `isSuffixOf` x) masters
+    isDev masters [x, _] = any (\(Label master) -> ('/':master) `isSuffixOf` x) masters
     isDev _ _ = error "devToMount: How does take 2 not match [_, _]?"
 
 
@@ -78,24 +79,24 @@ instance FsInfo BlockHandle where
   getFsFree = getFree
 
 
-getSize :: BlockHandle -> IO Int
+getSize :: BlockHandle -> IO Integer
 getSize (BlockH path) = do
   fstat <- statVFS path
-  return $fromIntegral (fromIntegral (statVFS_blocks fstat) * statVFS_frsize fstat)
+  return $ (fromIntegral $ statVFS_blocks fstat) * (fromIntegral $ statVFS_frsize fstat)
 
 
-getFree :: BlockHandle -> IO Int
+getFree :: BlockHandle -> IO Integer
 getFree (BlockH path) = do
   fstat <- statVFS path
-  return $fromIntegral (fromIntegral (statVFS_bavail fstat) * statVFS_frsize fstat)
+  return $ (fromIntegral $ statVFS_bavail fstat) * (fromIntegral $ statVFS_frsize fstat)
 
 
-getBlockHandle' :: String -> IO (Maybe (BlockHandle, String))
+getBlockHandle' :: Dev -> IO (Maybe (BlockHandle, Dev))
 getBlockHandle' dev = do
   path <- devToMount dev
   case path of
-    Just x -> return $Just (BlockH x, dev)
-    Nothing -> return Nothing
+        Just x -> return $Just (BlockH x, dev)
+        Nothing -> return Nothing
 
 {- |Get a fs handle for 'normal' devices
 
@@ -105,9 +106,15 @@ fsStat takes the mount point of the file system, so we need to find the mount po
 
 In case of mapper devices, this is done by going through the chain of slaves.
 -}
-getBlockHandle :: String -> IO (Maybe (BlockHandle, String))
-getBlockHandle fs = do
-  dev <- evaluateTag "UUID" fs
+getBlockHandle :: String -> IO (Maybe (BlockHandle, Dev))
+getBlockHandle = getBlockHandleTag "UUID"
+
+-- | Same as 'getBlockHandle' but allow to pass the tag for libblkid
+getBlockHandleTag :: String -> String -> IO (Maybe (BlockHandle, Dev))
+getBlockHandleTag t fs = do
+  dev <- evaluateTag t fs
   case dev of
-    Just x -> getBlockHandle' (reverse $takeWhile (/= '/') $reverse x)
+    Just x -> do
+        y <- labelToDev (Label . reverse . takeWhile (/= '/') . reverse $ x)
+        getBlockHandle' y
     Nothing -> return Nothing
