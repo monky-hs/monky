@@ -56,6 +56,7 @@ getState (NetH _ _ statef _ _ _) = do
     "down" -> Down
     "unknown" -> Unknown
     "dormant" -> Dormant
+    "lowerlayerdown" -> Down
     _ -> error ("Don't know the network state \"" ++ state ++ "\" yet")
 
 
