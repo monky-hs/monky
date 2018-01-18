@@ -84,7 +84,7 @@ convertUnitT rate step bs ks ms gs
   | rate < fromIntegral (gf * 10  ) = sformat ((left 4 ' ' %. fixed 2) % stext) gv gs
   | rate < fromIntegral (gf * 100 ) = sformat ((left 4 ' ' %. fixed 1) % stext) gv gs
   | rate < fromIntegral (gf * 1000) = sformat ((left 4 ' ' %. fixed 0) % stext) gv gs
-  | otherwise = sformat ((left 4 ' ' %. expt 1) % stext) gv gs
+  | otherwise = sformat ((left 4 ' ' %. fixed 1) % stext) gv gs
   where
     kf = 1  * step
     mf = kf * step
