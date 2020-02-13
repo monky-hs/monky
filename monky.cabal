@@ -10,7 +10,7 @@ name:                monky
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             2.2.1.0
+version:             2.2.1.1
 
 -- The ABOVE LINE has to stay AS IS (except for version changes) for the
 -- template to work properly
@@ -98,7 +98,7 @@ Flag ibus
 
 Flag pulse
   Description: enable pulse example (7.6 disabled because travis)
-  Default: True
+  Default: False
 
 Source-repository head
   type:       git
@@ -157,8 +157,8 @@ library
   build-depends:       base >=4.6.0.1 && <=5, directory, time, old-time
   build-depends:       text, unix, network, mtl, transformers
   build-depends:       template-haskell, containers, stm, statvfs
-  build-depends:       bytestring, netlink >= 1.1, cereal, formatting >= 6, composition
-  build-depends:       env-locale >= 1.0.0.1
+  build-depends:       bytestring, netlink >= 1.1, cereal, formatting, composition
+  build-depends:       env-locale >= 1.0.0.1, scientific
 
   -- force double-conversion version for old ghc/library?
   if impl(ghc < 7.8)

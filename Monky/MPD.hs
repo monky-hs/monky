@@ -217,7 +217,12 @@ getMPDSocket host port = do
 
 -- |Get the raw 'Fd' from the 'MPDSocket' for eventing api
 getMPDFd :: MPDSocket -> IO Fd
-getMPDFd (MPDSocket s) = return . Fd $fdSocket s
+getMPDFd (MPDSocket s) =
+#if MIN_VERSION_network(3,0,0)
+  Fd <$> unsafeFdSocket s
+#else
+  pure . Fd $ fdSocket s
+#endif
 
 
 recvMessage :: MPDSock -> ExceptT String IO [Text]
