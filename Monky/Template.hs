@@ -156,7 +156,7 @@ mkGetFun lname name hname funs raw = do
   ghandle <- mkGetHandle handle lname
   funStmts <- mapM (getFunQ handle) funs
   ret <- mkRet hname (map (\(x,_,_) -> x) funs) raw (VarE handle)
-  let fun = FunD funName [Clause [] (NormalB $ DoE (ghandle:funStmts ++ [ret])) []]
+  let fun = FunD funName [Clause [] (NormalB $ DoE Nothing (ghandle:funStmts ++ [ret])) []]
   sig <- sigD funName [t| IO $(conT . mkName $ name) |]
   return [sig,fun]
 
